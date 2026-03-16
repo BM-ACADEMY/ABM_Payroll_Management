@@ -14,6 +14,18 @@ import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile) setIsSidebarCollapsed(true);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -44,12 +56,32 @@ function App() {
     );
   }
 
+  const sidebarWidth = user ? (isMobile ? '0px' : (isSidebarCollapsed ? '80px' : '256px')) : '0px';
+
   return (
     <Router>
-      <div className="flex min-h-screen bg-slate-50">
-        {user && <Sidebar user={user} />}
-        <div className="flex-1 flex flex-col" style={{ marginLeft: user ? '256px' : '0' }}>
-          {user && <Navbar user={user} setUser={handleSetUser} />}
+      <div className="flex min-h-screen bg-slate-50 relative overflow-x-hidden">
+        {user && (
+          <Sidebar 
+            user={user} 
+            isCollapsed={isSidebarCollapsed} 
+            setIsCollapsed={setIsSidebarCollapsed} 
+            isMobile={isMobile}
+          />
+        )}
+        <div 
+          className="flex-1 flex flex-col transition-all duration-300 ease-in-out min-w-0" 
+          style={{ marginLeft: sidebarWidth }}
+        >
+          {user && (
+            <Navbar 
+              user={user} 
+              setUser={handleSetUser} 
+              isSidebarCollapsed={isSidebarCollapsed} 
+              isMobile={isMobile}
+              setIsSidebarCollapsed={setIsSidebarCollapsed}
+            />
+          )}
           <main className="flex-1">
             <Routes>
               <Route path="/login" element={!user ? <Login setUser={handleSetUser} /> : <Navigate to={user.role?.name === 'admin' ? '/admin' : '/dashboard'} />} />

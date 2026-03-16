@@ -44,14 +44,14 @@ const Signup = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md bg-white border border-gray-100 shadow-xl rounded-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-        <CardHeader className="space-y-2 text-center pb-8 pt-6">
+        <CardHeader className="space-y-2 text-center pb-6 pt-6 px-4 md:px-8">
           <CardTitle className="text-2xl font-semibold tracking-tight text-gray-900">Create an account</CardTitle>
           <CardDescription className="text-gray-500 text-sm">
             Enter your details to get started
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-5 px-8">
+          <CardContent className="space-y-5 px-6 md:px-8">
             {error && (
               <div className="p-3 text-sm font-medium text-red-700 bg-red-50 rounded-lg border border-red-100" role="alert">
                 {error}

@@ -31,17 +31,17 @@ const AdminDashboard = () => {
         </Button>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat, i) => (
           <Card key={i} className="bg-white border-slate-200 shadow-sm hover:shadow-md transition-all duration-300">
             <CardContent className="pt-6">
               <div className="flex justify-between items-start">
-                <div className="space-y-2">
+                <div className="space-y-2 text-slate-900 border-indigo-600">
                   <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-                  <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-2xl md:text-3xl font-bold">{stat.value}</p>
                 </div>
                 <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                  <stat.icon className="w-6 h-6" />
+                  <stat.icon className="w-5 h-5 md:w-6 md:h-6" />
                 </div>
               </div>
             </CardContent>
@@ -49,47 +49,49 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      <Card className="bg-white border-slate-200 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <CardTitle className="text-xl text-slate-900">Employee Directory</CardTitle>
             <CardDescription className="text-slate-500">Total {employees.length} active members</CardDescription>
           </div>
-          <Button variant="outline" className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50">Filter</Button>
+          <Button variant="outline" className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 w-full sm:w-auto">Filter</Button>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-slate-200 hover:bg-transparent">
-                <TableHead className="text-slate-500 font-medium">Employee ID</TableHead>
-                <TableHead className="text-slate-500 font-medium">Name</TableHead>
-                <TableHead className="text-slate-500 font-medium">Role</TableHead>
-                <TableHead className="text-slate-500 font-medium">Base Salary</TableHead>
-                <TableHead className="text-slate-500 font-medium">Status</TableHead>
-                <TableHead className="text-right text-slate-500 font-medium">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map((emp, i) => (
-                <TableRow key={i} className="border-slate-100 hover:bg-slate-50 transition-colors">
-                  <TableCell className="font-mono text-indigo-600">{emp.id}</TableCell>
-                  <TableCell className="font-medium text-slate-900">{emp.name}</TableCell>
-                  <TableCell className="text-slate-600">{emp.role}</TableCell>
-                  <TableCell className="font-semibold text-emerald-600">₹{emp.salary.toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shadow-none">
-                      {emp.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-900 hover:bg-slate-100">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-200 hover:bg-transparent">
+                  <TableHead className="text-slate-500 font-medium whitespace-nowrap">Employee ID</TableHead>
+                  <TableHead className="text-slate-500 font-medium whitespace-nowrap">Name</TableHead>
+                  <TableHead className="text-slate-500 font-medium whitespace-nowrap">Role</TableHead>
+                  <TableHead className="text-slate-500 font-medium whitespace-nowrap">Base Salary</TableHead>
+                  <TableHead className="text-slate-500 font-medium whitespace-nowrap">Status</TableHead>
+                  <TableHead className="text-right text-slate-500 font-medium whitespace-nowrap">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {employees.map((emp, i) => (
+                  <TableRow key={i} className="border-slate-100 hover:bg-slate-50 transition-colors">
+                    <TableCell className="font-mono text-indigo-600">{emp.id}</TableCell>
+                    <TableCell className="font-medium text-slate-900 whitespace-nowrap">{emp.name}</TableCell>
+                    <TableCell className="text-slate-600">{emp.role}</TableCell>
+                    <TableCell className="font-semibold text-emerald-600 whitespace-nowrap">₹{emp.salary.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shadow-none">
+                        {emp.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-900 hover:bg-slate-100">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

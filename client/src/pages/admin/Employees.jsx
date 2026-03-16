@@ -192,21 +192,21 @@ const Employees = () => {
   );
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900">Employees Directory</h1>
-          <p className="text-slate-500">Manage all registered staff members in your organization</p>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">Employees Directory</h1>
+          <p className="text-slate-500 text-sm md:text-base">Manage all registered staff members in your organization</p>
         </div>
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 py-6 px-6 rounded-xl font-semibold shadow-sm">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center gap-2 py-6 px-6 rounded-xl font-semibold shadow-sm w-full md:w-auto">
               <UserPlus className="w-5 h-5" />
               Add Employee
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto bg-white border-slate-200">
+          <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[90vh] overflow-y-auto bg-white border-slate-200 p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-slate-900">Add New Employee</DialogTitle>
               <DialogDescription className="text-slate-500">
@@ -219,7 +219,7 @@ const Employees = () => {
                   {formError}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="employeeId" className="text-slate-700">Employee ID</Label>
                   <Input id="employeeId" name="employeeId" value={formData.employeeId} onChange={handleChange} required className="bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-indigo-500" placeholder="e.g. EMP1001" />
@@ -237,7 +237,7 @@ const Employees = () => {
                 <Label htmlFor="phoneNumber" className="text-slate-700">Phone Number</Label>
                 <Input id="phoneNumber" name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleChange} required className="bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-indigo-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-slate-700">Initial Password</Label>
                   <Input id="password" name="password" type="password" value={formData.password} onChange={handleChange} required className="bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-indigo-500" />
@@ -253,7 +253,7 @@ const Employees = () => {
                 <h3 className="text-md font-semibold text-slate-900">Timing Configurations</h3>
                 <p className="text-xs text-slate-500 mb-4">Set specific access and roster times for this employee</p>
                 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="space-y-2">
                     <Label htmlFor="fromDate" className="text-slate-700">From Date</Label>
                     <Input id="fromDate" name="fromDate" type="date" value={formData.timingSettings.fromDate} onChange={handleTimingChange} className="bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-indigo-500" />
@@ -264,7 +264,7 @@ const Employees = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                   <div className="space-y-2">
                     <Label htmlFor="loginTime" className="text-slate-700">Login Time</Label>
                     <Input id="loginTime" name="loginTime" type="time" value={formData.timingSettings.loginTime} onChange={handleTimingChange} required className="bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-indigo-500" />
@@ -279,7 +279,7 @@ const Employees = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="lunchStart" className="text-slate-700">Lunch In Time</Label>
                     <Input id="lunchStart" name="lunchStart" type="time" value={formData.timingSettings.lunchStart} onChange={handleTimingChange} required className="bg-slate-50 border-slate-200 text-slate-900 focus-visible:ring-indigo-500" />
@@ -291,11 +291,11 @@ const Employees = () => {
                 </div>
               </div>
 
-              <DialogFooter className="pt-4">
+              <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2">
                 <DialogClose asChild>
-                  <Button type="button" variant="outline" className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50">Cancel</Button>
+                  <Button type="button" variant="outline" className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 w-full sm:w-auto">Cancel</Button>
                 </DialogClose>
-                <Button type="submit" disabled={formLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button type="submit" disabled={formLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
                   {formLoading ? 'Creating...' : 'Create Employee'}
                 </Button>
               </DialogFooter>
@@ -304,8 +304,8 @@ const Employees = () => {
         </Dialog>
       </header>
 
-      <Card className="bg-white border-slate-200 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
+      <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
+        <CardHeader className="flex flex-col xl:flex-row items-start xl:items-center justify-between pb-6 gap-6 border-b border-slate-100">
           <div className="space-y-1">
             <CardTitle className="text-xl text-slate-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-600" />
@@ -313,13 +313,13 @@ const Employees = () => {
             </CardTitle>
             <CardDescription className="text-slate-500">Total {employees.length} continuous active members</CardDescription>
           </div>
-          <div className="relative w-80">
+          <div className="relative w-full xl:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input 
               placeholder="Search name or ID..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-slate-50 border-slate-200 pl-10 text-slate-900 focus-visible:ring-indigo-500 shadow-sm" 
+              className="bg-slate-50 border-slate-200 pl-10 h-11 text-slate-900 focus-visible:ring-indigo-500 shadow-sm w-full" 
             />
           </div>
         </CardHeader>
@@ -335,55 +335,59 @@ const Employees = () => {
           ) : filteredEmployees.length === 0 ? (
             <div className="text-center py-12 text-slate-500 font-medium">No results found for "{searchTerm}"</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-slate-200 hover:bg-transparent">
-                  <TableHead className="text-slate-500 font-medium px-6">Employee ID</TableHead>
-                  <TableHead className="text-slate-500 font-medium whitespace-nowrap">Name & Contact</TableHead>
-                  <TableHead className="text-slate-500 font-medium">Role</TableHead>
-                  <TableHead className="text-slate-500 font-medium">Base Salary</TableHead>
-                  <TableHead className="text-slate-500 font-medium">Email Verified</TableHead>
-                  <TableHead className="text-right text-slate-500 font-medium px-6">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEmployees.map((emp) => (
-                  <TableRow key={emp._id} className="border-slate-100 hover:bg-slate-50 transition-colors">
-                    <TableCell className="font-mono text-indigo-600 font-medium px-6">{emp.employeeId || 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-slate-900">{emp.name}</span>
-                        <span className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                          <Phone className="w-3 h-3" /> {emp.phoneNumber || 'N/A'}
-                        </span>
-                        <span className="text-xs text-slate-500">{emp.email}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 shadow-none font-medium capitalize">
-                        {emp.role?.name || 'Employee'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-semibold text-emerald-600">₹{emp.baseSalary?.toLocaleString() || '0'}</TableCell>
-                    <TableCell>
-                      {emp.isEmailVerified ? (
-                         <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shadow-none">Verified</Badge>
-                      ) : (
-                         <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 shadow-none">Pending</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right px-6 flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => openEditModal(emp)} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openDeleteModal(emp)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-200 hover:bg-transparent">
+                    <TableHead className="text-slate-500 font-medium px-6 whitespace-nowrap">Employee ID</TableHead>
+                    <TableHead className="text-slate-500 font-medium whitespace-nowrap">Name & Contact</TableHead>
+                    <TableHead className="text-slate-500 font-medium whitespace-nowrap">Role</TableHead>
+                    <TableHead className="text-slate-500 font-medium whitespace-nowrap">Base Salary</TableHead>
+                    <TableHead className="text-slate-500 font-medium whitespace-nowrap">Email Verified</TableHead>
+                    <TableHead className="text-right text-slate-500 font-medium px-6 whitespace-nowrap">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.map((emp) => (
+                    <TableRow key={emp._id} className="border-slate-100 hover:bg-slate-50 transition-colors">
+                      <TableCell className="font-mono text-indigo-600 font-medium px-6">{emp.employeeId || 'N/A'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col min-w-[200px]">
+                          <span className="font-medium text-slate-900">{emp.name}</span>
+                          <span className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                            <Phone className="w-3 h-3" /> {emp.phoneNumber || 'N/A'}
+                          </span>
+                          <span className="text-xs text-slate-500">{emp.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 shadow-none font-medium capitalize whitespace-nowrap">
+                          {emp.role?.name || 'Employee'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-semibold text-emerald-600 whitespace-nowrap">₹{emp.baseSalary?.toLocaleString() || '0'}</TableCell>
+                      <TableCell>
+                        {emp.isEmailVerified ? (
+                           <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shadow-none">Verified</Badge>
+                        ) : (
+                           <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 shadow-none">Pending</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right px-6">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openEditModal(emp)} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openDeleteModal(emp)} className="text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

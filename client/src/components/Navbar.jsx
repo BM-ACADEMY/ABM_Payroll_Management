@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { LogOut, Bell, Search, LayoutDashboard, Users, UserCheck, CreditCard, Settings, ChevronRight } from "lucide-react";
+import { LogOut, Bell, Search, LayoutDashboard, Users, UserCheck, CreditCard, Settings, ChevronRight, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-const Navbar = ({ user, setUser }) => {
+const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarCollapsed }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isOpen, setIsOpen] = React.useState(false);
@@ -43,21 +43,37 @@ const Navbar = ({ user, setUser }) => {
   };
 
   return (
-    <nav className="h-20 border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-40 px-8 flex items-center justify-between ml-64 transition-all duration-300">
-      <div className="relative w-96">
-        <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
-          <Input 
-            placeholder="Search pages (Overview, Employees...)" 
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setIsOpen(true);
-            }}
-            onFocus={() => setIsOpen(true)}
-            className="bg-slate-100/50 border-slate-200 pl-10 h-10 text-slate-900 placeholder:text-slate-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
-          />
-        </div>
+    <nav 
+      className={`h-20 border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between transition-all duration-300 ease-in-out ${
+        isMobile ? 'ml-0' : (isSidebarCollapsed ? 'ml-20' : 'ml-64')
+      }`}
+    >
+      <div className="flex items-center gap-4 flex-1">
+        {isMobile && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="text-slate-600"
+          >
+            <Menu className="w-6 h-6" />
+          </Button>
+        )}
+        
+        <div className="relative w-full max-w-md hidden sm:block">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+            <Input 
+              placeholder="Search pages..." 
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setIsOpen(true);
+              }}
+              onFocus={() => setIsOpen(true)}
+              className="bg-slate-100/50 border-slate-200 pl-10 h-10 text-slate-900 placeholder:text-slate-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm w-full"
+            />
+          </div>
 
         {isOpen && searchTerm && (
           <>
@@ -88,6 +104,7 @@ const Navbar = ({ user, setUser }) => {
             </div>
           </>
         )}
+        </div>
       </div>
 
       <div className="flex items-center gap-6">
