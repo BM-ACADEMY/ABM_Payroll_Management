@@ -1,24 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, PieChart } from "lucide-react";
+import { PieChart } from "lucide-react";
+import { adminMenuItem } from '../pages/utils/adminMenuItem';
+import { employeeMenuItem } from '../pages/utils/employeeMenuItem';
 
 const Sidebar = ({ user }) => {
-  const adminLinks = [
-    { name: 'Overview', path: '/admin', icon: LayoutDashboard },
-    { name: 'Employees', path: '/admin/employees', icon: Users },
-    { name: 'Attendance', path: '/admin/attendance', icon: UserCheck },
-    { name: 'Payroll', path: '/admin/payroll', icon: CreditCard },
-    { name: 'Settings', path: '/admin/settings', icon: Settings }
-  ];
-
-  const employeeLinks = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Attendance', path: '/dashboard/logs', icon: UserCheck },
-    { name: 'Earnings', path: '/dashboard/earnings', icon: CreditCard },
-    { name: 'Requests', path: '/dashboard/requests', icon: Settings }
-  ];
-
-  const links = user?.role?.name === 'admin' ? adminLinks : employeeLinks;
+  const links = user?.role?.name === 'admin' ? adminMenuItem : employeeMenuItem;
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-indigo-950 border-r border-indigo-900 z-50 flex flex-col p-6 shadow-xl">

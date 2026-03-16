@@ -1,13 +1,49 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { LogOut, Bell, Search, LayoutDashboard, Users, UserCheck, CreditCard, Settings, ChevronRight } from "lucide-react";
+import { LogOut, Bell, Search, LayoutDashboard, Users, UserCheck, CreditCard, Settings, ChevronRight, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 
 const Navbar = ({ user, setUser }) => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [isOpen, setIsOpen] = React.useState(false);
+  const location = useLocation();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (user?.role?.name === 'admin') {
+      fetchUnreadCount();
+      
+      const socket = io(import.meta.env.VITE_API_URL);
+      
+      socket.on('new_request', () => {
+        fetchUnreadCount();
+      });
+
+      socket.on('requests_read', () => {
+        setUnreadCount(0);
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [user]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/unread-count`, {
+        headers: { 'x-auth-token': token }
+      });
+      setUnreadCount(res.data.count);
+    } catch (err) {
+      console.error("Error fetching unread count:", err);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -19,6 +55,7 @@ const Navbar = ({ user, setUser }) => {
     { name: 'Overview', path: '/admin', icon: LayoutDashboard },
     { name: 'Employees', path: '/admin/employees', icon: Users },
     { name: 'Attendance', path: '/admin/attendance', icon: UserCheck },
+    { name: 'Permission Review', path: '/admin/permissions', icon: FileText },
     { name: 'Payroll', path: '/admin/payroll', icon: CreditCard },
     { name: 'Settings', path: '/admin/settings', icon: Settings }
   ];
@@ -27,7 +64,7 @@ const Navbar = ({ user, setUser }) => {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Attendance Logs', path: '/dashboard/logs', icon: UserCheck },
     { name: 'Earnings', path: '/dashboard/earnings', icon: CreditCard },
-    { name: 'Requests', path: '/dashboard/requests', icon: Settings }
+    { name: 'Permissions', path: '/dashboard/permissions', icon: Settings }
   ];
 
   const links = user?.role?.name === 'admin' ? adminLinks : employeeLinks;
@@ -91,10 +128,21 @@ const Navbar = ({ user, setUser }) => {
       </div>
 
       <div className="flex items-center gap-6">
-        <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full border-2 border-white"></span>
-        </Button>
+        {user?.role?.name === 'admin' && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate('/admin/permissions')}
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 relative"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-600 rounded-full border-2 border-white text-[8px] font-black text-white flex items-center justify-center animate-bounce">
+                {unreadCount}
+              </span>
+            )}
+          </Button>
+        )}
         <div className="h-8 w-[1px] bg-slate-200"></div>
         <Button 
           variant="ghost" 

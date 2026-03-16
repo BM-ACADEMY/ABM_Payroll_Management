@@ -3,8 +3,19 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const attendanceController = require('../controllers/attendanceController');
 
+// @route   GET api/attendance/today
+router.get('/today', auth, attendanceController.getTodayAttendance);
+
 // @route   POST api/attendance/checkin
-// @desc    Mark attendance (WFH/WFO)
 router.post('/checkin', auth, attendanceController.checkIn);
+
+// @route   POST api/attendance/lunchout
+router.post('/lunchout', auth, attendanceController.lunchOut);
+
+// @route   POST api/attendance/lunchin
+router.post('/lunchin', auth, attendanceController.lunchIn);
+
+// @route   POST api/attendance/checkout
+router.post('/checkout', auth, attendanceController.checkOut);
 
 module.exports = router;
