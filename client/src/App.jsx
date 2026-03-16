@@ -9,7 +9,10 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Employees from './pages/admin/Employees';
+import PermissionReview from './pages/admin/PermissionReview';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
+import Attendance from './pages/employee/Attendance';
+import Permissions from './pages/employee/Permissions';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -98,8 +101,20 @@ function App() {
                 element={user?.role?.name === 'admin' ? <Employees /> : <Navigate to="/login" />}
               />
               <Route
+                path="/admin/permissions"
+                element={user?.role?.name === 'admin' ? <PermissionReview /> : <Navigate to="/login" />}
+              />
+              <Route
                 path="/dashboard"
                 element={user ? <EmployeeDashboard /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/dashboard/logs"
+                element={user ? <Attendance /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/dashboard/permissions"
+                element={user ? <Permissions /> : <Navigate to="/login" />}
               />
               <Route path="/" element={<Navigate to={user ? (user.role?.name === 'admin' ? '/admin' : '/dashboard') : '/login'} />} />
             </Routes>

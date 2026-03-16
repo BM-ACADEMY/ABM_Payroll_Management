@@ -1,99 +1,91 @@
 # -----------------------------
-
-# Dependencies
+# Node Modules
+# -----------------------------
+node_modules/
+**/node_modules/
 
 # -----------------------------
-
-/node_modules
-**/node_modules
+# Environment Variables
+# -----------------------------
+.env
+.env.*
+!.env.example
 
 # -----------------------------
-
-# Environment files (Explicitly included in Git as requested)
-#!.env
-
+# Build / Production
+# -----------------------------
+build/
+dist/
+frontend/dist/
+backend/dist/
+.out/
 
 # -----------------------------
-
-# Build folders
-
-# -----------------------------
-
-/build
-/dist
-/frontend/dist
-/backend/dist
-
-# -----------------------------
-
 # Logs
-
 # -----------------------------
-
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # -----------------------------
-
 # Cache
+# -----------------------------
+.cache/
+.parcel-cache/
+.next/
+.vite/
+.eslintcache
 
 # -----------------------------
-
-.cache
-.parcel-cache
-.next
-
+# OS Generated Files
 # -----------------------------
-
-# OS generated files
-
-# -----------------------------
-
 .DS_Store
 Thumbs.db
 
 # -----------------------------
-
-# IDE / Editor
-
+# IDE / Editors
 # -----------------------------
-
 .vscode/
 .idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+*.swp
+*.swo
 
 # -----------------------------
-
 # Testing
-
 # -----------------------------
-
 coverage/
-.nyc_output
+.nyc_output/
 
 # -----------------------------
-
-# Uploads / temp files
-
+# Uploads / Temp Files
 # -----------------------------
-
 uploads/
 tmp/
 temp/
 
 # -----------------------------
-
-# Misc
-
+# Runtime
 # -----------------------------
-
 *.pid
 *.seed
 *.pid.lock
+
+# -----------------------------
+# Package Manager
+# -----------------------------
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# -----------------------------
+# Optional (if using Docker)
+# -----------------------------
+.dockerignore
+Dockerfile*

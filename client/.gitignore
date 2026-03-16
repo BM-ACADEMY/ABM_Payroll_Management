@@ -1,35 +1,27 @@
 # -----------------------------
-
 # Dependencies
-
 # -----------------------------
-
 /node_modules
 **/node_modules
 
 # -----------------------------
-
-# Environment files (Explicitly included in Git as requested)
-#!.env
-
+# Environment Variables
+# -----------------------------
+.env
+.env.*
+!.env.example
 
 # -----------------------------
-
 # Build folders
-
 # -----------------------------
-
 /build
 /dist
 /frontend/dist
 /backend/dist
 
 # -----------------------------
-
 # Logs
-
 # -----------------------------
-
 logs
 *.log
 npm-debug.log*
@@ -37,30 +29,21 @@ yarn-debug.log*
 yarn-error.log*
 
 # -----------------------------
-
 # Cache
-
 # -----------------------------
-
 .cache
 .parcel-cache
 .next
 
 # -----------------------------
-
 # OS generated files
-
 # -----------------------------
-
 .DS_Store
 Thumbs.db
 
 # -----------------------------
-
 # IDE / Editor
-
 # -----------------------------
-
 .vscode/
 .idea/
 *.suo
@@ -70,30 +53,21 @@ Thumbs.db
 *.sw?
 
 # -----------------------------
-
 # Testing
-
 # -----------------------------
-
 coverage/
 .nyc_output
 
 # -----------------------------
-
 # Uploads / temp files
-
 # -----------------------------
-
 uploads/
 tmp/
 temp/
 
 # -----------------------------
-
 # Misc
-
 # -----------------------------
-
 *.pid
 *.seed
 *.pid.lock
