@@ -211,3 +211,70 @@ exports.getUser = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
+// @desc    Change password
+// @route   PUT /api/auth/change-password
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!validatePassword(newPassword)) {
+    return res.status(400).json({ msg: 'New password must contain at least 1 capital letter, 1 number, 1 symbol, and be more than 6 characters long.' });
+  }
+
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ msg: 'Incorrect current password' });
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    
+    await user.save();
+    res.json({ msg: 'Password updated successfully' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+exports.updateProfile = async (req, res) => {
+  let { name, email, phoneNumber } = req.body;
+
+  try {
+    let user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    // Validate phone number if provided (exactly 10 digits)
+    if (phoneNumber) {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(phoneNumber)) {
+        return res.status(400).json({ msg: 'Phone number must be exactly 10 digits' });
+      }
+    }
+
+    // Check if email is already taken by another user
+    if (email) {
+      email = email.toLowerCase();
+      if (email !== user.email) {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ msg: 'Email already exists' });
+        user.email = email;
+      }
+    }
+
+    if (name) user.name = name;
+    if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
+    
+    user.updatedAt = Date.now();
+    await user.save();
+    
+    // Return updated user (without password)
+    const updatedUser = await User.findById(req.user.id).select('-password').populate('role', 'name permissions');
+    res.json(updatedUser);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};

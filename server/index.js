@@ -34,6 +34,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/requests', require('./routes/requests'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/', (req, res) => res.send('API Running'));
 

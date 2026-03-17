@@ -13,6 +13,8 @@ import PermissionReview from './pages/admin/PermissionReview';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import Attendance from './pages/employee/Attendance';
 import Permissions from './pages/employee/Permissions';
+import PayrollSettings from './pages/admin/PayrollSettings';
+import Profile from './pages/admin/Profile';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -71,6 +73,14 @@ function App() {
               <Route
                 path="/admin/permissions"
                 element={user?.role?.name === 'admin' ? <PermissionReview /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/admin/settings"
+                element={user?.role?.name === 'admin' ? <PayrollSettings /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/admin/profile"
+                element={user?.role?.name === 'admin' ? <Profile setUser={handleSetUser} /> : <Navigate to="/login" />}
               />
               <Route
                 path="/dashboard"
