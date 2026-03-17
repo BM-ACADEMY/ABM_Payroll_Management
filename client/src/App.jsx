@@ -15,8 +15,13 @@ import LeaveCalendar from './pages/admin/LeaveCalendar';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import Attendance from './pages/employee/Attendance';
 import Permissions from './pages/employee/Permissions';
+import LeaveRequest from './pages/employee/LeaveRequest';
 import PayrollSettings from './pages/admin/PayrollSettings';
 import Profile from './pages/admin/Profile';
+import AdminPayrollReport from './pages/admin/AdminPayrollReport';
+import AdminComplaints from './pages/admin/AdminComplaints';
+import EmployeeComplaints from './pages/employee/EmployeeComplaints';
+import EmployeeEarnings from './pages/employee/EmployeeEarnings';
 import { Toaster } from './components/ui/toaster';
 
 function App() {
@@ -118,8 +123,16 @@ function App() {
                 element={user?.role?.name === 'admin' ? <AdminAttendance /> : <Navigate to="/login" />}
               />
               <Route
-                path="/admin/settings"
+                path={user?.role?.name === 'admin' ? "/admin/settings" : "/dashboard/settings"}
                 element={user?.role?.name === 'admin' ? <PayrollSettings /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/admin/payroll"
+                element={user?.role?.name === 'admin' ? <AdminPayrollReport /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/admin/complaints"
+                element={user?.role?.name === 'admin' ? <AdminComplaints /> : <Navigate to="/login" />}
               />
               <Route
                 path="/admin/profile"
@@ -136,6 +149,18 @@ function App() {
               <Route
                 path="/dashboard/permissions"
                 element={user ? <Permissions /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/dashboard/leave"
+                element={user ? <LeaveRequest /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/dashboard/earnings"
+                element={user ? <EmployeeEarnings /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/dashboard/complaints"
+                element={user ? <EmployeeComplaints /> : <Navigate to="/login" />}
               />
               <Route path="/" element={<Navigate to={user ? (user.role?.name === 'admin' ? '/admin' : '/dashboard') : '/login'} />} />
             </Routes>

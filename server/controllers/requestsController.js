@@ -57,6 +57,7 @@ exports.getMyRequests = async (req, res) => {
   const skip = parseInt(req.query.skip) || 0;
   try {
     const requests = await Request.find({ user: req.user.id })
+      .populate('verifyByAdminUserId', 'name')
       .sort({ appliedOn: -1 })
       .limit(limit)
       .skip(skip);

@@ -2,8 +2,9 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const Select = ({ children, value, onValueChange, ...props }) => {
+  const [open, setOpen] = React.useState(false)
   return (
-    <SelectContext.Provider value={{ value, onValueChange }}>
+    <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
       <div className="relative" {...props}>{children}</div>
     </SelectContext.Provider>
   )
@@ -12,8 +13,7 @@ const Select = ({ children, value, onValueChange, ...props }) => {
 const SelectContext = React.createContext({})
 
 const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) => {
-  const { value } = React.useContext(SelectContext)
-  const [open, setOpen] = React.useState(false)
+  const { open, setOpen } = React.useContext(SelectContext)
   return (
     <button
       ref={ref}
@@ -25,7 +25,7 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
       {...props}
     >
       {children}
-      <span className="ml-2 opacity-50">▼</span>
+      <span className={`ml-2 opacity-50 transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
     </button>
   )
 })
@@ -36,30 +36,37 @@ const SelectValue = ({ placeholder }) => {
   return <span>{value || placeholder}</span>
 }
 
-const SelectContent = React.forwardRef(({ className, children, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md mt-1 w-full",
-      className
-    )}
-    {...props}
-  >
-    {children}
-  </div>
-))
-SelectContent.displayName = "SelectContent"
-
-const SelectItem = React.forwardRef(({ className, children, value: itemValue, ...props }, ref) => {
-  const { onValueChange } = React.useContext(SelectContext)
+const SelectContent = React.forwardRef(({ className, children, ...props }, ref) => {
+  const { open } = React.useContext(SelectContext)
+  if (!open) return null
   return (
     <div
       ref={ref}
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer",
+        "absolute z-[9999] min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md mt-1 w-full",
         className
       )}
-      onClick={() => onValueChange && onValueChange(itemValue)}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+})
+SelectContent.displayName = "SelectContent"
+
+const SelectItem = React.forwardRef(({ className, children, value: itemValue, ...props }, ref) => {
+  const { onValueChange, setOpen } = React.useContext(SelectContext)
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer text-slate-900 font-medium",
+        className
+      )}
+      onClick={() => {
+        onValueChange && onValueChange(itemValue)
+        setOpen(false)
+      }}
       {...props}
     >
       {children}

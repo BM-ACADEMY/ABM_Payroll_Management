@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const RequestSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['leave', 'permission', 'lunch_delay'], required: true },
+  type: { type: String, enum: ['leave', 'permission', 'lunch_delay', 'late_login', 'early_logout_permission'], required: true },
   date: { type: String, required: true }, // Format: YYYY-MM-DD
   startTime: { type: String }, // For permission (legacy)
   endTime: { type: String }, // For permission (legacy)

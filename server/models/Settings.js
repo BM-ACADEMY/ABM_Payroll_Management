@@ -17,6 +17,27 @@ const SettingsSchema = new mongoose.Schema({
     type: Number, 
     default: 1.0 
   },
+  saturdayRule: {
+    type: String,
+    enum: ['holiday', 'half-day', 'full-day'],
+    default: 'full-day'
+  },
+  permissionTier1Limit: { 
+    type: Number, 
+    default: 3 
+  }, // hours
+  permissionTier1Deduction: { 
+    type: Number, 
+    default: 0.5 
+  }, // days
+  permissionTier2Limit: { 
+    type: Number, 
+    default: 5 
+  }, // hours
+  permissionTier2Deduction: { 
+    type: Number, 
+    default: 1.0 
+  }, // days
   updatedAt: { 
     type: Date, 
     default: Date.now 

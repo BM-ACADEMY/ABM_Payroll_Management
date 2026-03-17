@@ -38,6 +38,11 @@ exports.updateSettings = async (req, res) => {
       settings.casualLeaveLimit = casualLeaveLimit ?? settings.casualLeaveLimit;
       settings.halfDaySalaryRateLimit = halfDaySalaryRateLimit ?? settings.halfDaySalaryRateLimit;
       settings.fullDaySalaryRateLimit = fullDaySalaryRateLimit ?? settings.fullDaySalaryRateLimit;
+      settings.saturdayRule = req.body.saturdayRule ?? settings.saturdayRule;
+      settings.permissionTier1Limit = req.body.permissionTier1Limit ?? settings.permissionTier1Limit;
+      settings.permissionTier1Deduction = req.body.permissionTier1Deduction ?? settings.permissionTier1Deduction;
+      settings.permissionTier2Limit = req.body.permissionTier2Limit ?? settings.permissionTier2Limit;
+      settings.permissionTier2Deduction = req.body.permissionTier2Deduction ?? settings.permissionTier2Deduction;
       settings.updatedAt = Date.now();
       
       await settings.save();
@@ -47,7 +52,12 @@ exports.updateSettings = async (req, res) => {
         monthlyPermissionHours,
         casualLeaveLimit,
         halfDaySalaryRateLimit,
-        fullDaySalaryRateLimit
+        fullDaySalaryRateLimit,
+        saturdayRule: req.body.saturdayRule,
+        permissionTier1Limit: req.body.permissionTier1Limit,
+        permissionTier1Deduction: req.body.permissionTier1Deduction,
+        permissionTier2Limit: req.body.permissionTier2Limit,
+        permissionTier2Deduction: req.body.permissionTier2Deduction
       });
       await settings.save();
     }

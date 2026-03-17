@@ -67,9 +67,9 @@ const Permissions = () => {
       });
       
       if (reset) {
-        setRequests(res.data.requests);
+        setRequests(res.data.requests.filter(req => req.type !== 'leave'));
       } else {
-        setRequests(prev => [...prev, ...res.data.requests]);
+        setRequests(prev => [...prev, ...res.data.requests.filter(req => req.type !== 'leave')]);
       }
       setHasMore(res.data.hasMore);
     } catch (err) {
@@ -127,6 +127,17 @@ const Permissions = () => {
     }
   };
 
+  const getTypeBadge = (type) => {
+    switch (type) {
+      case 'leave': return <Badge className="bg-indigo-600 text-white border-0 font-black uppercase text-[9px] tracking-widest">Leave</Badge>;
+      case 'permission': return <Badge className="bg-slate-900 text-white border-0 font-black uppercase text-[9px] tracking-widest">Permission</Badge>;
+      case 'lunch_delay': return <Badge className="bg-amber-500 text-white border-0 font-black uppercase text-[9px] tracking-widest">Lunch Delay</Badge>;
+      case 'late_login': return <Badge className="bg-rose-500 text-white border-0 font-black uppercase text-[9px] tracking-widest">Late Login</Badge>;
+      case 'early_logout_permission': return <Badge className="bg-orange-500 text-white border-0 font-black uppercase text-[9px] tracking-widest">Early Logout</Badge>;
+      default: return <Badge className="bg-slate-400 text-white border-0 font-black uppercase text-[9px] tracking-widest">{type}</Badge>;
+    }
+  };
+
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-700">
       <header className="space-y-1">
@@ -137,7 +148,7 @@ const Permissions = () => {
           <span className="text-xs tracking-widest uppercase">Request Center</span>
         </div>
         <h1 className="text-4xl font-black tracking-tight text-slate-900">Permission Requests</h1>
-        <p className="text-slate-500 font-medium">Apply for short-term permissions or track your existing requests.</p>
+        <p className="text-slate-500 font-medium">Apply for short-term permissions or track your log records.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -237,13 +248,24 @@ const Permissions = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                            <span className="text-sm font-black text-slate-900 uppercase">
-                             {format(new Date(request.fromDateTime), 'MMM dd, yyyy')}
+                             {request.date ? format(new Date(request.date), 'MMM dd, yyyy') : format(new Date(request.appliedOn), 'MMM dd, yyyy')}
                            </span>
+                           {getTypeBadge(request.type)}
                            {getStatusBadge(request.status)}
+                           {request.status !== 'pending' && request.verifyByAdminUserId?.name && (
+                             <span className="text-[10px] font-bold text-slate-400 italic">
+                               Verified by {request.verifyByAdminUserId.name}
+                             </span>
+                           )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                           <Timer className="w-3 h-3" />
-                          {format(new Date(request.fromDateTime), 'hh:mm a')} - {format(new Date(request.toDateTime), 'hh:mm a')}
+                          {request.type === 'leave' ? `${request.duration} Day(s)` : (
+                            <>
+                              {request.fromDateTime ? format(new Date(request.fromDateTime), 'hh:mm a') : '00:00'} - 
+                              {request.toDateTime ? format(new Date(request.toDateTime), 'hh:mm a') : '00:00'}
+                            </>
+                          )}
                           {request.totalPermissionTime && (
                             <span className="ml-2 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100 font-black">
                               {request.totalPermissionTime}
@@ -264,7 +286,9 @@ const Permissions = () => {
 
                     {request.status === 'rejected' && request.rejectedReason && (
                       <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-600 font-bold">
-                        <span className="uppercase text-[9px] block mb-1 opacity-70">Admin Remark</span>
+                        <span className="uppercase text-[9px] block mb-1 opacity-70">
+                          {request.verifyByAdminUserId?.name ? `Verified by ${request.verifyByAdminUserId.name}` : 'Admin Remark'}
+                        </span>
                         {request.rejectedReason}
                       </div>
                     )}

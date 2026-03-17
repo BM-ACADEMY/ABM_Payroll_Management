@@ -22,8 +22,11 @@ router.post('/checkout', auth, attendanceController.checkOut);
 // @route   GET api/attendance/logs
 router.get('/logs', auth, attendanceController.getAllLogs);
 
-// @route   GET api/attendance/admin/all
 // @desc    Get all attendance records for a specific date (Admin)
+// @route   GET api/attendance/admin/all
 router.get('/admin/all', [auth, isAdmin], attendanceController.getAllAttendance);
+
+// @route   GET api/attendance/calendar
+router.get('/calendar', auth, attendanceController.getMonthlyCalendar);
 
 module.exports = router;

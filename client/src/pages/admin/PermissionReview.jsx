@@ -197,11 +197,28 @@ const PermissionReview = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'approved':
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200">Approved</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 font-black uppercase text-[10px]">Approved</Badge>;
       case 'rejected':
-        return <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-rose-200">Rejected</Badge>;
+        return <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-rose-200 font-black uppercase text-[10px]">Rejected</Badge>;
       default:
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200">Pending</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 font-black uppercase text-[10px] animate-pulse">Pending</Badge>;
+    }
+  };
+
+  const getTypeBadge = (type) => {
+    switch (type) {
+      case 'leave':
+        return <Badge className="bg-indigo-600 text-white border-0 font-black uppercase text-[9px] tracking-widest">Leave</Badge>;
+      case 'permission':
+        return <Badge className="bg-slate-900 text-white border-0 font-black uppercase text-[9px] tracking-widest">Permission</Badge>;
+      case 'lunch_delay':
+        return <Badge className="bg-amber-500 text-white border-0 font-black uppercase text-[9px] tracking-widest">Lunch Delay</Badge>;
+      case 'late_login':
+        return <Badge className="bg-rose-500 text-white border-0 font-black uppercase text-[9px] tracking-widest">Late Login</Badge>;
+      case 'early_logout_permission':
+        return <Badge className="bg-orange-500 text-white border-0 font-black uppercase text-[9px] tracking-widest">Early Logout</Badge>;
+      default:
+        return <Badge className="bg-slate-400 text-white border-0 font-black uppercase text-[9px] tracking-widest">{type}</Badge>;
     }
   };
 
@@ -215,8 +232,8 @@ const PermissionReview = () => {
             </div>
             <span className="text-xs tracking-widest uppercase">Administration</span>
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">Permission Review</h1>
-          <p className="text-slate-500 font-medium">Review and manage employee permission requests.</p>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900">Request Management Hub</h1>
+          <p className="text-slate-500 font-medium">Coordinate and verify employee leaves, permissions, and shift violations.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -304,7 +321,10 @@ const PermissionReview = () => {
                         <User className="w-6 h-6 text-indigo-500" />
                       </div>
                       <div className="space-y-0.5">
-                        <h4 className="font-black text-slate-900 text-base">{req.user?.name || 'Unknown User'}</h4>
+                        <h4 className="font-black text-slate-900 text-base flex items-center gap-2">
+                          {req.user?.name || 'Unknown User'}
+                          {getTypeBadge(req.type)}
+                        </h4>
                         <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{req.user?.employeeId || 'ID Pending'}</p>
                       </div>
                       <div className="ml-auto md:ml-4">
@@ -313,19 +333,15 @@ const PermissionReview = () => {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-white border border-slate-100 p-3 rounded-xl shadow-sm space-y-1">
-                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                             <CalendarIcon className="w-3 h-3" /> Date & Time
-                           </span>
-                           <p className="text-xs font-bold text-slate-700 italic">
-                             {format(new Date(req.fromDateTime), 'MMM dd, yyyy')} | {format(new Date(req.fromDateTime), 'hh:mm a')} - {format(new Date(req.toDateTime), 'hh:mm a')}
-                            {req.totalPermissionTime && (
-                              <span className="ml-2 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100 font-black">
-                                {req.totalPermissionTime}
-                              </span>
-                            )}
-                          </p>
-                        </div>
+                         <div className="bg-white border border-slate-100 p-3 rounded-xl shadow-sm space-y-1">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                              <CalendarIcon className="w-3 h-3" /> Event Duration
+                            </span>
+                            <p className="text-xs font-bold text-slate-700 italic">
+                              {format(new Date(req.appliedOn), 'MMM dd, yyyy')} | {req.type === 'leave' ? `${req.duration} Day(s)` : req.totalPermissionTime}
+                              {req.date && req.type !== 'leave' && <span className="ml-2 text-slate-400">({req.date})</span>}
+                           </p>
+                         </div>
                         <div className="bg-white border border-slate-100 p-3 rounded-xl shadow-sm space-y-1">
                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
                              <MessageSquare className="w-3 h-3" /> Reason
@@ -373,19 +389,43 @@ const PermissionReview = () => {
                   )}
 
                   {req.status !== 'pending' && (
-                     <div className="flex shrink-0 gap-2 items-center">
+                     <div className="flex shrink-0 flex-col md:flex-row gap-2 items-center">
                         {req.status === 'rejected' && req.rejectedReason && (
-                          <div className="w-48 p-3 bg-rose-50 border border-rose-100 rounded-xl">
+                          <div className="w-48 p-3 bg-rose-50 border border-rose-100 rounded-xl self-stretch md:self-auto flex flex-col justify-center">
                             <span className="text-[9px] font-black text-rose-400 uppercase block mb-1">Rejection Reason</span>
-                            <p className="text-xs text-rose-700 font-bold leading-tight">{req.rejectedReason}</p>
+                            <p className="text-xs text-rose-700 font-bold leading-tight line-clamp-2">{req.rejectedReason}</p>
                           </div>
+                        )}
+                        {req.status === 'approved' && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedId(req._id);
+                              setIsRejectOpen(true);
+                            }}
+                            disabled={actionLoading}
+                            className="w-full md:w-auto bg-white border-2 border-rose-100 text-rose-600 hover:bg-rose-50 rounded-xl h-12 px-4 shadow-sm"
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Revise to Reject
+                          </Button>
+                        )}
+                        {req.status === 'rejected' && (
+                          <Button
+                            onClick={() => handleStatusUpdate(req._id, 'approved')}
+                            disabled={actionLoading}
+                            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12 px-4 shadow-sm"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Revise to Approve
+                          </Button>
                         )}
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(req._id)}
                           disabled={actionLoading}
-                          className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-12 w-12 transition-all self-center"
+                          className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-12 w-12 transition-all self-center shrink-0 hidden md:flex"
                           title="Delete record"
                         >
                           <Trash2 className="w-4 h-4" />

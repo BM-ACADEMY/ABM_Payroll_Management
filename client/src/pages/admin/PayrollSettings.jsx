@@ -12,7 +12,10 @@ import {
   TrendingUp,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Home,
+  Pencil,
+  X
 } from "lucide-react";
 import axios from 'axios';
 
@@ -23,8 +26,11 @@ const PayrollSettings = () => {
     monthlyPermissionHours: 3,
     casualLeaveLimit: 1,
     halfDaySalaryRateLimit: 0.5,
-    fullDaySalaryRateLimit: 1.0
+    fullDaySalaryRateLimit: 1.0,
+    saturdayRule: 'full-day'
   });
+  const [originalSettings, setOriginalSettings] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
@@ -38,6 +44,7 @@ const PayrollSettings = () => {
         headers: { 'x-auth-token': token }
       });
       setSettings(res.data);
+      setOriginalSettings(res.data);
     } catch (err) {
       console.error("Error fetching settings:", err);
       setMessage({ type: 'error', text: 'Failed to load settings.' });
@@ -47,7 +54,8 @@ const PayrollSettings = () => {
   };
 
   const handleChange = (e) => {
-    setSettings({ ...settings, [e.target.name]: parseFloat(e.target.value) || 0 });
+    const value = e.target.name === 'saturdayRule' ? e.target.value : (parseFloat(e.target.value) || 0);
+    setSettings({ ...settings, [e.target.name]: value });
   };
 
 
@@ -62,6 +70,8 @@ const PayrollSettings = () => {
         headers: { 'x-auth-token': token }
       });
       setMessage({ type: 'success', text: 'Settings updated successfully!' });
+      setOriginalSettings(settings);
+      setIsEditing(false);
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } catch (err) {
       console.error("Error updating settings:", err);
@@ -93,6 +103,30 @@ const PayrollSettings = () => {
           <h1 className="text-4xl font-black tracking-tight text-slate-900">Payroll Settings</h1>
           <p className="text-slate-500 font-medium">Manage global limits and salary rate calculation rules.</p>
         </div>
+
+        <div className="flex gap-3">
+          {isEditing ? (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSettings(originalSettings);
+                setIsEditing(false);
+              }}
+              className="h-14 px-8 rounded-2xl font-black tracking-widest uppercase text-xs border-2 border-slate-100 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Cancel Changes
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => setIsEditing(true)}
+              className="h-14 px-8 rounded-2xl font-black tracking-widest uppercase text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100 flex items-center gap-2"
+            >
+              <Pencil className="w-4 h-4" />
+              Edit Settings
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -120,7 +154,8 @@ const PayrollSettings = () => {
                         value={settings.monthlyPermissionHours}
                         onChange={handleChange}
                         step="0.5"
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700"
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Maximum allowed permission hours per month.</p>
@@ -137,10 +172,64 @@ const PayrollSettings = () => {
                         name="casualLeaveLimit"
                         value={settings.casualLeaveLimit}
                         onChange={handleChange}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700"
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Number of casual leaves granted per month.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2rem] bg-white overflow-hidden">
+              <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
+                <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  Weekend Configuration
+                </CardTitle>
+                <CardDescription className="font-medium">Define how Saturdays are treated in the system.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8">
+                <div className="space-y-4">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                    Saturday Work Rule
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                      { id: 'holiday', label: 'Holiday', icon: Home, desc: 'Non-working day' },
+                      { id: 'half-day', label: 'Half Day', icon: Clock, desc: '4 hours session' },
+                      { id: 'full-day', label: 'Full Day', icon: Calendar, desc: 'Normal working day' }
+                    ].map((rule) => (
+                      <div 
+                        key={rule.id}
+                        onClick={() => isEditing && setSettings({ ...settings, saturdayRule: rule.id })}
+                        className={`relative p-5 rounded-2xl border-2 transition-all cursor-pointer group ${
+                          settings.saturdayRule === rule.id 
+                            ? 'border-indigo-600 bg-indigo-50/30' 
+                            : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'
+                        } ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className={`p-2 rounded-lg ${
+                            settings.saturdayRule === rule.id ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400'
+                          }`}>
+                            <rule.icon className="w-4 h-4" />
+                          </div>
+                          <span className={`font-bold transition-colors ${
+                            settings.saturdayRule === rule.id ? 'text-indigo-900' : 'text-slate-600'
+                          }`}>
+                            {rule.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-medium">{rule.desc}</p>
+                        {settings.saturdayRule === rule.id && (
+                          <div className="absolute top-4 right-4 text-indigo-600">
+                            <CheckCircle2 className="w-5 h-5" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </CardContent>
@@ -168,7 +257,8 @@ const PayrollSettings = () => {
                         value={settings.halfDaySalaryRateLimit}
                         onChange={handleChange}
                         step="0.01"
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700"
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Multiplier applied to basic salary for half-days.</p>
@@ -186,7 +276,8 @@ const PayrollSettings = () => {
                         value={settings.fullDaySalaryRateLimit}
                         onChange={handleChange}
                         step="0.01"
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700"
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Default multiplier for regular working days.</p>
@@ -195,18 +286,20 @@ const PayrollSettings = () => {
               </CardContent>
             </Card>
 
-            <Button 
-              type="submit" 
-              disabled={saveLoading}
-              className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] font-black text-lg shadow-xl shadow-indigo-100 transition-all hover:scale-[1.01] active:scale-[0.99]"
-            >
-              {saveLoading ? (
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              ) : (
-                <Save className="w-6 h-6 mr-2" />
-              )}
-              Save Global Settings
-            </Button>
+            {isEditing && (
+              <Button 
+                type="submit" 
+                disabled={saveLoading}
+                className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] font-black text-lg shadow-xl shadow-indigo-100 transition-all hover:scale-[1.01] active:scale-[0.99] animate-in slide-in-from-bottom-4 duration-500"
+              >
+                {saveLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                ) : (
+                  <Save className="w-6 h-6 mr-2" />
+                )}
+                Save Global Settings
+              </Button>
+            )}
           </form>
         </div>
 

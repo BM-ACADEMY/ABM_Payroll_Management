@@ -7,5 +7,6 @@ export const adminMenuItem = [
   { name: 'Permissions', path: '/admin/permissions', icon: FileText },
   { name: 'Leave Calendar', path: '/admin/leave-calendar', icon: Calendar },
   { name: 'Payroll', path: '/admin/payroll', icon: CreditCard },
+  { name: 'Complaints', path: '/admin/complaints', icon: FileText },
   { name: 'Settings', path: '/admin/settings', icon: Settings }
 ];
