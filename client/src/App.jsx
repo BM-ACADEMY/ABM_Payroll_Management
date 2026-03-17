@@ -15,8 +15,9 @@ import LeaveCalendar from './pages/admin/LeaveCalendar';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import Attendance from './pages/employee/Attendance';
 import Permissions from './pages/employee/Permissions';
+import PayrollSettings from './pages/admin/PayrollSettings';
+import Profile from './pages/admin/Profile';
 import { Toaster } from './components/ui/toaster';
-
 
 function App() {
   const [user, setUser] = useState(null);
@@ -115,6 +116,14 @@ function App() {
               <Route
                 path="/admin/attendance"
                 element={user?.role?.name === 'admin' ? <AdminAttendance /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/admin/settings"
+                element={user?.role?.name === 'admin' ? <PayrollSettings /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/admin/profile"
+                element={user?.role?.name === 'admin' ? <Profile setUser={handleSetUser} /> : <Navigate to="/login" />}
               />
               <Route
                 path="/dashboard"

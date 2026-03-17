@@ -31,4 +31,12 @@ router.post('/', authController.login);
 // @desc    Get logged in user
 router.get('/', auth, authController.getUser);
 
+// @route   PUT api/auth/change-password
+// @desc    Change password
+router.put('/change-password', auth, authController.changePassword);
+
+// @route   PUT api/auth/profile
+// @desc    Update user profile
+router.put('/profile', auth, authController.updateProfile);
+
 module.exports = router;
