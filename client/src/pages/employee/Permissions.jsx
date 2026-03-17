@@ -18,13 +18,14 @@ import {
 import axios from 'axios';
 import { format } from 'date-fns';
 import { io } from 'socket.io-client';
+import { useToast } from "@/hooks/use-toast";
+
 
 const Permissions = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const { toast } = useToast();
   const [hasMore, setHasMore] = useState(false);
 
   // Form State
@@ -85,8 +86,6 @@ const Permissions = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
@@ -100,11 +99,18 @@ const Permissions = () => {
         headers: { 'x-auth-token': token }
       });
 
-      setSuccess('Permission request submitted successfully!');
+      toast({
+        title: "Success",
+        description: "Permission request submitted successfully!",
+      });
       setFormData({ fromDateTime: '', toDateTime: '', reason: '' });
       fetchMyRequests(true);
     } catch (err) {
-      setError(err.response?.data?.msg || 'Failed to submit request');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || 'Failed to submit request',
+      });
     } finally {
       setFormLoading(false);
     }
@@ -146,16 +152,6 @@ const Permissions = () => {
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 text-sm rounded-xl font-bold flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" /> {error}
-                </div>
-              )}
-              {success && (
-                <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 text-sm rounded-xl font-bold flex items-center gap-2">
-                   <CheckCircle2 className="w-4 h-4" /> {success}
-                </div>
-              )}
 
               <div className="space-y-2">
                 <Label htmlFor="fromDateTime" className="text-slate-700 font-bold text-xs uppercase tracking-wider ml-1">From (Date & Time)</Label>

@@ -125,3 +125,27 @@ exports.getTodayAttendance = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
+// @desc    Get all attendance logs for an employee
+exports.getAllLogs = async (req, res) => {
+  try {
+    const logs = await Attendance.find({ user: req.user.id }).sort({ date: -1 }).limit(30);
+    res.json(logs);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
+// @desc    Get all attendance records for a specific date (Admin)
+exports.getAllAttendance = async (req, res) => {
+  const { date } = req.query;
+  try {
+    const attendance = await Attendance.find({ date })
+      .populate('user', 'name employeeId phoneNumber email')
+      .sort({ 'user.name': 1 });
+    res.json(attendance);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};

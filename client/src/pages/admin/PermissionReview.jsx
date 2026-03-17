@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import axios from 'axios';
 import { format } from 'date-fns';
 import { io } from 'socket.io-client';
+import { useToast } from "@/hooks/use-toast";
 import { Trash2, CheckSquare, Square } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -31,6 +32,7 @@ const PermissionReview = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const { toast } = useToast();
   
   // Rejection Dialog State
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -99,9 +101,18 @@ const PermissionReview = () => {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
         headers: { 'x-auth-token': token }
       });
+      setRequests(prev => prev.filter(req => req._id !== id));
+      toast({
+        title: "Success",
+        description: "Request deleted successfully",
+      });
       // Socket will handle refresh
     } catch (err) {
-      alert(err.response?.data?.msg || "Deletion failed");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || "Deletion failed",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -118,9 +129,18 @@ const PermissionReview = () => {
         headers: { 'x-auth-token': token }
       });
       setSelectedIds([]);
+      setSelectedIds([]);
+      toast({
+        title: "Success",
+        description: "Bulk deletion successful",
+      });
       // Socket will handle refresh
     } catch (err) {
-      alert(err.response?.data?.msg || "Bulk deletion failed");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || "Bulk deletion failed",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -154,8 +174,16 @@ const PermissionReview = () => {
       fetchRequests(true);
       setIsRejectOpen(false);
       setRejectedReason('');
+      toast({
+        title: "Success",
+        description: `Request ${status} successfully`,
+      });
     } catch (err) {
-      alert(err.response?.data?.msg || "Action failed");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || "Action failed",
+      });
     } finally {
       setActionLoading(false);
     }

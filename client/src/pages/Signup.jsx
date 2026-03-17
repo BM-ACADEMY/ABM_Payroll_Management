@@ -5,23 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
 
 const Signup = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{7,}$/;
     if (!passwordRegex.test(password)) {
-      setError('Password must contain at least 1 capital letter, 1 number, 1 symbol, and be more than 6 characters.');
+      toast({
+        variant: "destructive",
+        title: "Weak Password",
+        description: "Password must contain at least 1 capital letter, 1 number, 1 symbol, and be more than 6 characters.",
+      });
       setLoading(false);
       return;
     }
@@ -34,7 +39,11 @@ const Signup = () => {
       });
       navigate('/otp', { state: { email } });
     } catch (err) {
-      setError(err.response?.data?.msg || 'An error occurred during signup');
+      toast({
+        variant: "destructive",
+        title: "Signup Failed",
+        description: err.response?.data?.msg || 'An error occurred during signup',
+      });
     } finally {
       setLoading(false);
     }
@@ -52,11 +61,6 @@ const Signup = () => {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5 px-6 md:px-8">
-            {error && (
-              <div className="p-3 text-sm font-medium text-red-700 bg-red-50 rounded-lg border border-red-100" role="alert">
-                {error}
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-gray-700 text-sm font-medium">Full Name</Label>
               <Input 

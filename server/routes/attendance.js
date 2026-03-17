@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const isAdmin = require('../middleware/isAdmin');
 const attendanceController = require('../controllers/attendanceController');
 
 // @route   GET api/attendance/today
@@ -17,5 +18,12 @@ router.post('/lunchin', auth, attendanceController.lunchIn);
 
 // @route   POST api/attendance/checkout
 router.post('/checkout', auth, attendanceController.checkOut);
+
+// @route   GET api/attendance/logs
+router.get('/logs', auth, attendanceController.getAllLogs);
+
+// @route   GET api/attendance/admin/all
+// @desc    Get all attendance records for a specific date (Admin)
+router.get('/admin/all', [auth, isAdmin], attendanceController.getAllAttendance);
 
 module.exports = router;

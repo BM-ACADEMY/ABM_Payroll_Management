@@ -9,10 +9,14 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Employees from './pages/admin/Employees';
+import AdminAttendance from './pages/admin/AdminAttendance';
 import PermissionReview from './pages/admin/PermissionReview';
+import LeaveCalendar from './pages/admin/LeaveCalendar';
 import EmployeeDashboard from './pages/employee/EmployeeDashboard';
 import Attendance from './pages/employee/Attendance';
 import Permissions from './pages/employee/Permissions';
+import { Toaster } from './components/ui/toaster';
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -105,6 +109,14 @@ function App() {
                 element={user?.role?.name === 'admin' ? <PermissionReview /> : <Navigate to="/login" />}
               />
               <Route
+                path="/admin/leave-calendar"
+                element={user?.role?.name === 'admin' ? <LeaveCalendar /> : <Navigate to="/login" />}
+              />
+              <Route
+                path="/admin/attendance"
+                element={user?.role?.name === 'admin' ? <AdminAttendance /> : <Navigate to="/login" />}
+              />
+              <Route
                 path="/dashboard"
                 element={user ? <EmployeeDashboard /> : <Navigate to="/login" />}
               />
@@ -121,6 +133,7 @@ function App() {
           </main>
         </div>
       </div>
+      <Toaster />
     </Router>
   );
 }

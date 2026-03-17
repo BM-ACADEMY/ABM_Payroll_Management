@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { LogOut, Bell, Search, LayoutDashboard, Users, UserCheck, CreditCard, Settings, ChevronRight, FileText, Menu } from "lucide-react";
+import { LogOut, Bell, Search, LayoutDashboard, Users, UserCheck, CreditCard, Settings, ChevronRight, FileText, Menu, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
@@ -56,6 +56,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     { name: 'Employees', path: '/admin/employees', icon: Users },
     { name: 'Attendance', path: '/admin/attendance', icon: UserCheck },
     { name: 'Permission Review', path: '/admin/permissions', icon: FileText },
+    { name: 'Leave Calendar', path: '/admin/leave-calendar', icon: Calendar },
     { name: 'Payroll', path: '/admin/payroll', icon: CreditCard },
     { name: 'Settings', path: '/admin/settings', icon: Settings }
   ];

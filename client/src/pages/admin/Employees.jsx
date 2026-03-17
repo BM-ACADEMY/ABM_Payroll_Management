@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Users, UserPlus, Phone, Edit, Trash2, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
 
 const Employees = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Add Employee Form State
@@ -27,7 +29,6 @@ const Employees = () => {
     timingSettings: { loginTime: '09:30', logoutTime: '18:30', graceTime: 15, lunchStart: '13:30', lunchEnd: '14:30', fromDate: '', toDate: '' }
   });
   const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState('');
 
   // Edit Employee Form State
   const [editOpen, setEditOpen] = useState(false);
@@ -36,13 +37,11 @@ const Employees = () => {
     timingSettings: { loginTime: '', logoutTime: '', graceTime: '', lunchStart: '', lunchEnd: '', fromDate: '', toDate: '' }
   });
   const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
 
   // Delete Employee State
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteError, setDeleteError] = useState('');
 
   const fetchEmployees = async () => {
     try {
@@ -54,7 +53,11 @@ const Employees = () => {
       setLoading(false);
     } catch (err) {
       console.error(err);
-      setError('Failed to fetch employees');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch employees",
+      });
       setLoading(false);
     }
   };
@@ -77,7 +80,6 @@ const Employees = () => {
   const handleAddEmployee = async (e) => {
     e.preventDefault();
     setFormLoading(true);
-    setFormError('');
 
     try {
       const token = localStorage.getItem('token');
@@ -88,6 +90,10 @@ const Employees = () => {
       // Add new employee to top of list
       setEmployees([res.data, ...employees]);
       setIsOpen(false);
+      toast({
+        title: "Success",
+        description: "Employee created successfully",
+      });
       
       // Reset form
       setFormData({ 
@@ -95,7 +101,11 @@ const Employees = () => {
         timingSettings: { loginTime: '09:30', logoutTime: '18:30', graceTime: 15, lunchStart: '13:30', lunchEnd: '14:30', fromDate: '', toDate: '' }
       });
     } catch (err) {
-      setFormError(err.response?.data?.msg || 'Failed to create employee');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || "Failed to create employee",
+      });
     } finally {
       setFormLoading(false);
     }
@@ -120,7 +130,6 @@ const Employees = () => {
         toDate: emp.timingSettings?.toDate ? new Date(emp.timingSettings.toDate).toISOString().split('T')[0] : ''
       }
     });
-    setEditError('');
     setEditOpen(true);
   };
 
@@ -138,7 +147,6 @@ const Employees = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setEditLoading(true);
-    setEditError('');
 
     try {
       const token = localStorage.getItem('token');
@@ -153,8 +161,16 @@ const Employees = () => {
       // Update state dynamically
       setEmployees(employees.map((emp) => emp._id === payload.id ? res.data : emp));
       setEditOpen(false);
+      toast({
+        title: "Success",
+        description: "Employee updated successfully",
+      });
     } catch (err) {
-      setEditError(err.response?.data?.msg || 'Failed to update employee');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || "Failed to update employee",
+      });
     } finally {
       setEditLoading(false);
     }
@@ -162,14 +178,12 @@ const Employees = () => {
 
   const openDeleteModal = (emp) => {
     setEmployeeToDelete(emp);
-    setDeleteError('');
     setDeleteOpen(true);
   };
 
   const handleDeleteSubmit = async () => {
     if (!employeeToDelete) return;
     setDeleteLoading(true);
-    setDeleteError('');
 
     try {
       const token = localStorage.getItem('token');
@@ -179,8 +193,16 @@ const Employees = () => {
 
       setEmployees(employees.filter(emp => emp._id !== employeeToDelete._id));
       setDeleteOpen(false);
+      toast({
+        title: "Success",
+        description: "Employee deleted successfully",
+      });
     } catch (err) {
-      setDeleteError(err.response?.data?.msg || 'Failed to delete employee');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || "Failed to delete employee",
+      });
     } finally {
       setDeleteLoading(false);
     }
@@ -214,11 +236,6 @@ const Employees = () => {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddEmployee} className="space-y-4 py-4">
-              {formError && (
-                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium border border-red-100">
-                  {formError}
-                </div>
-              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="employeeId" className="text-slate-700">Employee ID</Label>
@@ -328,8 +345,6 @@ const Employees = () => {
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
             </div>
-          ) : error ? (
-            <div className="text-center py-12 text-red-500">{error}</div>
           ) : employees.length === 0 ? (
              <div className="text-center py-12 text-slate-500">No employees found. Add one to get started.</div>
           ) : filteredEmployees.length === 0 ? (
@@ -402,11 +417,6 @@ const Employees = () => {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 py-4">
-            {editError && (
-              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium border border-red-100">
-                {editError}
-              </div>
-            )}
              <div className="grid grid-cols-2 gap-4">
                <div className="space-y-2">
                  <Label htmlFor="editEmployeeId" className="text-slate-700">Employee ID</Label>
@@ -498,11 +508,6 @@ const Employees = () => {
               This action cannot be undone. This will permanently delete <b>{employeeToDelete?.name}</b>'s account and remove their data from the server.
             </DialogDescription>
           </DialogHeader>
-          {deleteError && (
-             <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium border border-red-100">
-               {deleteError}
-             </div>
-          )}
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)} className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50">Cancel</Button>
             <Button type="button" onClick={handleDeleteSubmit} disabled={deleteLoading} className="bg-red-600 hover:bg-red-700 text-white font-medium">

@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
 
 const ResetPassword = () => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [error, setError] = useState('');
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [resendMessage, setResendMessage] = useState('');
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,12 +27,15 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{7,}$/;
     if (!passwordRegex.test(newPassword)) {
-      setError('Password must contain at least 1 capital letter, 1 number, 1 symbol, and be more than 6 characters.');
+      toast({
+        variant: "destructive",
+        title: "Weak Password",
+        description: "Password must contain at least 1 capital letter, 1 number, 1 symbol, and be more than 6 characters.",
+      });
       setLoading(false);
       return;
     }
@@ -44,22 +48,31 @@ const ResetPassword = () => {
       });
       navigate('/login', { state: { message: 'Password reset successful. You can now login.' } });
     } catch (err) {
-      setError(err.response?.data?.msg || 'An error occurred during password reset');
+      toast({
+        variant: "destructive",
+        title: "Reset Failed",
+        description: err.response?.data?.msg || 'An error occurred during password reset',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    setError('');
-    setResendMessage('');
     setResendLoading(true);
     try {
       // Re-trigger the forgot-password endpoint to send a fresh OTP
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/forgot-password`, { email });
-      setResendMessage(res.data.msg || 'A new reset code has been sent to your email.');
+      toast({
+        title: "Success",
+        description: res.data.msg || 'A new reset code has been sent to your email.',
+      });
     } catch (err) {
-      setError(err.response?.data?.msg || 'Failed to resend OTP. Please try again.');
+      toast({
+        variant: "destructive",
+        title: "Resend Failed",
+        description: err.response?.data?.msg || 'Failed to resend OTP. Please try again.',
+      });
     } finally {
       setResendLoading(false);
     }
@@ -77,16 +90,6 @@ const ResetPassword = () => {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5 px-6 md:px-8">
-            {error && (
-              <div className="p-3 text-sm font-medium text-red-700 bg-red-50 rounded-lg border border-red-100" role="alert">
-                {error}
-              </div>
-            )}
-            {resendMessage && (
-              <div className="p-3 text-sm font-medium text-green-700 bg-green-50 rounded-lg border border-green-100" role="alert">
-                {resendMessage}
-              </div>
-            )}
             
             <div className="space-y-3">
               <Label htmlFor="otp" className="text-gray-700 text-sm font-medium">OTP Code</Label>

@@ -1,23 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Clock, Briefcase, IndianRupee, FileText } from "lucide-react";
+import { Clock, Briefcase, IndianRupee, FileText, LayoutDashboard, Users, UserCheck, CreditCard, Settings, Calendar } from "lucide-react";
+
+import axios from 'axios';
 
 const EmployeeDashboard = () => {
-  const [attendanceLogs] = useState([
-    { date: '2026-03-12', checkIn: '09:15', checkOut: '18:15', status: 'on-time', mode: 'WFO', lunchOut: '13:00', lunchIn: '14:00' },
-    { date: '2026-03-11', checkIn: '09:46', checkOut: '18:30', status: 'late (16m)', mode: 'WFH', lunchOut: '13:30', lunchIn: '14:15' }
-  ]);
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    fetchLogs();
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user) {
+      // Handle both { name: ... } and name as string if applicable
+      const displayName = typeof user === 'string' ? user : (user.name || 'Employee');
+      setUserName(displayName.split(' ')[0]);
+    }
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/logs`, {
+        headers: { 'x-auth-token': token }
+      });
+      setAttendanceLogs(res.data);
+    } catch (err) {
+      console.error("Error fetching logs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="p-8 space-y-8">
-      <header className="flex flex-col space-y-2 text-center md:text-left transition-all duration-300">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900">Welcome back, John</h1>
-        <p className="text-slate-500 text-lg">Here is your professional overview for March 2026</p>
+    <div className="p-6 md:p-10 space-y-10 animate-in fade-in duration-700">
+      <header className="flex flex-col space-y-3">
+        <div className="flex items-center gap-3">
+           <div className="h-10 w-2 bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"></div>
+           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 drop-shadow-sm">
+             Welcome back, <span className="text-indigo-600">{userName || 'Employee'}</span>
+           </h1>
+        </div>
+        <p className="text-slate-600 text-lg font-medium max-w-2xl leading-relaxed">
+          Here is your <span className="text-slate-900 font-bold underline decoration-indigo-500 decoration-4 underline-offset-4">professional performance summary</span> for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.
+        </p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -52,76 +84,108 @@ const EmployeeDashboard = () => {
             </div>
           </CardContent>
         </Card>
-
         {/* Attendance Logs */}
-        <Card className="md:col-span-2 bg-white border-slate-200 shadow-xl overflow-hidden ring-1 ring-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 bg-slate-50/50 border-b border-slate-100">
+        <Card className="md:col-span-2 bg-white border-2 border-slate-100 shadow-[0_30px_60px_rgba(0,0,0,0.06)] rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between p-8 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
             <div className="space-y-1">
-              <CardTitle className="text-xl flex items-center gap-2 text-slate-900 font-bold">
-                <Briefcase className="w-5 h-5 text-indigo-600" />
-                Activity History
+              <CardTitle className="text-2xl flex items-center gap-3 text-slate-900 font-black">
+                <Briefcase className="w-7 h-7 text-indigo-600" />
+                Work Activity History
               </CardTitle>
-              <CardDescription className="text-slate-500 font-medium italic">Your recent professional journey</CardDescription>
+              <CardDescription className="text-slate-600 font-bold italic">Your recent professional journey logged in real-time</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 font-bold">View Full Report</Button>
+            <Button variant="outline" size="sm" className="border-2 border-indigo-100 text-indigo-600 hover:bg-indigo-50 font-black rounded-full px-6 transition-all">
+              FULL ANALYSIS
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader className="bg-slate-50/80">
                 <TableRow className="border-slate-200">
-                  <TableHead className="text-slate-500 font-bold text-xs uppercase tracking-wider pl-6">Date</TableHead>
-                  <TableHead className="text-slate-500 font-bold text-xs uppercase tracking-wider">Mode</TableHead>
-                  <TableHead className="text-slate-500 font-bold text-xs uppercase tracking-wider text-center">Work Interval</TableHead>
-                  <TableHead className="text-slate-500 font-bold text-xs uppercase tracking-wider text-right pr-6">Status</TableHead>
+                  <TableHead className="text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] pl-10 h-14">Protocol Date</TableHead>
+                  <TableHead className="text-slate-900 font-black text-[10px] uppercase tracking-[0.2em]">Env. Mode</TableHead>
+                  <TableHead className="text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] text-center">Session Interval</TableHead>
+                  <TableHead className="text-slate-900 font-black text-[10px] uppercase tracking-[0.2em] text-right pr-10">Compliance</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {attendanceLogs.map((log, i) => (
-                  <TableRow key={i} className="border-slate-100 hover:bg-slate-50 transition-colors group">
-                    <TableCell className="font-bold text-slate-900 pl-6 py-4">{log.date}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={`font-bold text-[10px] ${log.mode === 'WFH' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {log.mode}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-2 text-slate-600 font-semibold text-sm">
-                        <span className="text-indigo-600">{log.checkIn}</span>
-                        <span className="text-slate-300 font-light">→</span>
-                        <span className="text-rose-600">{log.checkOut}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <Badge className={`font-black text-[10px] uppercase shadow-sm ${log.status.includes('late') ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`} variant="outline">
-                        {log.status === 'Present' ? 'Full Day' : log.status}
-                      </Badge>
-                    </TableCell>
+                {loading ? (
+                  <TableRow>
+                     <TableCell colSpan={4} className="text-center py-20">
+                        <div className="flex flex-col items-center gap-4">
+                           <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                           <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">Downloading Secure Logs...</span>
+                        </div>
+                     </TableCell>
                   </TableRow>
-                ))}
+                ) : attendanceLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-20 text-slate-400 font-bold italic tracking-wide">No activity signatures detected in this period.</TableCell>
+                  </TableRow>
+                ) : (
+                  attendanceLogs.map((log, i) => (
+                    <TableRow key={i} className="border-slate-50 hover:bg-indigo-50/30 transition-all group">
+                      <TableCell className="font-black text-slate-900 pl-10 py-6 tracking-tight text-base">{log.date}</TableCell>
+                      <TableCell>
+                        {log.isHoliday ? (
+                          <Badge variant="outline" className="font-black text-[9px] bg-indigo-50 text-indigo-700 border-indigo-200 uppercase px-3 py-1 rounded-lg shadow-sm">Official Holiday</Badge>
+                        ) : (
+                          <Badge variant="secondary" className={`font-black text-[9px] uppercase px-3 py-1 rounded-lg ${log.checkIn?.mode === 'WFH' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
+                            {log.checkIn?.mode || 'N/A'}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {log.isHoliday ? (
+                          <span className="text-slate-400 text-xs font-black uppercase tracking-widest italic opacity-50">Reserved Day</span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-3 text-slate-900 font-black text-sm tracking-tighter">
+                            <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">{log.checkIn?.time || '--:--'}</span>
+                            <span className="text-slate-200 font-light">→</span>
+                            <span className="text-rose-600 bg-rose-50 px-3 py-1 rounded-lg">{log.checkOut?.time || '--:--'}</span>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right pr-10">
+                        {log.isHoliday ? (
+                           <Badge className="font-black text-[9px] uppercase shadow-md bg-indigo-600 text-white border-0 px-4" variant="outline">On Leave</Badge>
+                        ) : (
+                          <Badge className={`font-black text-[9px] uppercase shadow-sm border px-3 ${log.status?.includes('late') ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`} variant="outline">
+                            {log.status === 'Present' ? 'Full Validation' : (log.status || 'Marked')}
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Access / Requests */}
+      <Card className="bg-white border-2 border-slate-100 shadow-[0_30px_60px_rgba(0,0,0,0.06)] rounded-[2.5rem] overflow-hidden">
+        <CardHeader className="flex flex-col md:flex-row items-center justify-between p-8 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 gap-6">
+          <div className="space-y-1 text-center md:text-left">
+            <CardTitle className="text-2xl flex items-center justify-center md:justify-start gap-3 text-slate-900 font-black">
+              <FileText className="w-7 h-7 text-indigo-600" />
+              Benefit Protocols
+            </CardTitle>
+            <CardDescription className="text-slate-600 font-bold italic">Application gateway for leaves and special permissions</CardDescription>
+          </div>
+          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-xl shadow-indigo-200 px-10 py-7 rounded-2xl transition-all hover:scale-[1.05] active:scale-95">
+            NEW APPLICATION
+          </Button>
+        </CardHeader>
+        <CardContent className="py-20 flex flex-col items-center justify-center bg-slate-50/20">
+          <div className="w-20 h-20 rounded-full bg-white shadow-inner flex items-center justify-center mb-6">
+             <FileText className="w-10 h-10 text-slate-200" />
+          </div>
+          <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-xs">No active applications found.</p>
         </CardContent>
       </Card>
     </div>
-
-      {/* Quick Access / Requests */ }
-  <Card className="bg-white border-slate-200 shadow-xl overflow-hidden ring-1 ring-slate-200">
-    <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100">
-      <div className="space-y-1">
-        <CardTitle className="text-xl flex items-center gap-2 text-slate-900 font-bold">
-          <FileText className="w-5 h-5 text-indigo-600" />
-          Benefit Requests
-        </CardTitle>
-        <CardDescription className="text-slate-500 font-medium italic">Apply for leaves or permissions</CardDescription>
-      </div>
-      <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-indigo-100 shadow-lg px-6">New Application</Button>
-    </CardHeader>
-    <CardContent className="h-32 flex flex-col items-center justify-center bg-slate-50/30">
-      <FileText className="w-10 h-10 mb-2 text-slate-200" />
-      <p className="text-slate-400 font-semibold italic">No active requests found.</p>
-    </CardContent>
-  </Card>
-    </div >
   );
 };
 

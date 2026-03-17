@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
 
 const Login = ({ setUser }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
@@ -18,16 +19,17 @@ const Login = ({ setUser }) => {
 
   useEffect(() => {
     if (location.state?.message) {
-      setSuccessMsg(location.state.message);
+      toast({
+        title: "Success",
+        description: location.state.message,
+      });
       // Clear location state
       navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+  }, [location, navigate, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccessMsg('');
     setLoading(true);
 
     try {
@@ -44,7 +46,11 @@ const Login = ({ setUser }) => {
       if (err.response?.data?.emailNotVerified) {
         navigate('/otp', { state: { email } });
       } else {
-        setError(err.response?.data?.msg || 'An error occurred during login');
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: err.response?.data?.msg || 'An error occurred during login',
+        });
       }
     } finally {
       setLoading(false);
@@ -63,16 +69,6 @@ const Login = ({ setUser }) => {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-5 px-6 md:px-8">
-            {successMsg && (
-              <div className="p-3 text-sm font-medium text-emerald-700 bg-emerald-50 rounded-lg border border-emerald-100" role="alert">
-                {successMsg}
-              </div>
-            )}
-            {error && (
-              <div className="p-3 text-sm font-medium text-red-700 bg-red-50 rounded-lg border border-red-100" role="alert">
-                {error}
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-gray-700 text-sm font-medium">Email address</Label>
               <Input 

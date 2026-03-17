@@ -3,6 +3,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const { sendOTPEmail } = require('../services/emailService');
+const CompanyLeave = require('../models/CompanyLeave');
+const Attendance = require('../models/Attendance');
+
 
 // Helper function to generate OTP
 const generateOTP = () => {
@@ -80,6 +83,24 @@ exports.verifyOtp = async (req, res) => {
     user.otpExpires = undefined;
     
     await user.save();
+    
+    // Assign future company holidays to the new employee
+    try {
+      const futureHolidays = await CompanyLeave.find({ date: { $gte: new Date() } });
+      const holidayPromises = futureHolidays.map(holiday => {
+        return new Attendance({
+          user: user._id,
+          date: holiday.date,
+          isHoliday: true,
+          leaveStatus: 'leave'
+        }).save();
+      });
+      await Promise.all(holidayPromises);
+    } catch (holidayErr) {
+      console.error('Error assigning future holidays:', holidayErr.message);
+      // We don't block the verification if holiday assignment fails, but we log it
+    }
+
     
     res.status(200).json({ msg: 'OTP verified successfully. You can now login.' });
   } catch (err) {
