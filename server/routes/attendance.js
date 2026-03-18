@@ -26,6 +26,10 @@ router.get('/logs', auth, attendanceController.getAllLogs);
 // @route   GET api/attendance/admin/all
 router.get('/admin/all', [auth, isAdmin], attendanceController.getAllAttendance);
 
+// @desc    Mark attendance for an employee manually (Admin)
+// @route   POST api/attendance/admin/emergency
+router.post('/admin/emergency', [auth, isAdmin], attendanceController.emergencyAttendance);
+
 // @route   GET api/attendance/calendar
 router.get('/calendar', auth, attendanceController.getMonthlyCalendar);
 

@@ -244,7 +244,44 @@ exports.getTodayAttendance = async (req, res) => {
 
   try {
     const attendance = await Attendance.findOne({ user: req.user.id, date: today });
-    res.json(attendance);
+    
+    let leaveStatus = null;
+    let leaveReason = null;
+    let isHoliday = false;
+    let holidayReason = null;
+
+    // 1. Check Personal Approved Leave
+    const approvedLeave = await Request.findOne({
+      user: req.user.id,
+      date: today,
+      type: 'leave',
+      status: 'approved'
+    });
+    
+    if (approvedLeave) {
+      leaveStatus = 'leave';
+      leaveReason = approvedLeave.reason;
+    }
+
+    // 2. Check Company Holiday
+    const companyLeave = await CompanyLeave.findOne({ date: today });
+    if (companyLeave) {
+      isHoliday = true;
+      holidayReason = companyLeave.reason;
+    } else {
+      // Need also to check Sunday/Saturday rules if required, but personal leaves + explicit holidays are most common.
+      const dayDate = new Date();
+      if (isSunday(dayDate)) {
+        isHoliday = true;
+        holidayReason = 'Sunday';
+      }
+    }
+
+    if (attendance) {
+      return res.json({ ...attendance.toObject(), leaveStatus, leaveReason, isHoliday, holidayReason });
+    } else {
+      return res.json({ leaveStatus, leaveReason, isHoliday, holidayReason });
+    }
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -265,9 +302,92 @@ exports.getAllLogs = async (req, res) => {
 exports.getAllAttendance = async (req, res) => {
   const { date } = req.query;
   try {
-    const attendance = await Attendance.find({ date })
-      .populate('user', 'name employeeId phoneNumber email')
-      .sort({ 'user.name': 1 });
+    // 1. Get all employees
+    const employees = await User.find({ role: { $ne: await require('../models/Role').findOne({ name: 'admin' }).then(r => r?._id) } })
+      .select('name employeeId phoneNumber email')
+      .sort({ name: 1 });
+
+    // 2. Get attendance records for the given date
+    const attendanceRecords = await Attendance.find({ date })
+      .populate('user', 'name employeeId phoneNumber email');
+
+    // 3. Map employees to their attendance records (or create empty structure)
+    const combinedData = employees.map(emp => {
+      const record = attendanceRecords.find(a => a.user && a.user._id.toString() === emp._id.toString());
+      if (record) {
+        return record;
+      }
+      
+      // Return a skeleton record for employees who haven't logged in
+      return {
+        _id: `temp-${emp._id}`,
+        user: emp,
+        date,
+        checkIn: { time: '', mode: '', status: 'Absent', permissionMinutes: 0 },
+        checkOut: { time: '' },
+        lunch: { out: '', in: '' },
+        isHoliday: false,
+        totalWorkingMinutes: 0
+      };
+    });
+
+    res.json(combinedData);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
+// @desc    Mark attendance for an employee manually (Admin)
+// @route   POST /api/attendance/admin/emergency
+exports.emergencyAttendance = async (req, res) => {
+  const { userId, date, checkInTime, checkOutTime, mode, status } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    let attendance = await Attendance.findOne({ user: userId, date });
+
+    if (!attendance) {
+      attendance = new Attendance({
+        user: userId,
+        date,
+        checkIn: {
+          time: checkInTime,
+          mode: mode || 'WFO',
+          status: status || 'on-time',
+          permissionMinutes: 0
+        }
+      });
+    } else {
+      if (checkInTime) {
+        attendance.checkIn.time = checkInTime;
+        if (mode) attendance.checkIn.mode = mode;
+        if (status) attendance.checkIn.status = status;
+      }
+    }
+
+    if (checkOutTime) {
+      if (!attendance.checkOut) attendance.checkOut = {};
+      attendance.checkOut.time = checkOutTime;
+
+      // Calculate working minutes
+      const checkInDate = parse(attendance.checkIn.time, 'HH:mm', new Date());
+      const checkOutDate = parse(checkOutTime, 'HH:mm', new Date());
+      let totalMinutes = (checkOutDate - checkInDate) / (1000 * 60);
+
+      if (attendance.lunch && attendance.lunch.out && attendance.lunch.in) {
+        const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', new Date());
+        const lunchInTime = parse(attendance.lunch.in, 'HH:mm', new Date());
+        const lunchMinutes = (lunchInTime - lunchOutTime) / (1000 * 60);
+        totalMinutes -= lunchMinutes;
+      }
+
+      attendance.totalWorkingMinutes = Math.max(0, totalMinutes);
+    }
+
+    await attendance.save();
     res.json(attendance);
   } catch (err) {
     console.error(err.message);
@@ -340,7 +460,10 @@ exports.getMonthlyCalendar = async (req, res) => {
           checkOut: attendance.checkOut?.time,
           lunchOut: attendance.lunch?.out,
           lunchIn: attendance.lunch?.in,
-          status: attendance.checkIn?.status
+          status: attendance.checkIn?.status,
+          permissionMinutes: attendance.checkIn?.permissionMinutes || 0,
+          lateReason: attendance.checkIn?.lateReason || null,
+          earlyLogoutReason: attendance.checkOut?.reason || null
         };
         if (attendance.checkIn?.status === 'late') {
           status = status ? `${status} / Late` : 'Late';

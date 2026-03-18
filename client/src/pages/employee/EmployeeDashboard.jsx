@@ -16,11 +16,11 @@ const EmployeeDashboard = () => {
 
   useEffect(() => {
     fetchLogs();
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user) {
-      // Handle both { name: ... } and name as string if applicable
-      const displayName = typeof user === 'string' ? user : (user.name || 'Employee');
-      setUserName(displayName.split(' ')[0]);
+    const savedName = localStorage.getItem('userName');
+    if (savedName) {
+      setUserName(savedName.split(' ')[0]);
+    } else {
+      setUserName('Employee');
     }
   }, []);
 

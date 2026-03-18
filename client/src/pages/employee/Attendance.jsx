@@ -99,7 +99,8 @@ const Attendance = () => {
         });
         setWorkingMode(data.checkIn?.mode || 'WFH');
         
-        if (data.isHoliday || data.leaveStatus === 'leave') setAttendanceState('holiday');
+        if (data.leaveStatus === 'leave') setAttendanceState('leave');
+        else if (data.isHoliday) setAttendanceState('holiday');
         else if (data.checkOut?.time) setAttendanceState('completed');
         else if (data.lunch?.out && !data.lunch?.in) setAttendanceState('lunch');
         else if (data.checkIn?.time) setAttendanceState('working');
@@ -224,6 +225,7 @@ const Attendance = () => {
       case 'lunch': return { label: 'Lunch Break', color: 'bg-amber-500', icon: Coffee };
       case 'completed': return { label: 'Shift Ended', color: 'bg-rose-500', icon: CheckCircle2 };
       case 'holiday': return { label: 'Company Holiday', color: 'bg-indigo-600', icon: Calendar };
+      case 'leave': return { label: 'Approved Leave', color: 'bg-emerald-500', icon: Coffee };
       default: return { label: 'Offline', color: 'bg-slate-400', icon: Zap };
     }
   };
@@ -477,6 +479,26 @@ const Attendance = () => {
                             <div className="inline-block">
                                <Badge variant="outline" className="border-2 border-indigo-200 text-indigo-700 bg-indigo-50/80 rounded-2xl py-3 px-8 font-black text-xs tracking-[0.3em] uppercase shadow-lg shadow-indigo-100">
                                  OFF DUTY
+                               </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {attendanceState === 'leave' && (
+                        <div className="relative group animate-in zoom-in-95 duration-700">
+                          <div className="absolute inset-0 bg-emerald-400 blur-[80px] opacity-20 transition-opacity"></div>
+                          <div className="relative text-center p-14 bg-white border-4 border-emerald-500/20 rounded-[3.5rem] shadow-[0_40px_80px_rgba(16,185,129,0.15)]">
+                            <div className="w-28 h-28 mx-auto rounded-[2.5rem] bg-emerald-50 flex items-center justify-center mb-10 shadow-inner group-hover:rotate-6 transition-transform">
+                              <Coffee className="w-14 h-14 text-emerald-500" />
+                            </div>
+                            <h3 className="text-4xl font-black text-slate-900 tracking-tighter uppercase mb-4">On Leave</h3>
+                            <p className="text-slate-600 font-black text-md leading-relaxed mb-10 italic">
+                              Your leave request has been approved. Enjoy your time off and relax! No operations required today.
+                            </p>
+                            <div className="inline-block">
+                               <Badge variant="outline" className="border-2 border-emerald-200 text-emerald-700 bg-emerald-50/80 rounded-2xl py-3 px-8 font-black text-xs tracking-[0.3em] uppercase shadow-lg shadow-emerald-100">
+                                 RELAXING
                                </Badge>
                             </div>
                           </div>

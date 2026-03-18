@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 const CalendarView = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -75,32 +76,34 @@ const CalendarView = () => {
     let badge = null;
 
     if (dayData) {
-      switch (dayData.type) {
-        case 'holiday':
-          bgColor = "bg-indigo-50/50";
-          badge = <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4">{dayData.status}</Badge>;
-          break;
-        case 'leave':
-          bgColor = "bg-rose-50/50";
-          badge = <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4">Leave</Badge>;
-          break;
-        case 'half-day':
-          bgColor = "bg-amber-50/50";
-          badge = <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4">Half Day</Badge>;
-          break;
-        default:
-          if (dayData.details?.checkIn) {
-             bgColor = dayData.details.status === 'late' ? "bg-amber-50/30" : "bg-emerald-50/30";
-          }
+      if (dayData.type === 'holiday') {
+        bgColor = "bg-indigo-50/80 border-l-4 border-l-indigo-400";
+        badge = <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4">{dayData.status}</Badge>;
+      } else if (dayData.type === 'leave') {
+        bgColor = "bg-rose-50/80 border-l-4 border-l-rose-400";
+        badge = <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4">Leave</Badge>;
+      } else if (dayData.type === 'half-day') {
+        bgColor = "bg-orange-50/80 border-l-4 border-l-orange-400";
+        badge = <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4">Half Day</Badge>;
+      } else if (dayData.details?.checkIn) {
+        if (dayData.details.status === 'late') {
+          bgColor = "bg-amber-50/80 border-l-4 border-l-amber-400";
+          badge = <Badge className="bg-amber-200 text-amber-800 hover:bg-amber-200 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4 shadow-sm">Late Login</Badge>;
+        } else {
+          bgColor = "bg-emerald-50/80 border-l-4 border-l-emerald-400";
+          badge = <Badge className="bg-emerald-200 text-emerald-800 hover:bg-emerald-200 border-0 text-[9px] uppercase font-black px-1.5 py-0 h-4 shadow-sm">On Time</Badge>;
+        }
       }
     }
 
     return (
       <div 
         key={day.toString()} 
+        onClick={() => setSelectedDate(day)}
         className={cn(
           "h-32 border-b border-r border-slate-100 p-2 transition-all hover:bg-slate-50 cursor-pointer relative group",
-          bgColor
+          bgColor,
+          isSameDay(selectedDate, day) && "ring-2 ring-inset ring-indigo-500 bg-indigo-50/20"
         )}
       >
         <div className="flex justify-between items-start">
@@ -119,6 +122,16 @@ const CalendarView = () => {
                <Clock className="w-2.5 h-2.5 text-emerald-500" />
                {dayData.details.checkIn} - {dayData.details.checkOut || '--:--'}
             </div>
+            {dayData.details.status === 'late' && (
+              <div className="text-[8px] font-black text-rose-500 uppercase tracking-tighter">
+                Late{dayData.details.permissionMinutes > 0 ? `: ${Math.ceil(dayData.details.permissionMinutes)}m` : ''}
+              </div>
+            )}
+            {dayData.details.lateReason && (
+              <div className="text-[7px] text-slate-400 font-medium truncate uppercase tracking-widest mt-0.5" title={dayData.details.lateReason}>
+                {dayData.details.lateReason}
+              </div>
+            )}
             {dayData.details.lunchOut && (
               <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400">
                  <Coffee className="w-2.5 h-2.5 text-amber-400" />
@@ -128,50 +141,16 @@ const CalendarView = () => {
           </div>
         )}
 
-        {dayData?.status && !badge && (
+        {dayData?.status && !badge && !dayData?.details?.checkIn && (
           <p className="mt-1 text-[8px] font-black text-slate-400 uppercase tracking-tighter truncate opacity-70 group-hover:opacity-100 transition-opacity">
             {dayData.status}
           </p>
         )}
-
-        {/* Hover Details Overlay */}
-        <div className="absolute inset-x-2 top-2 bottom-2 z-[60] bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl border-2 border-indigo-100 p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-all scale-90 group-hover:scale-100 flex flex-col justify-between overflow-hidden">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-               <span className="text-[9px] font-black text-indigo-600 tracking-[0.2em] uppercase">{format(day, 'EEEE')}</span>
-               <span className="text-[9px] font-black text-slate-300">#LOG</span>
-            </div>
-            <h4 className="font-black text-slate-900 text-xs tracking-tight">{format(day, 'MMM dd, yyyy')}</h4>
-            
-            <div className="space-y-1.5 pt-2">
-              {dayData?.details?.checkIn ? (
-                <>
-                  <div className="flex items-center justify-between text-[9px] bg-emerald-50/50 p-2 rounded-xl border border-emerald-100">
-                    <span className="text-emerald-700 font-bold uppercase tracking-tighter">Login</span>
-                    <span className="text-emerald-900 font-black">{dayData.details.checkIn}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[9px] bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <span className="text-slate-600 font-bold uppercase tracking-tighter">Logout</span>
-                    <span className="text-slate-900 font-black">{dayData.details.checkOut || 'Active'}</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2 text-slate-300 py-4">
-                  <Info className="w-5 h-5 opacity-20" />
-                  <span className="text-[8px] font-black uppercase tracking-[0.2em]">{dayData?.status || 'No Entry'}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-1.5 pt-3 border-t border-slate-50">
-            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${dayData?.details?.checkIn ? 'bg-indigo-500' : 'bg-slate-300'}`}></div>
-            <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Validated Sequence</span>
-          </div>
-        </div>
       </div>
     );
   };
+
+  const selectedDayData = getDayContent(selectedDate);
 
   return (
     <Card className="border-0 shadow-[0_40px_80px_rgba(0,0,0,0.06)] rounded-[3rem] bg-white overflow-hidden">
@@ -197,17 +176,94 @@ const CalendarView = () => {
         </div>
       </CardHeader>
       
-      <CardContent className="p-0">
-        <div className="grid grid-cols-7 bg-slate-50/50 border-b border-slate-100">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-r border-slate-100 last:border-0">
-              {day}
-            </div>
-          ))}
+      <CardContent className="p-0 flex flex-col lg:flex-row">
+        <div className="flex-1 w-full border-r border-slate-100">
+          <div className="grid grid-cols-7 bg-slate-50/50 border-b border-slate-100">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-r border-slate-100 last:border-0 border-t border-slate-100 lg:border-t-0 opacity-80">
+                {day}
+              </div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-7 border-l border-slate-100">
+            {days.map(day => renderDay(day))}
+          </div>
         </div>
-        
-        <div className="grid grid-cols-7 border-l border-slate-100">
-          {days.map(day => renderDay(day))}
+
+        {/* Right side panel details */}
+        <div className="w-full lg:w-[360px] bg-slate-50/20 p-8 flex flex-col border-t lg:border-t-0 border-slate-100">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+               <div>
+                 <span className="text-[10px] font-black text-indigo-600 tracking-[0.3em] uppercase block mb-1">{format(selectedDate, 'EEEE')}</span>
+                 <h4 className="font-black text-slate-900 text-lg tracking-tight">{format(selectedDate, 'MMM dd, yyyy')}</h4>
+               </div>
+               <span className="text-xs font-black text-slate-300">#DATA</span>
+            </div>
+            
+            <div className="space-y-3 pt-2">
+              {selectedDayData?.details?.checkIn ? (
+                <div className="space-y-4">
+                  <div className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all ${selectedDayData.details.status === 'late' ? 'bg-amber-50/60 border-amber-200' : 'bg-emerald-50/60 border-emerald-100/50 hover:shadow-md'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <span className={`${selectedDayData.details.status === 'late' ? 'text-amber-700' : 'text-emerald-700'} font-black uppercase tracking-widest text-[10px]`}>Login</span>
+                        <span className={`${selectedDayData.details.status === 'late' ? 'text-amber-900' : 'text-emerald-900'} font-black text-base`}>{selectedDayData.details.checkIn}</span>
+                      </div>
+                      {selectedDayData.details.status === 'late' ? (
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant="outline" className="text-[10px] text-amber-700 font-black uppercase tracking-tighter bg-amber-100 border-amber-300 px-3 shadow-sm">
+                            Late Login
+                          </Badge>
+                          {selectedDayData.details.permissionMinutes > 0 && (
+                            <span className="text-[9px] font-black text-amber-800 tracking-tighter uppercase">By {Math.ceil(selectedDayData.details.permissionMinutes)} min</span>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-emerald-700 font-black uppercase tracking-tighter bg-emerald-100 border-emerald-300 px-3 shadow-sm">
+                          On Time
+                        </Badge>
+                      )}
+                    </div>
+                    {selectedDayData.details.status === 'late' && selectedDayData.details.lateReason && (
+                      <div className="mt-2 text-xs bg-white p-3 rounded-xl border border-amber-200/50 shadow-sm text-amber-800 italic break-words whitespace-pre-wrap">
+                        <span className="font-black not-italic text-amber-900 block mb-1 uppercase tracking-widest text-[9px]">Reason Provided:</span>
+                        {selectedDayData.details.lateReason}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedDayData.details.earlyLogoutReason && (
+                    <div className="text-xs bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-rose-700 italic break-words whitespace-pre-wrap">
+                      <span className="font-black not-italic text-slate-900 block mb-1 uppercase tracking-widest text-[9px]">Early Out Reason</span>
+                      {selectedDayData.details.earlyLogoutReason}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200 hover:shadow-md transition-all flex-shrink-0">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-600 font-black uppercase tracking-widest text-[10px]">Logout</span>
+                      <span className="text-slate-900 font-black text-base">{selectedDayData.details.checkOut || 'Active'}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 text-slate-300 py-12 bg-white rounded-3xl border border-slate-100 border-dashed">
+                  <Info className="w-8 h-8 opacity-20" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em]">{selectedDayData?.status || 'No Entry Logged'}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Show full reason if it's a leave request or half day */}
+            {['leave', 'half-day'].includes(selectedDayData?.type) && selectedDayData?.details?.reason && (
+               <div className="text-xs bg-rose-50/50 p-5 rounded-3xl border border-rose-100 text-rose-700 italic mt-4 break-words whitespace-pre-wrap shadow-inner">
+                 <span className="font-black not-italic text-rose-900 block mb-2 uppercase tracking-widest text-[10px]">Off-Day Reason</span>
+                 {selectedDayData.details.reason}
+               </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
