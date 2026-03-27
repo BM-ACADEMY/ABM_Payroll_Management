@@ -24,4 +24,8 @@ const AttendanceSchema = new mongoose.Schema({
   totalWorkingMinutes: { type: Number, default: 0 }
 });
 
+// Indexes for faster lookups
+AttendanceSchema.index({ user: 1, date: 1 }, { unique: true });
+AttendanceSchema.index({ date: 1 });
+
 module.exports = mongoose.model('Attendance', AttendanceSchema);

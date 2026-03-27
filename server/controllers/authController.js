@@ -299,3 +299,15 @@ exports.updateProfile = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
+
+// @desc    Get teams for logged in user
+// @route   GET /api/auth/my-teams
+exports.getMyTeams = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate('teams');
+    res.json(user.teams);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};

@@ -12,24 +12,24 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
       {/* Mobile Overlay */}
       {isMobile && !isCollapsed && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[45] animate-in fade-in duration-300"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[45] animate-in fade-in duration-300"
           onClick={() => setIsCollapsed(true)}
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen transition-all duration-300 ease-in-out bg-indigo-950 border-r border-indigo-900 z-50 flex flex-col p-4 shadow-2xl ${isMobile
+        className={`fixed left-0 top-0 h-screen transition-all duration-300 ease-in-out bg-black border-r border-zinc-800 z-50 flex flex-col p-4 shadow-sm ${isMobile
             ? (isCollapsed ? '-translate-x-full w-64' : 'translate-x-0 w-64')
             : (isCollapsed ? 'w-20' : 'w-64')
           }`}
       >
         <div className="flex items-center justify-between mb-10 px-2 mt-2">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-              <PieChart className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-[#fffe01] rounded-xl flex items-center justify-center shadow-sm shrink-0">
+              <PieChart className="w-6 h-6 text-black" />
             </div>
             {(!isCollapsed || isMobile) && (
-              <span className="text-xl font-bold tracking-tighter text-white whitespace-nowrap animate-in fade-in duration-500">
+              <span className="text-xl font-medium tracking-tighter text-[#fffe01] whitespace-nowrap animate-in fade-in duration-500">
                 PAYROLL.IO
               </span>
             )}
@@ -37,7 +37,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
           {!isMobile && (
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className={`absolute -right-3 top-20 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white border-2 border-indigo-950 hover:bg-indigo-500 transition-colors shadow-lg`}
+              className={`absolute -right-3 top-20 w-6 h-6 bg-[#fffe01] rounded-full flex items-center justify-center text-black border-2 border-black hover:bg-yellow-400 transition-colors shadow-md`}
             >
               {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
@@ -53,15 +53,15 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
               className={({ isActive }) => `
               flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
               ${isActive
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-indigo-200/70 hover:bg-indigo-900/50 hover:text-white'}
+                  ? 'bg-[#fffe01] text-black shadow-sm'
+                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-[#fffe01]'}
               ${isCollapsed ? 'justify-center px-0' : ''}
             `}
               title={isCollapsed ? link.name : ''}
             >
-              <link.icon className={`w-5 h-5 shrink-0 ${isCollapsed ? 'm-0' : ''}`} />
+              <link.icon className={`w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isCollapsed ? 'm-0' : ''}`} />
               {!isCollapsed && (
-                <span className="font-medium whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
+                <span className="font-normal tracking-wide whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
                   {link.name}
                 </span>
               )}
@@ -69,31 +69,31 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
           ))}
         </nav>
 
-      <div className="mt-auto pt-6 border-t border-indigo-900/50">
+      <div className="mt-auto pt-6 border-t border-zinc-800">
         {user?.role?.name === 'admin' ? (
           <NavLink 
             to="/admin/profile"
             className={({ isActive }) => `
               px-4 py-3 flex items-center gap-3 rounded-xl transition-all duration-200 group
-              ${isActive ? 'bg-indigo-600/50 text-white shadow-sm' : 'text-indigo-200 hover:bg-indigo-900/50 hover:text-white'}
+              ${isActive ? 'bg-[#fffe01]/10 text-[#fffe01]' : 'text-zinc-400 hover:bg-zinc-800 hover:text-[#fffe01]'}
             `}
           >
-            <div className="w-8 h-8 rounded-full bg-indigo-800 flex items-center justify-center text-xs font-bold text-white shadow-inner group-hover:bg-indigo-600 transition-colors">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium shadow-inner transition-colors bg-zinc-800 text-[#fffe01] group-hover:bg-zinc-700`}>
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-              <p className="text-xs text-indigo-300/80 capitalize truncate font-medium">Profile & Security</p>
+              <p className="text-sm font-normal truncate text-[#fffe01]">{user.name}</p>
+              <p className="text-xs text-zinc-500 capitalize truncate font-normal">Profile & Security</p>
             </div>
           </NavLink>
         ) : (
-          <div className="px-4 py-3 flex items-center gap-3 text-indigo-200 cursor-default">
-            <div className="w-8 h-8 rounded-full bg-indigo-800 flex items-center justify-center text-xs font-bold text-white shadow-inner">
+          <div className="px-4 py-3 flex items-center gap-3 text-zinc-400 cursor-default">
+            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-medium text-[#fffe01] shadow-inner">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-              <p className="text-xs text-indigo-300/80 capitalize truncate">{user?.role?.name || ''}</p>
+              <p className="text-sm font-normal text-[#fffe01] truncate">{user.name}</p>
+              <p className="text-xs text-zinc-500 capitalize truncate">{user?.role?.name || ''}</p>
             </div>
           </div>
         )}

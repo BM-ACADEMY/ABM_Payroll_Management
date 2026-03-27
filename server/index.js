@@ -4,6 +4,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const http = require('http');
 const { Server } = require('socket.io');
+const compression = require('compression');
 require('dotenv').config();
 
 const app = express();
@@ -19,6 +20,7 @@ const io = new Server(server, {
 connectDB();
 
 // Init Middleware
+app.use(compression());
 app.use(express.json());
 app.use(cors());
 app.use(cookieParser());
@@ -38,6 +40,9 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/company-leaves', require('./routes/companyLeave'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/complaints', require('./routes/complaint'));
+app.use('/api/scores', require('./routes/score'));
+app.use('/api/boards', require('./routes/boards'));
+app.use('/api/time-logs', require('./routes/timeLogRoutes'));
 
 app.get('/', (req, res) => res.send('API Running'));
 
@@ -48,6 +53,16 @@ server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   
+  socket.on('join_board', (boardId) => {
+    socket.join(boardId);
+    console.log(`User ${socket.id} joined board: ${boardId}`);
+  });
+
+  socket.on('leave_board', (boardId) => {
+    socket.leave(boardId);
+    console.log(`User ${socket.id} left board: ${boardId}`);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });

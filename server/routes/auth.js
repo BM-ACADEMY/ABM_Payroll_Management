@@ -39,4 +39,8 @@ router.put('/change-password', auth, authController.changePassword);
 // @desc    Update user profile
 router.put('/profile', auth, authController.updateProfile);
 
+// @route   GET api/auth/my-teams
+// @desc    Get teams for logged in user
+router.get('/my-teams', auth, authController.getMyTeams);
+
 module.exports = router;

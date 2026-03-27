@@ -39,7 +39,7 @@ const PayrollSettings = () => {
 
   const fetchSettings = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/settings`, {
         headers: { 'x-auth-token': token }
       });
@@ -65,7 +65,7 @@ const PayrollSettings = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/settings`, settings, {
         headers: { 'x-auth-token': token }
       });
@@ -85,7 +85,7 @@ const PayrollSettings = () => {
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-black animate-spin" />
       </div>
     );
   }
@@ -94,14 +94,16 @@ const PayrollSettings = () => {
     <div className="p-8 space-y-8 animate-in fade-in duration-700 pb-20">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-indigo-600 font-bold mb-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-black font-medium mb-2">
+            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
               <Settings className="w-4 h-4" />
             </div>
             <span className="text-xs tracking-widest uppercase">System Config</span>
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">Payroll Settings</h1>
-          <p className="text-slate-500 font-medium">Manage global limits and salary rate calculation rules.</p>
+          <h1 className="text-4xl font-medium tracking-tight text-gray-900">
+            Payroll <span className="text-[#d30614]">Settings</span>
+          </h1>
+          <p className="text-gray-500 font-medium">Manage global limits and salary rate calculation rules.</p>
         </div>
 
         <div className="flex gap-3">
@@ -112,7 +114,7 @@ const PayrollSettings = () => {
                 setSettings(originalSettings);
                 setIsEditing(false);
               }}
-              className="h-14 px-8 rounded-2xl font-black tracking-widest uppercase text-xs border-2 border-slate-100 hover:bg-slate-50 flex items-center gap-2"
+              className="h-14 px-8 rounded-2xl font-medium tracking-widest uppercase text-xs border-2 border-slate-100 hover:bg-slate-50 flex items-center gap-2"
             >
               <X className="w-4 h-4" />
               Cancel Changes
@@ -120,7 +122,7 @@ const PayrollSettings = () => {
           ) : (
             <Button 
               onClick={() => setIsEditing(true)}
-              className="h-14 px-8 rounded-2xl font-black tracking-widest uppercase text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100 flex items-center gap-2"
+              className="h-14 px-8 rounded-2xl font-medium tracking-widest uppercase text-xs bg-black hover:bg-zinc-900 text-[#fffe01] shadow-lg flex items-center gap-2"
             >
               <Pencil className="w-4 h-4" />
               Edit Settings
@@ -134,8 +136,8 @@ const PayrollSettings = () => {
           <form onSubmit={handleSubmit} className="space-y-8">
             <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2rem] bg-white overflow-hidden">
               <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
-                <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                  <Clock className="w-5 h-5 text-indigo-600" />
+                <CardTitle className="text-lg font-medium flex items-center gap-2 text-slate-800">
+                  <Clock className="w-5 h-5 text-black" />
                   Permission & Leave Limits
                 </CardTitle>
                 <CardDescription className="font-medium">Define monthly allowances for employees.</CardDescription>
@@ -143,11 +145,11 @@ const PayrollSettings = () => {
               <CardContent className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                       Monthly Permission Hours
                     </Label>
                     <div className="relative group">
-                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
                       <Input
                         type="number"
                         name="monthlyPermissionHours"
@@ -155,25 +157,25 @@ const PayrollSettings = () => {
                         onChange={handleChange}
                         step="0.5"
                         disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Maximum allowed permission hours per month.</p>
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                       Casual Leave Limit
                     </Label>
                     <div className="relative group">
-                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
                       <Input
                         type="number"
                         name="casualLeaveLimit"
                         value={settings.casualLeaveLimit}
                         onChange={handleChange}
                         disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Number of casual leaves granted per month.</p>
@@ -184,15 +186,15 @@ const PayrollSettings = () => {
 
             <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2rem] bg-white overflow-hidden">
               <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
-                <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                  <Calendar className="w-5 h-5 text-indigo-600" />
+                <CardTitle className="text-lg font-medium flex items-center gap-2 text-slate-800">
+                  <Calendar className="w-5 h-5 text-black" />
                   Weekend Configuration
                 </CardTitle>
                 <CardDescription className="font-medium">Define how Saturdays are treated in the system.</CardDescription>
               </CardHeader>
               <CardContent className="p-8">
                 <div className="space-y-4">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                  <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                     Saturday Work Rule
                   </Label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -206,25 +208,25 @@ const PayrollSettings = () => {
                         onClick={() => isEditing && setSettings({ ...settings, saturdayRule: rule.id })}
                         className={`relative p-5 rounded-2xl border-2 transition-all cursor-pointer group ${
                           settings.saturdayRule === rule.id 
-                            ? 'border-indigo-600 bg-indigo-50/30' 
+                            ? 'border-black bg-gray-50' 
                             : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'
                         } ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
                       >
                         <div className="flex items-center gap-3 mb-2">
                           <div className={`p-2 rounded-lg ${
-                            settings.saturdayRule === rule.id ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400'
+                            settings.saturdayRule === rule.id ? 'bg-black text-[#fffe01]' : 'bg-white text-slate-400'
                           }`}>
                             <rule.icon className="w-4 h-4" />
                           </div>
-                          <span className={`font-bold transition-colors ${
-                            settings.saturdayRule === rule.id ? 'text-indigo-900' : 'text-slate-600'
+                          <span className={`font-medium transition-colors ${
+                            settings.saturdayRule === rule.id ? 'text-black' : 'text-slate-600'
                           }`}>
                             {rule.label}
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-medium">{rule.desc}</p>
                         {settings.saturdayRule === rule.id && (
-                          <div className="absolute top-4 right-4 text-indigo-600">
+                          <div className="absolute top-4 right-4 text-black">
                             <CheckCircle2 className="w-5 h-5" />
                           </div>
                         )}
@@ -237,8 +239,8 @@ const PayrollSettings = () => {
 
             <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2rem] bg-white overflow-hidden">
               <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
-                <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                  <TrendingUp className="w-5 h-5 text-indigo-600" />
+                <CardTitle className="text-lg font-medium flex items-center gap-2 text-slate-800">
+                  <TrendingUp className="w-5 h-5 text-black" />
                   Salary Rate Multipliers
                 </CardTitle>
                 <CardDescription className="font-medium">Configure calculation rules for attendance types.</CardDescription>
@@ -246,11 +248,11 @@ const PayrollSettings = () => {
               <CardContent className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                       Half-Day Salary Multiplier
                     </Label>
                     <div className="relative group">
-                      <TrendingDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                      <TrendingDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
                       <Input
                         type="number"
                         name="halfDaySalaryRateLimit"
@@ -258,18 +260,18 @@ const PayrollSettings = () => {
                         onChange={handleChange}
                         step="0.01"
                         disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Multiplier applied to basic salary for half-days.</p>
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                       Full-Day Salary Multiplier
                     </Label>
                     <div className="relative group">
-                      <TrendingUp className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                      <TrendingUp className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
                       <Input
                         type="number"
                         name="fullDaySalaryRateLimit"
@@ -277,7 +279,7 @@ const PayrollSettings = () => {
                         onChange={handleChange}
                         step="0.01"
                         disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-bold text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Default multiplier for regular working days.</p>
@@ -290,7 +292,7 @@ const PayrollSettings = () => {
               <Button 
                 type="submit" 
                 disabled={saveLoading}
-                className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] font-black text-lg shadow-xl shadow-indigo-100 transition-all hover:scale-[1.01] active:scale-[0.99] animate-in slide-in-from-bottom-4 duration-500"
+                className="w-full h-16 bg-black hover:bg-zinc-900 text-[#fffe01] rounded-[1.5rem] font-medium text-lg shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] animate-in slide-in-from-bottom-4 duration-500"
               >
                 {saveLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin mr-2" />
@@ -304,7 +306,7 @@ const PayrollSettings = () => {
         </div>
 
         <div className="space-y-8">
-          <Card className="border-0 shadow-lg rounded-[2rem] bg-indigo-600 text-white overflow-hidden">
+          <Card className="border-0 shadow-lg rounded-[2rem] bg-black text-[#fffe01] overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
@@ -312,10 +314,10 @@ const PayrollSettings = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-indigo-100 text-sm font-medium leading-relaxed">
+              <p className="text-zinc-400 text-sm font-medium leading-relaxed">
                 Changes made here will affect <strong>all future payroll calculations</strong> across the entire system.
               </p>
-              <p className="text-indigo-100 text-sm font-medium leading-relaxed">
+              <p className="text-zinc-400 text-sm font-medium leading-relaxed">
                 Ensure multipliers are mathematically correct to avoid incorrect salary disbursements.
               </p>
             </CardContent>

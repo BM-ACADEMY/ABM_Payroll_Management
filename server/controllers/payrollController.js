@@ -38,50 +38,60 @@ exports.getMonthlyReport = async (req, res) => {
       date: { $gte: format(actualStart, 'yyyy-MM-dd'), $lte: format(actualEnd, 'yyyy-MM-dd') }
     });
 
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
     const report = await Promise.all(employees.map(async (employee) => {
       const attendanceRecords = await Attendance.find({
         user: employee._id,
         date: { $gte: format(actualStart, 'yyyy-MM-dd'), $lte: format(actualEnd, 'yyyy-MM-dd') }
       });
 
-      const approvedPermissions = await Request.find({
+      const employeeRequests = await Request.find({
         user: employee._id,
-        type: 'permission',
-        status: 'approved',
         date: { $gte: format(actualStart, 'yyyy-MM-dd'), $lte: format(actualEnd, 'yyyy-MM-dd') }
       });
 
-      const approvedLeaves = await Request.find({
-        user: employee._id,
-        type: 'leave',
-        status: 'approved',
-        date: { $gte: format(actualStart, 'yyyy-MM-dd'), $lte: format(actualEnd, 'yyyy-MM-dd') }
-      });
+      const permissionRequests = employeeRequests.filter(r => 
+        r.type === 'permission' && (r.status === 'approved' || r.status === 'rejected')
+      );
+      
+      const lunchDelayRequests = employeeRequests.filter(r => r.type === 'lunch_delay');
+
+      const approvedLeaves = employeeRequests.filter(req => req.type === 'leave' && req.status === 'approved');
 
       let totalLOPDays = 0;
       let usedCasualLeaves = 0;
       let totalPermissionMinutes = 0;
-      let presentDays = 0;
+      let paidDays = 0;
       let absentDays = 0;
 
       const days = eachDayOfInterval({ start: actualStart, end: actualEnd });
       
       days.forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
+        if (dateStr > todayStr && actualEnd > new Date()) return;
+
         const attendance = attendanceRecords.find(a => a.date === dateStr);
         const isCoLeave = companyLeaves.find(cl => cl.date === dateStr);
         const isSun = isSunday(day);
         const isMon = isMonday(day);
         const isSat = isSaturday(day);
 
-        if (isSun || isCoLeave) {
-          presentDays++;
-          return;
-        }
+        // A day is "paid" if it's a holiday, worked, or has approved leave
+        let isPaid = false;
 
-        if (attendance && attendance.checkIn?.time) {
-          presentDays++;
-          totalPermissionMinutes += (attendance.checkIn.permissionMinutes || 0);
+        if (isSun || isCoLeave) {
+          isPaid = true;
+        } else if (attendance && attendance.checkIn?.time) {
+          isPaid = true;
+          let dayPermissionMinutes = (attendance.checkIn.permissionMinutes || 0);
+
+          const lunchReq = lunchDelayRequests.find(r => r.date === dateStr && r.status === 'approved');
+          if (lunchReq) {
+            dayPermissionMinutes = Math.max(0, dayPermissionMinutes - (lunchReq.duration || 0));
+          }
+          
+          totalPermissionMinutes += dayPermissionMinutes;
         } else {
           const leaveReq = approvedLeaves.find(l => l.date === dateStr);
           if (leaveReq) {
@@ -90,11 +100,12 @@ exports.getMonthlyReport = async (req, res) => {
             } else {
               if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
                 usedCasualLeaves++;
+                isPaid = true;
               } else {
                 totalLOPDays += 1;
               }
             }
-          } else {
+          } else if (dateStr < todayStr) {
             absentDays++;
             if (isMon || isSat) {
               totalLOPDays += 2;
@@ -103,28 +114,32 @@ exports.getMonthlyReport = async (req, res) => {
             }
           }
         }
+
+        if (isPaid) paidDays++;
       });
 
-      approvedPermissions.forEach(p => {
+      permissionRequests.forEach(p => {
         totalPermissionMinutes += (p.duration || 0);
       });
 
       const totalPermissionHours = totalPermissionMinutes / 60;
+      let permissionLopDays = 0;
       if (totalPermissionHours > globalSettings.permissionTier2Limit) {
-        totalLOPDays += globalSettings.permissionTier2Deduction;
+        permissionLopDays = globalSettings.permissionTier2Deduction;
       } else if (totalPermissionHours > globalSettings.permissionTier1Limit) {
-        totalLOPDays += globalSettings.permissionTier1Deduction;
+        permissionLopDays = globalSettings.permissionTier1Deduction;
       }
+      totalLOPDays += permissionLopDays;
 
       const dailyRate = (employee.baseSalary || 0) / daysInMonthCount;
-      const netSalary = dailyRate * Math.max(0, (daysInRangeCount - totalLOPDays));
+      const netSalary = dailyRate * Math.max(0, (paidDays - permissionLopDays));
 
       return {
         _id: employee._id,
         name: employee.name,
         employeeId: employee.employeeId,
         baseSalary: employee.baseSalary || 0,
-        presentDays,
+        presentDays: paidDays,
         absentDays,
         totalPermissionHours: totalPermissionHours.toFixed(2),
         totalLOPDays,
@@ -161,40 +176,50 @@ exports.getMySummary = async (req, res) => {
       date: { $gte: format(startDate, 'yyyy-MM-dd'), $lte: format(endDate, 'yyyy-MM-dd') }
     });
 
-    const approvedPermissions = await Request.find({
+    const employeeRequests = await Request.find({
       user: req.user.id,
-      type: 'permission',
-      status: 'approved',
       date: { $gte: format(startDate, 'yyyy-MM-dd'), $lte: format(endDate, 'yyyy-MM-dd') }
     });
 
-    const approvedLeaves = await Request.find({
-      user: req.user.id,
-      type: 'leave',
-      status: 'approved',
-      date: { $gte: format(startDate, 'yyyy-MM-dd'), $lte: format(endDate, 'yyyy-MM-dd') }
-    });
+    const permissionRequests = employeeRequests.filter(r => 
+      r.type === 'permission' && (r.status === 'approved' || r.status === 'rejected')
+    );
+    
+    const lunchDelayRequests = employeeRequests.filter(r => r.type === 'lunch_delay');
+
+    const approvedLeaves = employeeRequests.filter(req => req.type === 'leave' && req.status === 'approved');
+
 
     let totalLOPDays = 0;
     let usedCasualLeaves = 0;
     let totalPermissionMinutes = 0;
-    let presentDays = 0;
+    let paidDays = 0;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     const days = eachDayOfInterval({ start: startDate, end: endDate });
     days.forEach(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
+      if (dateStr > todayStr) return; // Only count up to today
+
       const attendance = attendanceRecords.find(a => a.date === dateStr);
       const isCoLeave = companyLeaves.find(cl => cl.date === dateStr);
       const isSun = isSunday(day);
 
-      if (isSun || isCoLeave) {
-        presentDays++;
-        return;
-      }
+      let isPaid = false;
 
-      if (attendance && attendance.checkIn?.time) {
-        presentDays++;
-        totalPermissionMinutes += (attendance.checkIn.permissionMinutes || 0);
+      if (isSun || isCoLeave) {
+        isPaid = true;
+      } else if (attendance && attendance.checkIn?.time) {
+        isPaid = true;
+        let dayPermissionMinutes = (attendance.checkIn.permissionMinutes || 0);
+
+        // If a lunch delay was approved, subtract it from the day's total 
+        const lunchReq = lunchDelayRequests.find(r => r.date === dateStr && r.status === 'approved');
+        if (lunchReq) {
+          dayPermissionMinutes = Math.max(0, dayPermissionMinutes - (lunchReq.duration || 0));
+        }
+        
+        totalPermissionMinutes += dayPermissionMinutes;
       } else {
         const leaveReq = approvedLeaves.find(l => l.date === dateStr);
         if (leaveReq) {
@@ -203,42 +228,44 @@ exports.getMySummary = async (req, res) => {
           } else {
             if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
               usedCasualLeaves++;
+              isPaid = true;
             } else {
               totalLOPDays += 1;
             }
           }
-        } else if (new Date(dateStr) < new Date()) {
-          // Apply casual leave to raw/unapproved absences as well
-          if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
-            usedCasualLeaves++;
+        } else if (dateStr < todayStr) {
+          // Unexcused absence strictly in the past
+          if (isMonday(day) || isSaturday(day)) {
+            totalLOPDays += 2;
           } else {
-            if (isMonday(day) || isSaturday(day)) {
-              totalLOPDays += 2;
-            } else {
-              totalLOPDays += 1;
-            }
+            totalLOPDays += 1;
           }
         }
       }
+
+      if (isPaid) paidDays++;
     });
 
-    approvedPermissions.forEach(p => {
+    permissionRequests.forEach(p => {
       totalPermissionMinutes += (p.duration || 0);
     });
 
     const totalPermissionHours = totalPermissionMinutes / 60;
+    let permissionLopDays = 0;
     if (totalPermissionHours > globalSettings.permissionTier2Limit) {
-      totalLOPDays += globalSettings.permissionTier2Deduction;
+      permissionLopDays = globalSettings.permissionTier2Deduction;
     } else if (totalPermissionHours > globalSettings.permissionTier1Limit) {
-      totalLOPDays += globalSettings.permissionTier1Deduction;
+      permissionLopDays = globalSettings.permissionTier1Deduction;
     }
+    totalLOPDays += permissionLopDays;
 
     const dailyRate = employee.baseSalary / daysInMonthCount;
-    const netSalary = dailyRate * Math.max(0, (daysInMonthCount - totalLOPDays));
+    const netSalary = dailyRate * Math.max(0, (paidDays - permissionLopDays));
+
 
     res.json({
       baseSalary: employee.baseSalary,
-      presentDays,
+      presentDays: paidDays,
       totalPermissionHours: totalPermissionHours.toFixed(2),
       totalLOPDays,
       estimatedNetSalary: Math.round(netSalary * 100) / 100
@@ -294,81 +321,98 @@ exports.generateIndividualSalary = async (req, res) => {
       date: { $gte: format(start, 'yyyy-MM-dd'), $lte: format(end, 'yyyy-MM-dd') }
     });
 
-    const approvedPermissions = await Request.find({
+    const employeeRequests = await Request.find({
       user: employee._id,
-      type: 'permission',
-      status: 'approved',
       date: { $gte: format(start, 'yyyy-MM-dd'), $lte: format(end, 'yyyy-MM-dd') }
     });
 
-    const approvedLeaves = await Request.find({
-      user: employee._id,
-      type: 'leave',
-      status: 'approved',
-      date: { $gte: format(start, 'yyyy-MM-dd'), $lte: format(end, 'yyyy-MM-dd') }
-    });
+    const permissionRequests = employeeRequests.filter(r => 
+      r.type === 'permission' && (r.status === 'approved' || r.status === 'rejected')
+    );
+    
+    const lunchDelayRequests = employeeRequests.filter(r => r.type === 'lunch_delay');
+
+    const approvedLeaves = employeeRequests.filter(req => req.type === 'leave' && req.status === 'approved');
+
 
     let totalLOPDays = 0;
     let singleLopDays = 0;
     let usedCasualLeaves = 0;
     let casualLeaveTaken = 0;
     let totalPermissionMinutes = 0;
-    let presentDays = 0;
+    let paidDays = 0;
     let absentDays = 0;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     const days = eachDayOfInterval({ start, end });
     
     days.forEach(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
+      if (dateStr > todayStr && end > new Date()) return;
+      
       const attendance = attendanceRecords.find(a => a.date === dateStr);
       const isCoLeave = companyLeaves.find(cl => cl.date === dateStr);
       const isSun = isSunday(day);
 
-      if (isSun || isCoLeave) {
-        presentDays++;
-        return;
-      }
+      let isPaid = false;
 
-      if (attendance && attendance.checkIn?.time) {
-        presentDays++;
-        totalPermissionMinutes += (attendance.checkIn.permissionMinutes || 0);
+      if (isSun || isCoLeave) {
+        isPaid = true;
+      } else if (attendance && attendance.checkIn?.time) {
+        isPaid = true;
+        let dayPermissionMinutes = (attendance.checkIn.permissionMinutes || 0);
+
+        // If a lunch delay was approved, subtract it from the day's total 
+        const lunchReq = lunchDelayRequests.find(r => r.date === dateStr && r.status === 'approved');
+        if (lunchReq) {
+          dayPermissionMinutes = Math.max(0, dayPermissionMinutes - (lunchReq.duration || 0));
+        }
+        
+        totalPermissionMinutes += dayPermissionMinutes;
       } else {
         const leaveReq = approvedLeaves.find(l => l.date === dateStr);
         if (leaveReq) {
           if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
             usedCasualLeaves++;
             casualLeaveTaken++;
+            isPaid = true;
           } else {
             singleLopDays++;
             totalLOPDays += 1;
           }
         } else {
-          if (new Date(dateStr) < new Date()) {
+          if (dateStr < todayStr) {
              absentDays++;
-             if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
-               usedCasualLeaves++;
-               casualLeaveTaken++;
+             if (isMonday(day) || isSaturday(day)) {
+               totalLOPDays += 2;
              } else {
-               singleLopDays++;
                totalLOPDays += 1;
              }
+             singleLopDays++;
           }
         }
       }
+
+      if (isPaid) paidDays++;
     });
 
-    approvedPermissions.forEach(p => {
+    permissionRequests.forEach(p => {
       totalPermissionMinutes += (p.duration || 0);
     });
 
     const totalPermissionHours = totalPermissionMinutes / 60;
+    let permissionLopDays = 0;
     if (totalPermissionHours > globalSettings.permissionTier2Limit) {
-      totalLOPDays += globalSettings.permissionTier2Deduction;
+      permissionLopDays = globalSettings.permissionTier2Deduction;
     } else if (totalPermissionHours > globalSettings.permissionTier1Limit) {
-      totalLOPDays += globalSettings.permissionTier1Deduction;
+      permissionLopDays = globalSettings.permissionTier1Deduction;
     }
+    totalLOPDays += permissionLopDays;
 
-    const netSalary = dailyRate * Math.max(0, (daysInRangeCount - totalLOPDays));
+    const netSalary = dailyRate * Math.max(0, (paidDays - permissionLopDays));
+
+
+
 
     res.json({
       employee: {
@@ -381,7 +425,7 @@ exports.generateIndividualSalary = async (req, res) => {
       },
       salaryDetails: {
         totalDays: daysInRangeCount,
-        presentDays,
+        presentDays: paidDays,
         singleLopDays,
         casualLeaveTaken,
         totalAbsentDays: absentDays,

@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Request = require('../models/Request');
 const CompanyLeave = require('../models/CompanyLeave');
 const Settings = require('../models/Settings');
+const Schedule = require('../models/Schedule');
 const { format, parse, startOfDay, addMinutes, startOfMonth, endOfMonth, eachDayOfInterval, isSunday, isSaturday, isSameDay } = require('date-fns');
 
 // @desc    Mark attendance (WFH/WFO)
@@ -18,14 +19,29 @@ exports.checkIn = async (req, res) => {
 
     if (attendance) return res.status(400).json({ msg: 'Already checked in today' });
 
-    // Login logic: e.g. 9:30 base, 15m grace. 9:46 -> 16m permission.
-    const loginTimeStr = user.timingSettings.loginTime || '09:30';
+    // 1. Get or create today's schedule snapshot
+    let schedule = await Schedule.findOne({ user: req.user.id, date: today });
+    if (!schedule) {
+      schedule = new Schedule({
+        user: req.user.id,
+        date: today,
+        loginTime: user.timingSettings.loginTime || '09:30',
+        logoutTime: user.timingSettings.logoutTime || '18:30',
+        graceTime: user.timingSettings.graceTime || 15,
+        lunchStart: user.timingSettings.lunchStart || '13:30',
+        lunchDuration: user.timingSettings.lunchDuration || 45
+      });
+      await schedule.save();
+    }
+
+    // Use schedule snapshot for calculations
+    const loginTimeStr = schedule.loginTime;
     const loginTimeParts = loginTimeStr.split(':');
     const expectedLoginDate = startOfDay(new Date());
     expectedLoginDate.setHours(parseInt(loginTimeParts[0]), parseInt(loginTimeParts[1]), 0);
 
     const currentTime = new Date();
-    const graceTimeLimit = addMinutes(expectedLoginDate, user.timingSettings.graceTime || 15);
+    const graceTimeLimit = addMinutes(expectedLoginDate, schedule.graceTime);
 
     let permissionMinutes = 0;
     let status = 'on-time';
@@ -120,7 +136,10 @@ exports.lunchIn = async (req, res) => {
     const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', new Date());
     const lunchInTime = parse(now, 'HH:mm', new Date());
     const duration = (lunchInTime - lunchOutTime) / (1000 * 60);
-    const maxDuration = user.timingSettings.lunchDuration || 45;
+
+    // Get schedule snapshot
+    const schedule = await Schedule.findOne({ user: req.user.id, date: today });
+    const maxDuration = schedule ? schedule.lunchDuration : (user.timingSettings.lunchDuration || 45);
 
     if (duration > maxDuration && !delayReason) {
       return res.status(400).json({ msg: 'Reason is required for lunch delay' });
@@ -170,8 +189,9 @@ exports.checkOut = async (req, res) => {
 
     attendance.checkOut.time = now;
 
-    // Early Logout Logic
-    const lunchStartTimeStr = user.timingSettings.lunchStart || '13:30';
+    // Early Logout Logic using Schedule Snapshot
+    const schedule = await Schedule.findOne({ user: req.user.id, date: today });
+    const lunchStartTimeStr = schedule ? schedule.lunchStart : (user.timingSettings.lunchStart || '13:30');
     const lunchStartParts = lunchStartTimeStr.split(':');
     const scheduledLunchStart = startOfDay(new Date());
     scheduledLunchStart.setHours(parseInt(lunchStartParts[0]), parseInt(lunchStartParts[1]), 0);
@@ -290,8 +310,29 @@ exports.getTodayAttendance = async (req, res) => {
 // @desc    Get all attendance logs for an employee
 exports.getAllLogs = async (req, res) => {
   try {
+    const user = await User.findById(req.user.id);
     const logs = await Attendance.find({ user: req.user.id }).sort({ date: -1 }).limit(30);
-    res.json(logs);
+    
+    // Fetch schedules for these dates
+    const dates = logs.map(l => l.date);
+    const schedules = await Schedule.find({ user: req.user.id, date: { $in: dates } });
+
+    const combined = logs.map(log => {
+      const snapshot = schedules.find(s => s.date === log.date);
+      const schedule = {
+        loginTime: snapshot?.loginTime || user.timingSettings?.loginTime || '09:30',
+        logoutTime: snapshot?.logoutTime || user.timingSettings?.logoutTime || '18:30',
+        graceTime: snapshot?.graceTime || user.timingSettings?.graceTime || 15,
+        lunchDuration: snapshot?.lunchDuration || user.timingSettings?.lunchDuration || 45
+      };
+
+      return {
+        ...log.toObject(),
+        schedule
+      };
+    });
+
+    res.json(combined);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -302,35 +343,8 @@ exports.getAllLogs = async (req, res) => {
 exports.getAllAttendance = async (req, res) => {
   const { date } = req.query;
   try {
-    // 1. Get all employees
-    const employees = await User.find({ role: { $ne: await require('../models/Role').findOne({ name: 'admin' }).then(r => r?._id) } })
-      .select('name employeeId phoneNumber email')
-      .sort({ name: 1 });
-
-    // 2. Get attendance records for the given date
-    const attendanceRecords = await Attendance.find({ date })
-      .populate('user', 'name employeeId phoneNumber email');
-
-    // 3. Map employees to their attendance records (or create empty structure)
-    const combinedData = employees.map(emp => {
-      const record = attendanceRecords.find(a => a.user && a.user._id.toString() === emp._id.toString());
-      if (record) {
-        return record;
-      }
-      
-      // Return a skeleton record for employees who haven't logged in
-      return {
-        _id: `temp-${emp._id}`,
-        user: emp,
-        date,
-        checkIn: { time: '', mode: '', status: 'Absent', permissionMinutes: 0 },
-        checkOut: { time: '' },
-        lunch: { out: '', in: '' },
-        isHoliday: false,
-        totalWorkingMinutes: 0
-      };
-    });
-
+    const AttendanceService = require('../services/AttendanceService');
+    const combinedData = await AttendanceService.getAllAttendance(date);
     res.json(combinedData);
   } catch (err) {
     console.error(err.message);
@@ -347,6 +361,41 @@ exports.emergencyAttendance = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: 'User not found' });
 
+    // 1. Get or create today's schedule snapshot for the target date
+    let schedule = await Schedule.findOne({ user: userId, date });
+    if (!schedule) {
+      schedule = new Schedule({
+        user: userId,
+        date,
+        loginTime: user.timingSettings?.loginTime || '09:30',
+        logoutTime: user.timingSettings?.logoutTime || '18:30',
+        graceTime: user.timingSettings?.graceTime || 15,
+        lunchDuration: user.timingSettings?.lunchDuration || 45
+      });
+      await schedule.save();
+    }
+
+    // Calculate status based on snapshot
+    let calculatedStatus = 'on-time';
+    let permissionMinutes = 0;
+
+    if (checkInTime) {
+      const loginTimeStr = schedule.loginTime || '09:30';
+      const loginTimeParts = loginTimeStr.split(':');
+      const expectedLoginDate = new Date(date); // Just parse the date part
+      expectedLoginDate.setHours(parseInt(loginTimeParts[0]), parseInt(loginTimeParts[1]), 0);
+      
+      const graceMinutes = schedule.graceTime || 15;
+      const actualCheckIn = parse(`${date} ${checkInTime}`, 'yyyy-MM-dd HH:mm', new Date());
+
+      if (actualCheckIn > addMinutes(expectedLoginDate, graceMinutes)) {
+        calculatedStatus = 'late';
+        permissionMinutes = Math.max(0, Math.ceil((actualCheckIn - expectedLoginDate) / (1000 * 60)));
+      }
+    } else {
+      calculatedStatus = 'absent';
+    }
+
     let attendance = await Attendance.findOne({ user: userId, date });
 
     if (!attendance) {
@@ -354,18 +403,17 @@ exports.emergencyAttendance = async (req, res) => {
         user: userId,
         date,
         checkIn: {
-          time: checkInTime,
+          time: checkInTime || '',
           mode: mode || 'WFO',
-          status: status || 'on-time',
-          permissionMinutes: 0
+          status: calculatedStatus,
+          permissionMinutes: permissionMinutes || 0
         }
       });
     } else {
-      if (checkInTime) {
-        attendance.checkIn.time = checkInTime;
-        if (mode) attendance.checkIn.mode = mode;
-        if (status) attendance.checkIn.status = status;
-      }
+      if (checkInTime) attendance.checkIn.time = checkInTime;
+      if (mode) attendance.checkIn.mode = mode;
+      attendance.checkIn.status = calculatedStatus;
+      attendance.checkIn.permissionMinutes = permissionMinutes;
     }
 
     if (checkOutTime) {

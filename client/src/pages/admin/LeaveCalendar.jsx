@@ -27,7 +27,7 @@ const LeaveCalendar = () => {
 
   const fetchLeaves = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/company-leaves`, {
         headers: { 'x-auth-token': token }
       });
@@ -48,7 +48,7 @@ const LeaveCalendar = () => {
     e.preventDefault();
     setAdding(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/company-leaves`, formData, {
         headers: { 'x-auth-token': token }
       });
@@ -72,7 +72,7 @@ const LeaveCalendar = () => {
   const handleDeleteLeave = async (id) => {
     if (!window.confirm('Are you sure you want to remove this company leave? Attendance records will be reverted.')) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/company-leaves/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -91,52 +91,57 @@ const LeaveCalendar = () => {
   };
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700">
+    <div className="p-6 md:p-10 space-y-10 animate-in fade-in duration-700 bg-background min-h-full">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">Company Leave Calendar</h1>
-          <p className="text-slate-600 font-medium">Manage holidays and company-wide leave days with precision</p>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-2 bg-[#fffe01] rounded-full"></div>
+            <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-gray-900">
+              Leave <span className="text-[#d30614]">Calendar</span>
+            </h1>
+          </div>
+          <p className="text-gray-500 text-lg font-normal">Manage and track <span className="text-[#d30614] font-medium">employee availability</span> across the organization.</p>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Add Leave Form */}
-        <Card className="bg-white border-slate-200 shadow-xl shadow-slate-200/50 h-fit sticky top-28 rounded-[2rem] overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-            <CardTitle className="text-xl flex items-center gap-2 text-slate-900 font-bold">
-              <Plus className="w-5 h-5 text-indigo-600" />
+        <Card className="bg-white border border-gray-200 shadow-sm h-fit sticky top-28 rounded-2xl overflow-hidden">
+          <CardHeader className="bg-gray-50 border-b border-gray-100">
+            <CardTitle className="text-xl flex items-center gap-2 text-gray-900 font-medium">
+              <Plus className="w-5 h-5 text-black" />
               Add Company Leave
             </CardTitle>
-            <CardDescription className="text-slate-600 font-medium">Mark a day as leave for all employees</CardDescription>
+            <CardDescription className="text-gray-500 font-normal">Mark a day as leave for all employees</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleAddLeave} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="date" className="text-slate-700 font-bold text-sm ml-1 uppercase tracking-wider">Target Date</Label>
+                <Label htmlFor="date" className="text-gray-600 font-medium text-sm ml-1 uppercase tracking-wider">Target Date</Label>
                 <Input
                   id="date"
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   required
-                  className="bg-white border-2 border-slate-100 h-12 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 text-slate-900 font-semibold transition-all"
+                  className="bg-gray-50 border border-gray-200 h-12 rounded-xl focus:border-black focus:ring-1 focus:ring-black text-gray-900 font-normal transition-all"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="reason" className="text-slate-700 font-bold text-sm ml-1 uppercase tracking-wider">Leave Description</Label>
+                <Label htmlFor="reason" className="text-gray-600 font-medium text-sm ml-1 uppercase tracking-wider">Leave Description</Label>
                 <Input
                   id="reason"
                   placeholder="e.g. Holi, Diwali, Annual Trip"
                   value={formData.reason}
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                   required
-                  className="bg-white border-2 border-slate-100 h-12 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 text-slate-900 font-semibold transition-all placeholder:text-slate-400"
+                  className="bg-gray-50 border border-gray-200 h-12 rounded-xl focus:border-black focus:ring-1 focus:ring-black text-gray-900 font-normal transition-all placeholder:text-gray-300"
                 />
               </div>
               <Button 
                 type="submit" 
                 disabled={adding}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-7 rounded-2xl shadow-xl shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full bg-[#fffe01] hover:bg-yellow-400 text-black font-medium py-7 rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 {adding ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CalendarIcon className="w-5 h-5 mr-2" />}
                 ADD TO CALENDAR
@@ -146,53 +151,53 @@ const LeaveCalendar = () => {
         </Card>
 
         {/* Leaves List */}
-        <Card className="lg:col-span-2 bg-white border-slate-200 shadow-xl shadow-slate-200/50 rounded-[2.5rem] overflow-hidden min-h-[400px]">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-            <CardTitle className="text-xl text-slate-900 font-bold">Active & Upcoming Leaves</CardTitle>
-            <CardDescription className="text-slate-600 font-medium font-serif italic">Complete history of company-marked leave days</CardDescription>
+        <Card className="lg:col-span-2 bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden min-h-[400px]">
+          <CardHeader className="bg-gray-50 border-b border-gray-100">
+            <CardTitle className="text-xl text-gray-900 font-medium">Active & Upcoming Leaves</CardTitle>
+            <CardDescription className="text-gray-500 font-normal">Complete history of company-marked leave days</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
-              <div className="flex flex-col items-center justify-center h-80 text-slate-400">
-                <Loader2 className="w-10 h-10 animate-spin mb-4 text-indigo-600" />
-                <p className="font-bold uppercase tracking-[0.2em] text-xs">Fetching records...</p>
+              <div className="flex flex-col items-center justify-center h-80 text-gray-400">
+                <Loader2 className="w-10 h-10 animate-spin mb-4 text-black" />
+                <p className="font-normal uppercase tracking-[0.2em] text-xs">Fetching records...</p>
               </div>
             ) : leaves.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-80 text-slate-300 p-12 text-center">
-                <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-6">
-                  <CalendarIcon className="w-10 h-10 text-slate-200" />
+              <div className="flex flex-col items-center justify-center h-80 text-gray-400 p-12 text-center">
+                <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-6">
+                  <CalendarIcon className="w-10 h-10 text-gray-300" />
                 </div>
-                <h3 className="text-slate-900 font-black text-xl mb-2">The calendar is empty</h3>
-                <p className="text-slate-500 font-medium max-w-[280px]">No company-wide leaves have been marked yet. Add one to see it here.</p>
+                <h3 className="text-gray-900 font-medium text-xl mb-2">The calendar is empty</h3>
+                <p className="text-gray-500 font-normal max-w-[280px]">No company-wide leaves have been marked yet. Add one to see it here.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-slate-50/50">
-                    <TableRow className="border-slate-100">
-                      <TableHead className="text-slate-900 font-black text-xs uppercase tracking-widest px-8 py-5">Date</TableHead>
-                      <TableHead className="text-slate-900 font-black text-xs uppercase tracking-widest">Reason / Occasion</TableHead>
-                      <TableHead className="text-right text-slate-900 font-black text-xs uppercase tracking-widest px-8">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader className="bg-gray-50">
+                  <TableRow className="border-gray-100">
+                    <TableHead className="text-gray-500 font-medium text-xs uppercase tracking-widest px-8 py-5">Date</TableHead>
+                    <TableHead className="text-gray-500 font-medium text-xs uppercase tracking-widest">Reason / Occasion</TableHead>
+                    <TableHead className="text-right text-gray-500 font-medium text-xs uppercase tracking-widest px-8">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
                   <TableBody>
                     {leaves.map((leave) => (
-                      <TableRow key={leave._id} className="border-slate-50 hover:bg-indigo-50/30 transition-all group">
+                      <TableRow key={leave._id} className="border-gray-100 hover:bg-gray-50/60 transition-all group">
                         <TableCell className="px-8 py-6">
                            <div className="flex flex-col">
-                              <span className="font-black text-slate-900 text-lg tracking-tight">{leave.date}</span>
-                              <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Scheduled Day</span>
+                              <span className="font-normal text-gray-900 text-lg tracking-tight">{leave.date}</span>
+                              <span className="text-[10px] text-black font-medium uppercase tracking-wider">Scheduled Day</span>
                            </div>
                         </TableCell>
                         <TableCell>
-                           <span className="text-slate-700 font-semibold">{leave.reason}</span>
+                           <span className="text-gray-600 font-normal">{leave.reason}</span>
                         </TableCell>
                         <TableCell className="text-right px-8">
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleDeleteLeave(leave._id)}
-                            className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-full h-12 w-12 transition-all group-hover:scale-110 active:scale-95"
+                            className="text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-full h-12 w-12 transition-all group-hover:scale-110 active:scale-95"
                           >
                             <Trash2 className="w-5 h-5" />
                           </Button>
@@ -211,4 +216,3 @@ const LeaveCalendar = () => {
 };
 
 export default LeaveCalendar;
-

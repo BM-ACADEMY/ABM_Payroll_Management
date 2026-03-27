@@ -38,6 +38,10 @@ const SettingsSchema = new mongoose.Schema({
     type: Number, 
     default: 1.0 
   }, // days
+  taskTimeLimit: {
+    type: Number,
+    default: 8 // default 8 hours
+  },
   updatedAt: { 
     type: Date, 
     default: Date.now 

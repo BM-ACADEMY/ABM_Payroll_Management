@@ -1,12 +1,16 @@
-import { LayoutDashboard, Users, UserCheck, CreditCard, Settings, FileText, Calendar } from "lucide-react";
+import { LayoutGrid, Users2, CalendarCheck2, Banknote, Settings2, ShieldCheck, CalendarDays, MessageSquareWarning, Users, Trophy, Kanban, Timer } from "lucide-react";
 
 export const adminMenuItem = [
-  { name: 'Overview', path: '/admin', icon: LayoutDashboard },
-  { name: 'Employees', path: '/admin/employees', icon: Users },
-  { name: 'Attendance', path: '/admin/attendance', icon: UserCheck },
-  { name: 'Permissions', path: '/admin/permissions', icon: FileText },
-  { name: 'Leave Calendar', path: '/admin/leave-calendar', icon: Calendar },
-  { name: 'Payroll', path: '/admin/payroll', icon: CreditCard },
-  { name: 'Complaints', path: '/admin/complaints', icon: FileText },
-  { name: 'Settings', path: '/admin/settings', icon: Settings }
+  { name: 'Overview', path: '/admin', icon: LayoutGrid },
+  { name: 'Employees', path: '/admin/employees', icon: Users2 },
+  { name: 'Attendance', path: '/admin/attendance', icon: CalendarCheck2 },
+  { name: 'Permissions', path: '/admin/permissions', icon: ShieldCheck },
+  { name: 'Leave Calendar', path: '/admin/leave-calendar', icon: CalendarDays },
+  { name: 'Payroll', path: '/admin/payroll', icon: Banknote },
+  { name: 'Complaints', path: '/admin/complaints', icon: MessageSquareWarning },
+  { name: 'Teams', path: '/admin/teams', icon: Users },
+  { name: 'Weekly Credits', path: '/admin/weekly-credits', icon: Trophy },
+  { name: 'Workplace', path: '/admin/kanban', icon: Kanban },
+  { name: 'Time Tracker', path: '/admin/time-history', icon: Timer },
+  { name: 'Settings', path: '/admin/settings', icon: Settings2 }
 ];

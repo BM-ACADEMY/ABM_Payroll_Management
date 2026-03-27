@@ -1,10 +1,11 @@
-import { LayoutDashboard, UserCheck, CreditCard, Settings, Calendar } from "lucide-react";
+import { LayoutGrid, CalendarCheck2, Settings2, CalendarDays, ShieldCheck, MessageSquareWarning, Kanban, Timer } from "lucide-react";
 
 export const employeeMenuItem = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Attendance', path: '/dashboard/logs', icon: UserCheck },
-  { name: 'Earnings', path: '/dashboard/earnings', icon: CreditCard },
-  { name: 'Leave Request', path: '/dashboard/leave', icon: Calendar },
-  { name: 'Permissions', path: '/dashboard/permissions', icon: Settings },
-  { name: 'Complaints', path: '/dashboard/complaints', icon: Settings }
+  { name: 'Dashboard', path: '/dashboard', icon: LayoutGrid },
+  { name: 'Attendance', path: '/dashboard/logs', icon: CalendarCheck2 },
+  { name: 'Workplace', path: '/dashboard/kanban', icon: Kanban },
+  { name: 'Time Tracker', path: '/dashboard/time-history', icon: Timer },
+  { name: 'Leave Request', path: '/dashboard/leave', icon: CalendarDays },
+  { name: 'Permissions', path: '/dashboard/permissions', icon: ShieldCheck },
+  { name: 'Complaints', path: '/dashboard/complaints', icon: MessageSquareWarning }
 ];

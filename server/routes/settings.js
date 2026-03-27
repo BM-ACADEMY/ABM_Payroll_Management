@@ -6,8 +6,8 @@ const admin = require('../middleware/isAdmin');
 
 // @route   GET api/settings
 // @desc    Get global settings
-// @access  Private (Admins only for now, though some values might be needed by employees later)
-router.get('/', auth, admin, getSettings);
+// @access  Private (Authenticated users)
+router.get('/', auth, getSettings);
 
 // @route   POST api/settings
 // @desc    Update global settings

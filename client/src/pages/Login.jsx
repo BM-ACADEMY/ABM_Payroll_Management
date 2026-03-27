@@ -38,7 +38,7 @@ const Login = ({ setUser }) => {
         password
       });
 
-      localStorage.setItem('token', res.data.token);
+      sessionStorage.setItem('token', res.data.token);
       const authenticatedUser = res.data.user;
       setUser(authenticatedUser);
       navigate(authenticatedUser.role.name === 'admin' ? '/admin' : '/dashboard');
@@ -109,7 +109,7 @@ const Login = ({ setUser }) => {
             </Button>
             <div className="text-center text-sm text-gray-500">
               Don't have an account? {' '}
-              <Link to="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline underline-offset-4 transition-colors">
+              <Link to="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
                 Sign up
               </Link>
             </div>

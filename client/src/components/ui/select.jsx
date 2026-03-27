@@ -60,7 +60,7 @@ const SelectItem = React.forwardRef(({ className, children, value: itemValue, ..
     <div
       ref={ref}
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer text-slate-900 font-medium",
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer text-gray-900 font-normal",
         className
       )}
       onClick={() => {

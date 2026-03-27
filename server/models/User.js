@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema({
   isEmailVerified: { type: Boolean, default: false },
   otp: { type: String },
   otpExpires: { type: Date },
+  teams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

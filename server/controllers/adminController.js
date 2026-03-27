@@ -1,9 +1,12 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
+const Attendance = require('../models/Attendance');
+const Request = require('../models/Request');
+const { format } = require('date-fns');
 
 // @desc    Add new employee
 exports.addEmployee = async (req, res) => {
-  const { employeeId, name, email, phoneNumber, password, baseSalary, timingSettings } = req.body;
+  const { employeeId, name, email, phoneNumber, password, baseSalary, timingSettings, teams } = req.body;
   try {
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ msg: 'User already exists' });
@@ -27,6 +30,7 @@ exports.addEmployee = async (req, res) => {
       employeeId, 
       baseSalary: baseSalary || 0,
       timingSettings: timingSettings || undefined,
+      teams: teams || [],
       isEmailVerified: true // Admin-created employees are instantly verified
     });
     
@@ -34,6 +38,7 @@ exports.addEmployee = async (req, res) => {
     
     // Return populated user 
     await user.populate('role', 'name');
+    await user.populate('teams', 'name questions');
     
     res.json(user);
   } catch (err) {
@@ -44,15 +49,28 @@ exports.addEmployee = async (req, res) => {
 
 // @desc    Get all employees
 exports.getEmployees = async (req, res) => {
+  const { limit, fields } = req.query;
   try {
     const employeeRole = await Role.findOne({ name: 'employee' });
     if (!employeeRole) return res.status(500).json({ msg: 'Employee role not found' });
 
-    const employees = await User.find({ role: employeeRole._id })
-      .select('-password -otp -otpExpires')
-      .populate('role', 'name permissions')
+    let query = User.find({ role: employeeRole._id });
+    
+    if (fields) {
+      query = query.select(fields.split(',').join(' '));
+    } else {
+      query = query.select('-password -otp -otpExpires');
+    }
+
+    query = query.populate('role', 'name permissions')
+      .populate('teams', 'name questions')
       .sort({ createdAt: -1 });
 
+    if (limit) {
+      query = query.limit(parseInt(limit));
+    }
+
+    const employees = await query;
     res.json(employees);
   } catch (err) {
     console.error(err.message);
@@ -62,7 +80,7 @@ exports.getEmployees = async (req, res) => {
 
 // @desc    Update employee details
 exports.updateEmployee = async (req, res) => {
-  const { employeeId, name, email, phoneNumber, baseSalary, password, timingSettings } = req.body;
+  const { employeeId, name, email, phoneNumber, baseSalary, password, timingSettings, teams } = req.body;
   
   try {
     let user = await User.findById(req.params.id);
@@ -87,6 +105,8 @@ exports.updateEmployee = async (req, res) => {
       };
     }
 
+    if (teams) user.teams = teams;
+
     if (password) {
       const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{7,}$/;
       if (!passwordRegex.test(password)) {
@@ -99,6 +119,7 @@ exports.updateEmployee = async (req, res) => {
     
     // Return updated populated user
     await user.populate('role', 'name');
+    await user.populate('teams', 'name questions');
     
     res.json(user);
   } catch (err) {
@@ -115,6 +136,17 @@ exports.deleteEmployee = async (req, res) => {
 
     await User.findByIdAndDelete(req.params.id);
     res.json({ msg: 'Employee removed' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+// @desc    Get dashboard statistics
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const AdminService = require('../services/AdminService');
+    const statsData = await AdminService.getDashboardStats();
+    res.json(statsData);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

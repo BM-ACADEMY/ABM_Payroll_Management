@@ -135,13 +135,13 @@ const ResetPassword = () => {
                   type="button" 
                   onClick={handleResend}
                   disabled={resendLoading}
-                  className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline underline-offset-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {resendLoading ? 'Sending...' : 'Click to resend'}
                 </button>
               </div>
               <div className="text-center text-sm text-gray-500">
-                <Link to="/login" className="text-indigo-600 hover:text-indigo-700 font-medium hover:underline underline-offset-4 transition-colors">
+                <Link to="/login" className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
                   Cancel and back to sign in
                 </Link>
               </div>
