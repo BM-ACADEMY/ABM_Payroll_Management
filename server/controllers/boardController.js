@@ -45,9 +45,12 @@ exports.getBoardById = async (req, res) => {
     if (!board) return res.status(404).json({ msg: 'Board not found' });
 
     // Ensure only members or admins can view
-    const isMember = board.members.some(m => m._id.toString() === req.user.id);
-    const isAdmin = req.user.role?.name === 'admin';
-    if (!isMember && !isAdmin) {
+    const isMember = board.members.some(m => (m._id || m).toString() === req.user.id);
+    const isBoardAdmin = board.admins?.some(a => (a._id || a).toString() === req.user.id);
+    const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
+                    req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
+    
+    if (!isMember && !isBoardAdmin && !isAdmin) {
       return res.status(403).json({ msg: 'Not authorized to view this board' });
     }
 
