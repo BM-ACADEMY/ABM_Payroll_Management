@@ -47,9 +47,6 @@ exports.checkIn = async (req, res) => {
     let status = 'on-time';
 
     if (currentTime > graceTimeLimit) {
-      if (!lateReason) {
-        return res.status(400).json({ msg: 'Reason is required for late check-in' });
-      }
       status = 'late';
       // Calculate from the exact expected login time to now
       permissionMinutes = (currentTime - expectedLoginDate) / (1000 * 60);
@@ -71,7 +68,7 @@ exports.checkIn = async (req, res) => {
         toDateTime,
         duration: totalMinutes,
         totalPermissionTime,
-        reason: lateReason,
+        reason: lateReason || 'Late Login',
         status: 'pending'
       });
       await newRequest.save();
@@ -141,16 +138,21 @@ exports.lunchIn = async (req, res) => {
     const schedule = await Schedule.findOne({ user: req.user.id, date: today });
     const maxDuration = schedule ? schedule.lunchDuration : (user.timingSettings.lunchDuration || 45);
 
-    if (duration > maxDuration && !delayReason) {
-      return res.status(400).json({ msg: 'Reason is required for lunch delay' });
+    // Special Lunch Rule: Logout > 14:00 AND Login > 14:30 requires reason
+    const lunchLimitOut = parse('14:00', 'HH:mm', new Date());
+    const lunchLimitIn = parse('14:30', 'HH:mm', new Date());
+    const isSpecialReasonRequired = lunchOutTime > lunchLimitOut && lunchInTime > lunchLimitIn;
+
+    if (isSpecialReasonRequired && !delayReason) {
+      return res.status(400).json({ msg: 'Reason is required for late lunch (Logout > 2:00 PM and Login > 2:30 PM)' });
     }
 
     attendance.lunch.in = now;
 
-    if (duration > maxDuration || delayReason) {
+    if (duration > maxDuration || isSpecialReasonRequired) {
       const extraMinutes = Math.max(0, Math.ceil(duration - maxDuration));
       
-      // Create permission request for lunch delay
+      // Create request for lunch delay
       const newRequest = new Request({
         user: req.user.id,
         type: 'lunch_delay',
@@ -164,7 +166,11 @@ exports.lunchIn = async (req, res) => {
       });
       await newRequest.save();
       
-      attendance.checkIn.permissionMinutes = (attendance.checkIn.permissionMinutes || 0) + extraMinutes;
+      // If it's the special case, we'll wait for admin approval before deducting.
+      // If NOT special case (just long lunch), deduct immediately as permission.
+      if (!isSpecialReasonRequired && extraMinutes > 0) {
+          attendance.checkIn.permissionMinutes = (attendance.checkIn.permissionMinutes || 0) + extraMinutes;
+      }
     }
 
     await attendance.save();
@@ -198,10 +204,6 @@ exports.checkOut = async (req, res) => {
 
     const currentTime = new Date();
 
-    if (currentTime < scheduledLunchStart && !reason) {
-      return res.status(400).json({ msg: 'Reason is required for early logout' });
-    }
-
     if (currentTime < scheduledLunchStart) {
       // Logout before lunch: Permission (now to lunchStart) + Half-day leave
       const diffInMs = scheduledLunchStart - currentTime;
@@ -216,7 +218,7 @@ exports.checkOut = async (req, res) => {
         toDateTime: scheduledLunchStart,
         duration: permissionMins,
         totalPermissionTime: `${Math.floor(permissionMins/60).toString().padStart(2, '0')}:${(permissionMins%60).toString().padStart(2, '0')} hrs`,
-        reason: reason || 'Early Logout (Before Lunch)',
+        reason: reason || 'Early Logout',
         status: 'pending'
       });
       await permRequest.save();
@@ -228,8 +230,7 @@ exports.checkOut = async (req, res) => {
         date: today,
         duration: 0.5,
         reason: reason || 'Early Logout (Second Half)',
-        status: 'approved' // Automatically approved as per logic? Or pending?
-        // User said: "second half should be added as half day leave."
+        status: 'approved'
       });
       await leaveRequest.save();
 
@@ -341,10 +342,10 @@ exports.getAllLogs = async (req, res) => {
 
 // @desc    Get all attendance records for a specific date (Admin)
 exports.getAllAttendance = async (req, res) => {
-  const { date } = req.query;
+  const { date, page = 1, limit = 5 } = req.query;
   try {
     const AttendanceService = require('../services/AttendanceService');
-    const combinedData = await AttendanceService.getAllAttendance(date);
+    const combinedData = await AttendanceService.getAllAttendance(date, page, limit);
     res.json(combinedData);
   } catch (err) {
     console.error(err.message);

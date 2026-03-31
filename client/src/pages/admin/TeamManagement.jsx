@@ -10,11 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Users, Plus, Trash2, Edit, PlusCircle, AlertCircle, CheckCircle2, UserPlus, Search, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const TeamManagement = () => {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -36,14 +38,15 @@ const TeamManagement = () => {
 
   const [formLoading, setFormLoading] = useState(false);
 
-  const fetchTeams = async () => {
+  const fetchTeams = async (page = 1) => {
+    setLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
-      setTeams(res.data);
-      setLoading(false);
+      setTeams(res.data.teams);
+      setPagination(res.data.pagination);
     } catch (err) {
       console.error(err);
       toast({
@@ -51,12 +54,17 @@ const TeamManagement = () => {
         title: "Error",
         description: "Failed to fetch teams",
       });
+    } finally {
       setLoading(false);
     }
   };
 
+  const handlePageChange = (page) => {
+    fetchTeams(page);
+  };
+
   useEffect(() => {
-    fetchTeams();
+    fetchTeams(1);
   }, []);
 
   const handleAddQuestion = () => {
@@ -124,11 +132,13 @@ const TeamManagement = () => {
     setMembersLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      // Fetch all employees
-      const empRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees`, {
+      // Fetch all employees (using a large limit for selection dropdown)
+      const empRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?limit=1000`, {
         headers: { 'x-auth-token': token }
       });
-      setAllEmployees(empRes.data);
+      // Handle both { employees: [...] } and [...] formats
+      const employeesData = empRes.data.employees || (Array.isArray(empRes.data) ? empRes.data : []);
+      setAllEmployees(employeesData);
       
       // Fetch current members
       const memRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams/${team._id}/members`, {
@@ -311,7 +321,8 @@ const TeamManagement = () => {
             <p className="text-gray-500 mt-2">Create your first team to start evaluating performance</p>
           </div>
         ) : (
-          teams.map((team) => (
+          <>
+            {teams.map((team) => (
             <Card key={team._id} className="bg-white border-zinc-200 shadow-sm hover:shadow-md transition-shadow rounded-3xl overflow-hidden group">
               <CardHeader className="pb-4">
                 <div className="flex justify-between items-start">
@@ -353,7 +364,11 @@ const TeamManagement = () => {
                 </div>
               </CardContent>
             </Card>
-          ))
+          ))}
+          <div className="col-span-full flex justify-center pt-8">
+            <PaginationControl pagination={pagination} onPageChange={handlePageChange} />
+          </div>
+        </>
         )}
       </div>
 

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, memo } from 'react';
 import axios from 'axios';
-import { Clock, UserPlus, MoreHorizontal, Check, ChevronDown, ChevronRight, X, Plus, AlignLeft } from 'lucide-react';
+import { Clock, UserPlus, MoreHorizontal, Check, ChevronDown, ChevronRight, X, Plus, AlignLeft, Layout } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
-const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompletion, isChecklist = false }) => {
+const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onToggleCompletion, isChecklist = false, onRefresh, currentBoardId }) => {
   const [fullTask, setFullTask] = useState(task);
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState([]);
@@ -13,6 +16,12 @@ const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompl
   const [isAssignPickerOpen, setIsAssignPickerOpen] = useState(false);
   const [isItemDatePickerOpen, setIsItemDatePickerOpen] = useState(false);
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [boards, setBoards] = useState([]);
+  const [targetLists, setTargetLists] = useState([]);
+  const [selectedBoardId, setSelectedBoardId] = useState('');
+  const [selectedListId, setSelectedListId] = useState('');
+  const { toast } = useToast();
 
   const assignPickerRef = React.useRef(null);
   const datePickerRef = React.useRef(null);
@@ -50,6 +59,147 @@ const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompl
     } catch(err) {} 
     setLoading(false);
   }
+
+  const fetchBoards = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      // Use the teamId passed from boardData
+      const effectiveTeamId = teamId || sessionStorage.getItem('teamId');
+      
+      if (!effectiveTeamId) {
+        console.warn('No teamId available for fetching boards');
+        return;
+      }
+
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/team/${effectiveTeamId}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setBoards(res.data);
+      // Default to current board if found
+      const currentBoardId = task.board?._id || task.board;
+      if (res.data.find(b => b._id === currentBoardId)) {
+        setSelectedBoardId(currentBoardId);
+        fetchLists(currentBoardId);
+      }
+    } catch(err) {}
+  };
+
+  const fetchLists = async (boardId) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${boardId}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setTargetLists(res.data.lists);
+      if (res.data.lists.length > 0) setSelectedListId(res.data.lists[0]._id);
+    } catch(err) {}
+  };
+
+  const handleConvert = async () => {
+    if (!selectedListId) {
+      toast({ variant: "destructive", title: "Error", description: "Please select a destination list" });
+      return;
+    }
+    
+    try {
+      const token = sessionStorage.getItem('token');
+      
+      // Determine origin IDs
+      const originTaskId = isChecklist ? null : task._id;
+      const originChecklistItemId = isChecklist ? task._id : null;
+
+      // Map assignees correctly for both subtasks and checklist items
+      const initialAssignees = isChecklist 
+        ? (task.assignedTo ? [task.assignedTo._id || task.assignedTo] : [])
+        : (task.assignees?.map(a => a._id || a) || []);
+
+      const payload = {
+        title: task.title || task.text,
+        description: task.description || (isChecklist ? `Converted from checklist item: ${task.text}` : `Converted from subtask: ${task.title}`),
+        listId: selectedListId,
+        boardId: selectedBoardId,
+        position: 0,
+        deadline: task.dueDate || task.deadline || null,
+        assignees: initialAssignees,
+        originTaskId,
+        originChecklistItemId
+      };
+      
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      toast({ 
+        title: "Success", 
+        description: `Successfully converted "${task.title || task.text}" to a card.` 
+      });
+      
+      // Auto-refresh if on the same board
+      if (selectedBoardId === currentBoardId && onRefresh) {
+         onRefresh();
+      }
+      
+      setIsConvertModalOpen(false);
+      // The status sync will handle updates across boards via sockets
+    } catch (err) {
+      console.error('Conversion error:', err);
+      toast({ variant: "destructive", title: "Error", description: "Failed to convert to card" });
+    }
+  };
+
+  const handleQuickWeeklyConvert = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      // 1. Get the Weekly Board (will auto-create if missing)
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/weekly`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const weeklyBoard = res.data;
+      if (!weeklyBoard) throw new Error('Could not find weekly board');
+      
+      // 2. Refresh the board/list IDs
+      const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${weeklyBoard._id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const listId = listsRes.data.lists?.[0]?._id;
+      if (!listId) {
+        toast({ variant: "destructive", title: "Error", description: "Weekly board has no columns" });
+        return;
+      }
+      
+      // 3. Perform conversion
+      const originTaskId = isChecklist ? null : task._id;
+      const originChecklistItemId = isChecklist ? task._id : null;
+      const initialAssignees = isChecklist 
+        ? (task.assignedTo ? [task.assignedTo._id || task.assignedTo] : [])
+        : (task.assignees?.map(a => a._id || a) || []);
+
+      const payload = {
+        title: task.title || task.text,
+        description: task.description || (isChecklist ? `Converted from checklist item: ${task.text}` : `Converted from subtask: ${task.title}`),
+        listId: listId,
+        boardId: weeklyBoard._id,
+        position: 0,
+        deadline: task.dueDate || task.deadline || null,
+        assignees: initialAssignees,
+        originTaskId,
+        originChecklistItemId
+      };
+      
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      toast({ title: "Success", description: `Sent to Weekly Board.` });
+      if (onRefresh && weeklyBoard._id === currentBoardId) onRefresh();
+      setIsConvertModalOpen(false);
+    } catch (err) {
+      console.error('Quick Convert Error:', err);
+      toast({ variant: "destructive", title: "Error", description: "Failed to send to weekly board" });
+    }
+  };
 
   const handleAddChild = async (title) => {
     await onAddSubTask(task._id, title);
@@ -144,19 +294,23 @@ const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompl
                        <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsAssignPickerOpen(false)} />
                     </div>
                     <div className="max-h-[220px] overflow-y-auto space-y-1 custom-scrollbar pr-1">
-                       {boardMembers?.map(m => (
-                          <div 
-                            key={m._id} 
-                            onClick={() => { onUpdate(task._id, { assignedTo: m._id }); setIsAssignPickerOpen(false); }}
-                            className={`flex items-center justify-between p-2 hover:bg-zinc-100 rounded-lg cursor-pointer group/member transition-all ${displayedAssignees.some(a=>a._id === m._id) ? 'bg-blue-50 border border-blue-100' : 'border border-transparent'}`}
-                          >
-                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-black shadow-sm group-hover/member:scale-110 transition-transform">{m.name.split(' ').map(n=>n[0]).join('')}</div>
-                                <span className="text-[13px] font-bold text-zinc-800">{m.name}</span>
+                       {Array.isArray(boardMembers) ? (
+                          boardMembers.map(m => (
+                             <div 
+                               key={m._id} 
+                               onClick={() => { onUpdate(task._id, { assignedTo: m._id }); setIsAssignPickerOpen(false); }}
+                               className={`flex items-center justify-between p-2 hover:bg-zinc-100 rounded-lg cursor-pointer group/member transition-all ${displayedAssignees.some(a=>a._id === m._id) ? 'bg-blue-50 border border-blue-100' : 'border border-transparent'}`}
+                             >
+                                <div className="flex items-center gap-3">
+                                   <div className="w-8 h-8 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-black shadow-sm group-hover/member:scale-110 transition-transform">{m.name.split(' ').map(n=>n[0]).join('')}</div>
+                                   <span className="text-[13px] font-bold text-zinc-800">{m.name}</span>
+                                </div>
+                                {displayedAssignees.some(a=>a._id === m._id) && <Check className="w-4 h-4 text-[#0052cc]" />}
                              </div>
-                             {displayedAssignees.some(a=>a._id === m._id) && <Check className="w-4 h-4 text-[#0052cc]" />}
-                          </div>
-                       ))}
+                          ))
+                       ) : (
+                          <div className="text-center py-4 text-xs font-bold text-zinc-400 italic">No members available.</div>
+                       )}
                     </div>
                  </div>
               )}
@@ -175,7 +329,13 @@ const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompl
                     <div className="px-2 py-1.5 mb-1 border-b border-zinc-100">
                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Item actions</span>
                     </div>
-                    <Button variant="ghost" className="w-full justify-start h-9 px-3 text-[13px] font-bold hover:bg-zinc-100 rounded-lg text-zinc-700">Convert to card</Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { setIsActionsMenuOpen(false); fetchBoards(); setIsConvertModalOpen(true); }}
+                      className="w-full justify-start h-9 px-3 text-[13px] font-bold hover:bg-zinc-100 rounded-lg text-zinc-700"
+                    >
+                      Convert to card
+                    </Button>
                     <Button 
                        variant="ghost" 
                        onClick={() => { onUpdate(task._id, { delete: true }); setIsActionsMenuOpen(false); }}
@@ -186,6 +346,76 @@ const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompl
                  </div>
               )}
            </div>
+
+           {/* Conversion Modal */}
+           <Dialog open={isConvertModalOpen} onOpenChange={setIsConvertModalOpen}>
+              <DialogContent className="sm:max-w-[400px]">
+                 <DialogHeader>
+                    <DialogTitle>Convert to Card</DialogTitle>
+                    <DialogDescription>
+                       Choose the destination board and list for the new card.
+                    </DialogDescription>
+                 </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                     <div className="grid gap-2 text-left">
+                        <label className="text-sm font-bold text-zinc-500">Board</label>
+                        <Select 
+                           key={`board-select-${boards.length}`}
+                           value={selectedBoardId} 
+                           onValueChange={(val) => { setSelectedBoardId(val); fetchLists(val); }}
+                        >
+                           <SelectTrigger className="w-full h-12 rounded-xl border-zinc-200 bg-zinc-50">
+                              <SelectValue placeholder="Select a destination board" />
+                           </SelectTrigger>
+                           <SelectContent className="z-[200]">
+                              {Array.isArray(boards) && boards.map(b => (
+                                 <SelectItem key={b._id} value={b._id} className="cursor-pointer">
+                                    <span className="font-medium">{b.title}</span>
+                                 </SelectItem>
+                              ))}
+                           </SelectContent>
+                        </Select>
+                     </div>
+                     <div className="grid gap-2 text-left">
+                        <label className="text-sm font-bold text-zinc-500">List (Column)</label>
+                        <Select 
+                           key={`list-select-${targetLists.length}-${selectedBoardId}`}
+                           value={selectedListId} 
+                           onValueChange={setSelectedListId}
+                           disabled={!selectedBoardId}
+                        >
+                           <SelectTrigger className="w-full h-12 rounded-xl border-zinc-200 bg-zinc-50">
+                              <SelectValue placeholder="Select a column" />
+                           </SelectTrigger>
+                           <SelectContent className="z-[200]">
+                              {Array.isArray(targetLists) && targetLists.map(l => (
+                                 <SelectItem key={l._id} value={l._id} className="cursor-pointer">
+                                    <span className="font-medium">{l.title}</span>
+                                 </SelectItem>
+                              ))}
+                           </SelectContent>
+                        </Select>
+                     </div>
+                  </div>
+                   <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                      <Button variant="ghost" onClick={() => setIsConvertModalOpen(false)} className="font-bold sm:mr-auto">Cancel</Button>
+                      <Button 
+                        variant="outline"
+                        className="bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 font-bold"
+                        onClick={handleQuickWeeklyConvert}
+                      >
+                         Send to Weekly
+                      </Button>
+                      <Button 
+                        className="bg-[#fffe01] text-black hover:bg-yellow-400 font-bold"
+                        onClick={handleConvert} 
+                        disabled={!selectedBoardId || !selectedListId}
+                      >
+                         Convert
+                      </Button>
+                   </DialogFooter>
+              </DialogContent>
+           </Dialog>
         </div>
       </div>
     );
@@ -235,7 +465,7 @@ const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompl
                          <X className="w-3.5 h-3.5 text-zinc-400 cursor-pointer" onClick={()=>setIsAssignPickerOpen(false)} />
                       </div>
                       <div className="max-h-[160px] overflow-y-auto space-y-1 custom-scrollbar">
-                         {boardMembers?.map(m => (
+                         {Array.isArray(boardMembers) && boardMembers.map(m => (
                             <div 
                               key={m._id} 
                               onClick={() => { onUpdate(task._id, { assignees: [m._id] }); setIsAssignPickerOpen(false); }}
@@ -338,6 +568,7 @@ const SubTaskItem = ({ task, boardMembers, onUpdate, onAddSubTask, onToggleCompl
                   {children.map(child => (
                      <SubTaskItem 
                        key={child._id} task={child} boardMembers={boardMembers}
+                       teamId={teamId}
                        onUpdate={onUpdate} onAddSubTask={onAddSubTask}
                        onToggleCompletion={onToggleCompletion}
                      />

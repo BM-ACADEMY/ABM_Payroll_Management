@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Users, UserPlus, Phone, Edit, Trash2, Search, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const Employees = () => {
   const [employees, setEmployees] = useState([]);
@@ -16,6 +17,7 @@ const Employees = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   
   // Add Employee Form State
   const [isOpen, setIsOpen] = useState(false);
@@ -45,13 +47,14 @@ const Employees = () => {
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (page = 1) => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?page=${page}&limit=10&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
-      setEmployees(res.data);
+      setEmployees(res.data.employees);
+      setPagination(res.data.pagination);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -64,22 +67,28 @@ const Employees = () => {
     }
   };
 
+  const handlePageChange = (page) => {
+    fetchEmployees(page);
+  };
+
   const fetchTeams = async () => {
     try {
       const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
         headers: { 'x-auth-token': token }
       });
-      setTeams(res.data);
+      setTeams(res.data.teams);
     } catch (err) {
       console.error(err);
     }
   };
-
   useEffect(() => {
-    fetchEmployees();
     fetchTeams();
   }, []);
+
+  useEffect(() => {
+    fetchEmployees(1);
+  }, [searchTerm]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -464,6 +473,12 @@ const Employees = () => {
             </div>
           )}
         </CardContent>
+        <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+          <PaginationControl 
+            pagination={pagination} 
+            onPageChange={handlePageChange} 
+          />
+        </div>
       </Card>
 
       {/* Edit Employee Dialog */}

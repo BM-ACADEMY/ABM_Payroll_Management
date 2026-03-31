@@ -17,22 +17,28 @@ const {
 // @desc    Get monthly payroll report for all employees (Admin)
 // @route   GET /api/payroll/report
 exports.getMonthlyReport = async (req, res) => {
-  const { startDate, endDate } = req.query; // e.g. 2026-03-01
+  const { startDate, endDate, page = 1, limit = 5 } = req.query; // e.g. 2026-03-01
   
   try {
-    const start = startOfMonth(new Date(startDate));
-    const end = endOfMonth(new Date(endDate || startDate));
-    
-    // If exact dates are provided (not just month-based), use them
     const actualStart = new Date(startDate);
     const actualEnd = new Date(endDate || startDate);
     actualEnd.setHours(23, 59, 59, 999);
 
-    const daysInRangeCount = Math.ceil((actualEnd - actualStart) / (1000 * 60 * 60 * 24));
     const daysInMonthCount = getDaysInMonth(actualStart);
     
-    // Fetch all employees
-    const employees = await User.find({ role: { $ne: null } });
+    // 1. Get total employee count (excluding admin)
+    const employeeRole = await Role.findOne({ name: 'employee' });
+    const query = { role: employeeRole?._id };
+    const totalCount = await User.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+    const skip = (page - 1) * limit;
+
+    // 2. Fetch subset of employees
+    const employees = await User.find(query)
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
     const globalSettings = await Settings.findOne() || new Settings();
     const companyLeaves = await CompanyLeave.find({
       date: { $gte: format(actualStart, 'yyyy-MM-dd'), $lte: format(actualEnd, 'yyyy-MM-dd') }
@@ -55,15 +61,15 @@ exports.getMonthlyReport = async (req, res) => {
         r.type === 'permission' && (r.status === 'approved' || r.status === 'rejected')
       );
       
-      const lunchDelayRequests = employeeRequests.filter(r => r.type === 'lunch_delay');
-
       const approvedLeaves = employeeRequests.filter(req => req.type === 'leave' && req.status === 'approved');
 
       let totalLOPDays = 0;
       let usedCasualLeaves = 0;
-      let totalPermissionMinutes = 0;
       let paidDays = 0;
       let absentDays = 0;
+
+      let totalAcceptedMinutes = 0;
+      let totalRejectedMinutes = 0;
 
       const days = eachDayOfInterval({ start: actualStart, end: actualEnd });
       
@@ -77,21 +83,13 @@ exports.getMonthlyReport = async (req, res) => {
         const isMon = isMonday(day);
         const isSat = isSaturday(day);
 
-        // A day is "paid" if it's a holiday, worked, or has approved leave
         let isPaid = false;
 
         if (isSun || isCoLeave) {
           isPaid = true;
         } else if (attendance && attendance.checkIn?.time) {
           isPaid = true;
-          let dayPermissionMinutes = (attendance.checkIn.permissionMinutes || 0);
-
-          const lunchReq = lunchDelayRequests.find(r => r.date === dateStr && r.status === 'approved');
-          if (lunchReq) {
-            dayPermissionMinutes = Math.max(0, dayPermissionMinutes - (lunchReq.duration || 0));
-          }
-          
-          totalPermissionMinutes += dayPermissionMinutes;
+          totalAcceptedMinutes += (attendance.checkIn.permissionMinutes || 0);
         } else {
           const leaveReq = approvedLeaves.find(l => l.date === dateStr);
           if (leaveReq) {
@@ -119,16 +117,39 @@ exports.getMonthlyReport = async (req, res) => {
       });
 
       permissionRequests.forEach(p => {
-        totalPermissionMinutes += (p.duration || 0);
+        if (p.type === 'lunch_delay') {
+          if (p.status === 'rejected') {
+            totalAcceptedMinutes += (p.duration || 0);
+          }
+        } else if (p.type === 'permission') {
+          if (p.status === 'approved') {
+            totalAcceptedMinutes += (p.duration || 0);
+          } else if (p.status === 'rejected') {
+            totalRejectedMinutes += (p.duration || 0);
+          }
+        } else {
+          totalAcceptedMinutes += (p.duration || 0);
+        }
       });
 
-      const totalPermissionHours = totalPermissionMinutes / 60;
+      const totalAcceptedHours = totalAcceptedMinutes / 60;
+      const totalRejectedHours = totalRejectedMinutes / 60;
+      
       let permissionLopDays = 0;
-      if (totalPermissionHours > globalSettings.permissionTier2Limit) {
-        permissionLopDays = globalSettings.permissionTier2Deduction;
-      } else if (totalPermissionHours > globalSettings.permissionTier1Limit) {
-        permissionLopDays = globalSettings.permissionTier1Deduction;
+      if (totalAcceptedHours > 5) {
+        permissionLopDays += 1.0;
+      } else if (totalAcceptedHours > 3) {
+        permissionLopDays += 0.5;
       }
+
+      if (totalRejectedHours > 0) {
+        if (totalRejectedHours < 3) {
+          permissionLopDays += 0.5;
+        } else {
+          permissionLopDays += 1.0;
+        }
+      }
+      
       totalLOPDays += permissionLopDays;
 
       const dailyRate = (employee.baseSalary || 0) / daysInMonthCount;
@@ -141,13 +162,19 @@ exports.getMonthlyReport = async (req, res) => {
         baseSalary: employee.baseSalary || 0,
         presentDays: paidDays,
         absentDays,
-        totalPermissionHours: totalPermissionHours.toFixed(2),
         totalLOPDays,
         netSalary: Math.round(netSalary * 100) / 100
       };
     }));
 
-    res.json(report);
+    res.json({
+      report,
+      pagination: {
+        total: totalCount,
+        pages: totalPages,
+        currentPage: parseInt(page)
+      }
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -190,9 +217,8 @@ exports.getMySummary = async (req, res) => {
     const approvedLeaves = employeeRequests.filter(req => req.type === 'leave' && req.status === 'approved');
 
 
-    let totalLOPDays = 0;
-    let usedCasualLeaves = 0;
-    let totalPermissionMinutes = 0;
+    let totalAcceptedMinutes = 0;
+    let totalRejectedMinutes = 0;
     let paidDays = 0;
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -211,15 +237,7 @@ exports.getMySummary = async (req, res) => {
         isPaid = true;
       } else if (attendance && attendance.checkIn?.time) {
         isPaid = true;
-        let dayPermissionMinutes = (attendance.checkIn.permissionMinutes || 0);
-
-        // If a lunch delay was approved, subtract it from the day's total 
-        const lunchReq = lunchDelayRequests.find(r => r.date === dateStr && r.status === 'approved');
-        if (lunchReq) {
-          dayPermissionMinutes = Math.max(0, dayPermissionMinutes - (lunchReq.duration || 0));
-        }
-        
-        totalPermissionMinutes += dayPermissionMinutes;
+        totalAcceptedMinutes += (attendance.checkIn.permissionMinutes || 0);
       } else {
         const leaveReq = approvedLeaves.find(l => l.date === dateStr);
         if (leaveReq) {
@@ -247,16 +265,42 @@ exports.getMySummary = async (req, res) => {
     });
 
     permissionRequests.forEach(p => {
-      totalPermissionMinutes += (p.duration || 0);
+      if (p.type === 'lunch_delay') {
+        if (p.status === 'rejected') {
+          totalAcceptedMinutes += (p.duration || 0);
+        }
+      } else if (p.type === 'permission') {
+        if (p.status === 'approved') {
+          totalAcceptedMinutes += (p.duration || 0);
+        } else if (p.status === 'rejected') {
+          totalRejectedMinutes += (p.duration || 0);
+        }
+      } else {
+        totalAcceptedMinutes += (p.duration || 0);
+      }
     });
 
-    const totalPermissionHours = totalPermissionMinutes / 60;
+    const totalAcceptedHours = totalAcceptedMinutes / 60;
+    const totalRejectedHours = totalRejectedMinutes / 60;
+    
     let permissionLopDays = 0;
-    if (totalPermissionHours > globalSettings.permissionTier2Limit) {
-      permissionLopDays = globalSettings.permissionTier2Deduction;
-    } else if (totalPermissionHours > globalSettings.permissionTier1Limit) {
-      permissionLopDays = globalSettings.permissionTier1Deduction;
+    
+    // Accepted Permission Rule: > 3h = 0.5, > 5h = 1.0
+    if (totalAcceptedHours > 5) {
+      permissionLopDays += 1.0;
+    } else if (totalAcceptedHours > 3) {
+      permissionLopDays += 0.5;
     }
+
+    // Rejected Permission Rule: < 3h = 0.5, < 5h = 1.0
+    if (totalRejectedHours > 0) {
+      if (totalRejectedHours < 3) {
+        permissionLopDays += 0.5;
+      } else {
+        permissionLopDays += 1.0;
+      }
+    }
+    
     totalLOPDays += permissionLopDays;
 
     const dailyRate = employee.baseSalary / daysInMonthCount;
@@ -335,11 +379,8 @@ exports.generateIndividualSalary = async (req, res) => {
     const approvedLeaves = employeeRequests.filter(req => req.type === 'leave' && req.status === 'approved');
 
 
-    let totalLOPDays = 0;
-    let singleLopDays = 0;
-    let usedCasualLeaves = 0;
-    let casualLeaveTaken = 0;
-    let totalPermissionMinutes = 0;
+    let totalAcceptedMinutes = 0;
+    let totalRejectedMinutes = 0;
     let paidDays = 0;
     let absentDays = 0;
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -360,15 +401,7 @@ exports.generateIndividualSalary = async (req, res) => {
         isPaid = true;
       } else if (attendance && attendance.checkIn?.time) {
         isPaid = true;
-        let dayPermissionMinutes = (attendance.checkIn.permissionMinutes || 0);
-
-        // If a lunch delay was approved, subtract it from the day's total 
-        const lunchReq = lunchDelayRequests.find(r => r.date === dateStr && r.status === 'approved');
-        if (lunchReq) {
-          dayPermissionMinutes = Math.max(0, dayPermissionMinutes - (lunchReq.duration || 0));
-        }
-        
-        totalPermissionMinutes += dayPermissionMinutes;
+        totalAcceptedMinutes += (attendance.checkIn.permissionMinutes || 0);
       } else {
         const leaveReq = approvedLeaves.find(l => l.date === dateStr);
         if (leaveReq) {
@@ -397,16 +430,42 @@ exports.generateIndividualSalary = async (req, res) => {
     });
 
     permissionRequests.forEach(p => {
-      totalPermissionMinutes += (p.duration || 0);
+      if (p.type === 'lunch_delay') {
+        if (p.status === 'rejected') {
+          totalAcceptedMinutes += (p.duration || 0);
+        }
+      } else if (p.type === 'permission') {
+        if (p.status === 'approved') {
+          totalAcceptedMinutes += (p.duration || 0);
+        } else if (p.status === 'rejected') {
+          totalRejectedMinutes += (p.duration || 0);
+        }
+      } else {
+        totalAcceptedMinutes += (p.duration || 0);
+      }
     });
 
-    const totalPermissionHours = totalPermissionMinutes / 60;
+    const totalAcceptedHours = totalAcceptedMinutes / 60;
+    const totalRejectedHours = totalRejectedMinutes / 60;
+    
     let permissionLopDays = 0;
-    if (totalPermissionHours > globalSettings.permissionTier2Limit) {
-      permissionLopDays = globalSettings.permissionTier2Deduction;
-    } else if (totalPermissionHours > globalSettings.permissionTier1Limit) {
-      permissionLopDays = globalSettings.permissionTier1Deduction;
+    
+    // Accepted Permission Rule: > 3h = 0.5, > 5h = 1.0
+    if (totalAcceptedHours > 5) {
+      permissionLopDays += 1.0;
+    } else if (totalAcceptedHours > 3) {
+      permissionLopDays += 0.5;
     }
+
+    // Rejected Permission Rule: < 3h = 0.5, < 5h = 1.0
+    if (totalRejectedHours > 0) {
+      if (totalRejectedHours < 3) {
+        permissionLopDays += 0.5;
+      } else {
+        permissionLopDays += 1.0;
+      }
+    }
+    
     totalLOPDays += permissionLopDays;
 
     const netSalary = dailyRate * Math.max(0, (paidDays - permissionLopDays));

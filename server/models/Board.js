@@ -6,6 +6,7 @@ const BoardSchema = new mongoose.Schema({
   team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true },
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  type: { type: String, enum: ['regular', 'daily', 'weekly'], default: 'regular' },
   createdAt: { type: Date, default: Date.now }
 });
 

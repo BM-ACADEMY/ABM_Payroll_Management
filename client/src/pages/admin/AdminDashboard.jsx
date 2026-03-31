@@ -38,9 +38,9 @@ const AdminDashboard = () => {
         axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?limit=5&fields=employeeId,name,role,baseSalary`, config)
       ]);
 
-      setStats(statsRes.data.stats);
-      setChartData(statsRes.data.chartData);
-      setEmployees(employeesRes.data);
+      setStats(statsRes.data.stats || []);
+      setChartData(statsRes.data.chartData || []);
+      setEmployees(Array.isArray(employeesRes.data.employees) ? employeesRes.data.employees : []);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);

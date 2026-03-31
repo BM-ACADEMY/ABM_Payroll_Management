@@ -4,28 +4,36 @@ const Schedule = require('../models/Schedule');
 const Role = require('../models/Role');
 
 class AttendanceService {
-  async getAllAttendance(date) {
+  async getAllAttendance(date, page = 1, limit = 5) {
     const adminRole = await Role.findOne({ name: 'admin' });
     
-    // 1. Get all employees (excluding admin)
-    const employees = await User.find({ role: { $ne: adminRole?._id } })
+    // 1. Get total employee count (excluding admin)
+    const query = { role: { $ne: adminRole?._id } };
+    const totalCount = await User.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+    const skip = (page - 1) * limit;
+
+    // 2. Get subset of employees (excluding admin)
+    const employees = await User.find(query)
       .select('name employeeId phoneNumber email timingSettings')
-      .sort({ name: 1 });
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
     const employeeIds = employees.map(e => e._id);
 
-    // 2. Get attendance records and schedules in parallel
+    // 3. Get attendance records and schedules in parallel
     const [attendanceRecords, schedules] = await Promise.all([
       Attendance.find({ date, user: { $in: employeeIds } }).populate('user', 'name employeeId phoneNumber email'),
       Schedule.find({ date, user: { $in: employeeIds } })
     ]);
 
-    // 3. Create maps for O(1) lookups
+    // 4. Create maps for O(1) lookups
     const attendanceMap = new Map(attendanceRecords.map(a => [a.user?._id?.toString(), a]));
     const scheduleMap = new Map(schedules.map(s => [s.user?.toString(), s]));
 
-    // 4. Combine data
-    return employees.map(emp => {
+    // 5. Combine data
+    const data = employees.map(emp => {
       const empIdStr = emp._id.toString();
       const record = attendanceMap.get(empIdStr);
       const snapshot = scheduleMap.get(empIdStr);
@@ -56,6 +64,15 @@ class AttendanceService {
         totalWorkingMinutes: 0
       };
     });
+
+    return {
+      data,
+      pagination: {
+        total: totalCount,
+        pages: totalPages,
+        currentPage: parseInt(page)
+      }
+    };
   }
 
   // Other methods can be moved here as well (checkIn, checkOut, etc.)

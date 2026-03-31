@@ -24,14 +24,15 @@ import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, CheckSquare, Square } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const PermissionReview = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [hasMore, setHasMore] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   const { toast } = useToast();
   
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -39,7 +40,7 @@ const PermissionReview = () => {
   const [rejectedReason, setRejectedReason] = useState('');
 
   useEffect(() => {
-    fetchRequests(true);
+    fetchRequests(1);
 
     // Socket handled via shared service
     socket.on('new_request', (data) => {
@@ -55,30 +56,40 @@ const PermissionReview = () => {
     });
 
     return () => {
-      socket.disconnect();
+      socket.off('new_request');
+      socket.off('request_deleted');
+      socket.off('requests_bulk_deleted');
     };
   }, []);
 
-  const fetchRequests = async (reset = false) => {
+  const fetchRequests = async (page = 1) => {
+    setLoading(true);
     try {
-      const skip = reset ? 0 : requests.length;
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/admin-requests?limit=5&skip=${skip}`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/admin-requests?page=${page}&limit=5&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
       
-      if (reset) {
-        setRequests(res.data.requests);
-      } else {
-        setRequests(prev => [...prev, ...res.data.requests]);
-      }
-      setHasMore(res.data.hasMore);
+      setRequests(res.data.requests);
+      setPagination(res.data.pagination);
     } catch (err) {
       console.error("Error fetching requests:", err);
+      toast({ variant: "destructive", title: "Error", description: "Failed to fetch requests" });
     } finally {
       setLoading(false);
     }
   };
+
+  const handlePageChange = (page) => {
+    fetchRequests(page);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchRequests(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const markAllAsRead = async () => {
     try {
@@ -86,8 +97,17 @@ const PermissionReview = () => {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/requests/mark-read`, {}, {
         headers: { 'x-auth-token': token }
       });
+      toast({
+        title: "Success",
+        description: "All requests marked as read",
+      });
     } catch (err) {
       console.error("Error marking as read:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to mark as read",
+      });
     }
   };
 
@@ -185,10 +205,7 @@ const PermissionReview = () => {
     }
   };
 
-  const filteredRequests = requests.filter(req => 
-    req.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.reason?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRequests = requests;
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -434,19 +451,12 @@ const PermissionReview = () => {
               ))}
             </div>
           )}
-          {hasMore && (
-            <div className="p-6 border-t border-gray-100 flex justify-center">
-              <Button 
-                variant="outline" 
-                onClick={() => fetchRequests()}
-                disabled={loading}
-                className="rounded-xl font-medium border border-gray-200 text-black hover:bg-gray-50 transition-all px-8 h-12"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Clock className="w-4 h-4 mr-2" />}
-                Load More Requests
-              </Button>
-            </div>
-          )}
+          <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+            <PaginationControl 
+              pagination={pagination} 
+              onPageChange={handlePageChange} 
+            />
+          </div>
         </CardContent>
       </Card>
 

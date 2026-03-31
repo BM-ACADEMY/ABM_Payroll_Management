@@ -10,7 +10,7 @@ export const adminMenuItem = [
   { name: 'Complaints', path: '/admin/complaints', icon: MessageSquareWarning },
   { name: 'Teams', path: '/admin/teams', icon: Users },
   { name: 'Weekly Credits', path: '/admin/weekly-credits', icon: Trophy },
-  { name: 'Workplace', path: '/admin/kanban', icon: Kanban },
+  { name: 'Boards', path: '/admin/kanban', icon: Kanban },
   { name: 'Time Tracker', path: '/admin/time-history', icon: Timer },
   { name: 'Settings', path: '/admin/settings', icon: Settings2 }
 ];

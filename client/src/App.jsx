@@ -184,6 +184,10 @@ function App() {
                   element={user?.role?.name === 'admin' ? <KanbanBoard /> : <Navigate to="/login" />}
                 />
                 <Route
+                  path="/admin/kanban/special/:type"
+                  element={user?.role?.name === 'admin' ? <KanbanBoard /> : <Navigate to="/login" />}
+                />
+                <Route
                   path="/admin/time-history"
                   element={user?.role?.name === 'admin' ? <TimeHistory /> : <Navigate to="/login" />}
                 />
@@ -217,6 +221,10 @@ function App() {
                 />
                 <Route
                   path="/dashboard/kanban/:id"
+                  element={user ? <KanbanBoard /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/dashboard/kanban/special/:type"
                   element={user ? <KanbanBoard /> : <Navigate to="/login" />}
                 />
                 <Route

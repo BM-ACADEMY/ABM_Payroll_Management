@@ -7,6 +7,88 @@ const User = require('../models/User');
 
 // --- Board Operations ---
 
+exports.getSpecialBoard = async (req, res) => {
+  const { type } = req.params; // 'daily' or 'weekly'
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user.teams || user.teams.length === 0) {
+      return res.status(400).json({ msg: 'User is not assigned to any team' });
+    }
+    
+    const teamId = user.teams[0]; // Use first team
+    
+    let board = await Board.findOne({ team: teamId, type });
+    
+    if (!board) {
+      // Auto-create
+      board = new Board({
+        title: type === 'daily' ? 'Daily Board' : 'Weekly Board',
+        description: type === 'daily' ? 'Daily tasks and progress' : 'Weekly focus and goals',
+        team: teamId,
+        type,
+        admins: [req.user.id],
+        members: [req.user.id]
+      });
+      await board.save();
+      
+      // Auto-create lists for Daily Board
+      if (type === 'daily') {
+        const defaultLists = ['To Do', 'In Process', 'Done'];
+        for (let i = 0; i < defaultLists.length; i++) {
+          const list = new List({
+            title: defaultLists[i],
+            board: board._id,
+            position: i
+          });
+          await list.save();
+        }
+      } else if (type === 'weekly') {
+        const list = new List({
+          title: 'Weekly Tasks',
+          board: board._id,
+          position: 0
+        });
+        await list.save();
+      }
+    }
+    
+    // Ensure board is fully populated for the frontend
+    const populatedBoard = await Board.findById(board._id)
+      .populate('team', 'name')
+      .populate('members', 'name email employeeId')
+      .populate('admins', 'name email');
+
+    // Fetch lists and tasks for the board
+    const lists = await List.find({ board: board._id }).sort('position');
+    const tasks = await Task.find({ board: board._id })
+      .populate('assignees', 'name email')
+      .sort('position')
+      .lean();
+
+    // Get all comments for these tasks
+    const taskIds = tasks.map(t => t._id);
+    const comments = await Comment.find({ task: { $in: taskIds } });
+
+    const tasksWithCounts = tasks.map(task => {
+      const taskComments = comments.filter(c => c.task.toString() === task._id.toString());
+      const mentionCount = taskComments.filter(c => 
+        c.mentions?.some(m => m.user.toString() === req.user.id && !m.isRead)
+      ).length;
+
+      return {
+        ...task,
+        commentCount: taskComments.length,
+        mentionCount
+      };
+    });
+
+    res.json({ board: populatedBoard, lists, tasks: tasksWithCounts });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 exports.createBoard = async (req, res) => {
   const { title, description, teamId } = req.body;
   try {
@@ -27,7 +109,20 @@ exports.createBoard = async (req, res) => {
 
 exports.getBoardsByTeam = async (req, res) => {
   try {
-    const boards = await Board.find({ team: req.params.teamId }).populate('team', 'name');
+    const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
+                    req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
+    
+    let query = { team: req.params.teamId };
+    
+    // If not admin/subadmin, only show boards where user is a member or board admin
+    if (!isAdmin) {
+      query.$or = [
+        { members: req.user.id },
+        { admins: req.user.id }
+      ];
+    }
+
+    const boards = await Board.find(query).populate('team', 'name');
     res.json(boards);
   } catch (err) {
     console.error(err.message);
@@ -80,7 +175,7 @@ exports.getBoardById = async (req, res) => {
       };
     });
 
-    res.json({ board, lists, tasks: tasksWithCounts });
+    res.json({ board: populatedBoard, lists, tasks: tasksWithCounts });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -96,6 +191,41 @@ exports.updateBoard = async (req, res) => {
     }
 
     res.json(board);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.deleteBoard = async (req, res) => {
+  try {
+    const board = await Board.findById(req.params.id);
+    if (!board) return res.status(404).json({ msg: 'Board not found' });
+
+    // Access control: Only global admins/subadmins or board-level admins can delete boards
+    const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
+                    req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
+    const isBoardAdmin = board.admins.some(a => a.toString() === req.user.id);
+
+    if (!isAdmin && !isBoardAdmin) {
+      return res.status(403).json({ msg: 'Not authorized to delete this board' });
+    }
+
+    const tasks = await Task.find({ board: req.params.id });
+    const taskIds = tasks.map(t => t._id);
+
+    // Recursive cleanup
+    await Comment.deleteMany({ task: { $in: taskIds } });
+    await CardHistory.deleteMany({ task: { $in: taskIds } });
+    await Task.deleteMany({ board: req.params.id });
+    await List.deleteMany({ board: req.params.id });
+    await Board.findByIdAndDelete(req.params.id);
+
+    if (req.io) {
+      req.io.emit('board_deleted', { boardId: req.params.id });
+    }
+
+    res.json({ msg: 'Board deleted successfully' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -163,16 +293,20 @@ exports.deleteList = async (req, res) => {
 // --- Task Operations ---
 
 exports.createTask = async (req, res) => {
-  const { title, description, listId, boardId, position, parentTaskId } = req.body;
-  try {
-    const task = new Task({
-      title,
-      description,
-      list: listId,
-      board: boardId,
-      position,
-      parentTask: parentTaskId || null
-    });
+    const { title, description, listId, boardId, position, parentTaskId, originTaskId, originChecklistItemId, assignees, deadline } = req.body;
+    try {
+      const task = new Task({
+        title,
+        description,
+        list: listId,
+        board: boardId,
+        position: position || 0,
+        parentTask: parentTaskId || null,
+        originTaskId: originTaskId || null,
+        originChecklistItemId: originChecklistItemId || null,
+        assignees: assignees || [],
+        deadline: deadline || null
+      });
     await task.save();
 
     // Log History
@@ -231,6 +365,45 @@ exports.updateTask = async (req, res) => {
         details: details || `Updated task properties`
       });
       await history.save();
+    }
+
+    // --- Status Synchronization ---
+    if (req.body.isCompleted !== undefined) {
+      const isCompleted = req.body.isCompleted;
+
+      // 1. Sync with Origin Task (if current task is the converted card)
+      if (task.originTaskId) {
+        await Task.findByIdAndUpdate(task.originTaskId, { isCompleted, updatedAt: Date.now() });
+        // Emit update for the origin board
+        const originTask = await Task.findById(task.originTaskId);
+        if (req.io && originTask) {
+          req.io.to(originTask.board.toString()).emit('board_updated', { type: 'TASK_UPDATED', boardId: originTask.board, taskId: originTask._id });
+        }
+      }
+
+      // 2. Sync with Origin Checklist Item
+      if (task.originChecklistItemId) {
+        const parentTask = await Task.findOne({ "checklists.items._id": task.originChecklistItemId });
+        if (parentTask) {
+          await Task.findOneAndUpdate(
+            { _id: parentTask._id, "checklists.items._id": task.originChecklistItemId },
+            { $set: { "checklists.$[].items.$[elem].isCompleted": isCompleted } },
+            { arrayFilters: [{ "elem._id": task.originChecklistItemId }] }
+          );
+          if (req.io) {
+            req.io.to(parentTask.board.toString()).emit('board_updated', { type: 'CHECKLIST_ITEM_UPDATED', boardId: parentTask.board, taskId: parentTask._id });
+          }
+        }
+      }
+
+      // 3. Sync with all "children" cards (if current task is the source)
+      const linkedCards = await Task.find({ originTaskId: task._id });
+      for (const card of linkedCards) {
+        await Task.findByIdAndUpdate(card._id, { isCompleted, updatedAt: Date.now() });
+        if (req.io) {
+          req.io.to(card.board.toString()).emit('board_updated', { type: 'TASK_UPDATED', boardId: card.board, taskId: card._id });
+        }
+      }
     }
 
     // Mention Notifications for Description
@@ -479,20 +652,29 @@ exports.addChecklistItem = async (req, res) => {
 exports.updateChecklistItem = async (req, res) => {
   const { checklistId, itemId, isCompleted, text, assignedTo, dueDate } = req.body;
   try {
-    const updateObj = {};
-    if (isCompleted !== undefined) updateObj["checklists.$.items.$[elem].isCompleted"] = isCompleted;
-    if (text !== undefined) updateObj["checklists.$.items.$[elem].text"] = text;
-    if (assignedTo !== undefined) updateObj["checklists.$.items.$[elem].assignedTo"] = assignedTo;
-    if (dueDate !== undefined) updateObj["checklists.$.items.$[elem].dueDate"] = dueDate;
+    const updateFields = {};
+    if (isCompleted !== undefined) updateFields["checklists.$[].items.$[elem].isCompleted"] = isCompleted;
+    if (text !== undefined) updateFields["checklists.$[].items.$[elem].text"] = text;
+    if (assignedTo !== undefined) updateFields["checklists.$[].items.$[elem].assignedTo"] = assignedTo;
+    if (dueDate !== undefined) updateFields["checklists.$[].items.$[elem].dueDate"] = dueDate;
 
     const task = await Task.findOneAndUpdate(
-      { _id: req.params.taskId, "checklists._id": checklistId },
-      { $set: updateObj },
-      { 
-        arrayFilters: [{ "elem._id": itemId }],
-        new: true 
-      }
+      { _id: req.params.taskId, "checklists.items._id": itemId },
+      { $set: updateFields },
+      { arrayFilters: [{ "elem._id": itemId }], new: true }
     );
+
+    // --- Status Synchronization ---
+    if (isCompleted !== undefined) {
+      // Find cards converted from this checklist item and update them
+      const convertedCards = await Task.find({ originChecklistItemId: itemId });
+      for (const card of convertedCards) {
+        await Task.findByIdAndUpdate(card._id, { isCompleted, updatedAt: Date.now() });
+        if (req.io) {
+          req.io.to(card.board.toString()).emit('board_updated', { type: 'TASK_UPDATED', boardId: card.board, taskId: card._id });
+        }
+      }
+    }
 
     if (req.io) {
       req.io.to(task.board.toString()).emit('board_updated', { type: 'CHECKLIST_ITEM_UPDATED', boardId: task.board, taskId: req.params.taskId });
@@ -568,6 +750,38 @@ exports.addMemberToBoard = async (req, res) => {
     }
 
     res.json(board);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.removeMemberFromBoard = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const board = await Board.findById(req.params.id);
+    if (!board) return res.status(404).json({ msg: 'Board not found' });
+
+    // Access control: Only global admins/subadmins or board-level admins can remove members
+    const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
+                    req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
+    const isBoardAdmin = board.admins.some(a => a.toString() === req.user.id);
+
+    if (!isAdmin && !isBoardAdmin) {
+      return res.status(403).json({ msg: 'Not authorized to remove members' });
+    }
+
+    // Pull from both members and admins
+    board.members.pull(userId);
+    board.admins.pull(userId);
+    await board.save();
+
+    if (req.io) {
+      req.io.to(req.params.id).emit('board_updated', { type: 'MEMBER_REMOVED', boardId: req.params.id, userId });
+    }
+
+    const updatedBoard = await Board.findById(req.params.id).populate('members', 'name email').populate('admins', 'name email');
+    res.json(updatedBoard);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

@@ -19,6 +19,7 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
+import PaginationControl from '@/components/ui/PaginationControl';
 
 
 const Permissions = () => {
@@ -26,7 +27,7 @@ const Permissions = () => {
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const { toast } = useToast();
-  const [hasMore, setHasMore] = useState(false);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
 
   const [formData, setFormData] = useState({
     fromDateTime: '',
@@ -35,7 +36,7 @@ const Permissions = () => {
   });
 
   useEffect(() => {
-    fetchMyRequests(true);
+    fetchMyRequests(1);
 
     // Socket handled via shared service
     socket.on('notification', (data) => {
@@ -55,25 +56,29 @@ const Permissions = () => {
     };
   }, []);
 
-  const fetchMyRequests = async (reset = false) => {
+  const fetchMyRequests = async (page = 1) => {
+    setLoading(true);
     try {
-      const skip = reset ? 0 : requests.length;
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/my-requests?limit=5&skip=${skip}`, {
+      // We pass a custom query to exclude leaves if the backend supports it, 
+      // otherwise we just fetch all and hope for the best or update the backend.
+      // Standardizing to page-based fetching.
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/my-requests?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
       
-      if (reset) {
-        setRequests(res.data.requests.filter(req => req.type !== 'leave'));
-      } else {
-        setRequests(prev => [...prev, ...res.data.requests.filter(req => req.type !== 'leave')]);
-      }
-      setHasMore(res.data.hasMore);
+      const filtered = res.data.requests.filter(req => req.type !== 'leave');
+      setRequests(filtered);
+      setPagination(res.data.pagination);
     } catch (err) {
       console.error("Error fetching requests:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page) => {
+    fetchMyRequests(page);
   };
 
   const handleChange = (e) => {
@@ -101,7 +106,7 @@ const Permissions = () => {
         description: "Permission request submitted successfully!",
       });
       setFormData({ fromDateTime: '', toDateTime: '', reason: '' });
-      fetchMyRequests(true);
+      fetchMyRequests(1);
     } catch (err) {
       toast({
         variant: "destructive",
@@ -295,20 +300,13 @@ const Permissions = () => {
                 ))}
               </div>
             )}
-            {hasMore && (
-              <div className="p-6 border-t border-gray-100 flex justify-center">
-                <Button 
-                  variant="outline" 
-                  onClick={() => fetchMyRequests()}
-                  disabled={loading}
-                  className="rounded-xl font-medium border border-gray-200 text-black hover:bg-gray-50 transition-all px-8 h-12"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Clock className="w-4 h-4 mr-2" />}
-                  Load More Requests
-                </Button>
-              </div>
-            )}
-          </CardContent>
+          <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+            <PaginationControl 
+              pagination={pagination} 
+              onPageChange={handlePageChange} 
+            />
+          </div>
+        </CardContent>
         </Card>
       </div>
     </div>

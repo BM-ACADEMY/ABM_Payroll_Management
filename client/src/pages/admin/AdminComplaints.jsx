@@ -28,6 +28,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const AdminComplaints = () => {
   const [loading, setLoading] = useState(false);
@@ -36,20 +37,26 @@ const AdminComplaints = () => {
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [adminResponse, setAdminResponse] = useState('');
   const [showResponseDialog, setShowResponseDialog] = useState(false);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchComplaints();
+    fetchComplaints(1);
   }, []);
 
-  const fetchComplaints = async () => {
+  const handlePageChange = (page) => {
+    fetchComplaints(page);
+  };
+
+  const fetchComplaints = async (page = 1) => {
     setLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/complaints`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/complaints?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
-      setComplaints(res.data);
+      setComplaints(res.data.complaints);
+      setPagination(res.data.pagination);
     } catch (err) {
       toast({
         variant: "destructive",
@@ -129,7 +136,8 @@ const AdminComplaints = () => {
             <p className="text-slate-300 font-medium italic">Everything seems to be running smoothly.</p>
           </div>
         ) : (
-          filteredComplaints.map((c) => (
+          <>
+            {filteredComplaints.map((c) => (
             <Card key={c._id} className="rounded-[2.5rem] border-0 shadow-xl shadow-slate-200/30 bg-white overflow-hidden group hover:shadow-2xl transition-all duration-500">
               <div className="flex flex-col md:flex-row">
                 <div className="p-8 md:w-80 border-b md:border-b-0 md:border-r border-slate-50 bg-slate-50/30">
@@ -196,7 +204,11 @@ const AdminComplaints = () => {
                 </div>
               </div>
             </Card>
-          ))
+          ))}
+          <div className="flex justify-center pt-4">
+            <PaginationControl pagination={pagination} onPageChange={handlePageChange} />
+          </div>
+        </>
         )}
       </div>
 

@@ -6,9 +6,13 @@ const boardController = require('../controllers/boardController');
 // Board Routes
 router.post('/', auth, boardController.createBoard);
 router.get('/team/:teamId', auth, boardController.getBoardsByTeam);
+router.get('/', auth, boardController.getBoardsByTeam); // Note: This might need teamId in params or query
+router.get('/special/:type', auth, boardController.getSpecialBoard);
 router.get('/:id', auth, boardController.getBoardById);
 router.patch('/:id', auth, boardController.updateBoard);
+router.delete('/:id', auth, boardController.deleteBoard);
 router.post('/:id/members', auth, boardController.addMemberToBoard);
+router.delete('/:id/members/:userId', auth, boardController.removeMemberFromBoard);
 
 // List Routes
 router.post('/lists', auth, boardController.createList);

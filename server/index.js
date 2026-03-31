@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const http = require('http');
 const { Server } = require('socket.io');
 const compression = require('compression');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -24,6 +25,7 @@ app.use(compression());
 app.use(express.json());
 app.use(cors());
 app.use(cookieParser());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Pass io to request object for use in controllers
 app.use((req, res, next) => {
@@ -43,6 +45,7 @@ app.use('/api/complaints', require('./routes/complaint'));
 app.use('/api/scores', require('./routes/score'));
 app.use('/api/boards', require('./routes/boards'));
 app.use('/api/time-logs', require('./routes/timeLogRoutes'));
+app.use('/api/upload', require('./routes/upload'));
 
 app.get('/', (req, res) => res.send('API Running'));
 

@@ -14,7 +14,7 @@ const KanbanCard = ({ task, index, onClick }) => {
           className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer group border border-transparent hover:border-yellow-200"
         >
           <div className="flex items-start justify-between mb-2">
-            <h4 className="text-sm font-semibold text-zinc-900 group-hover:text-[#d30614] transition-colors leading-snug">
+            <h4 className={`text-sm font-semibold text-zinc-900 group-hover:text-[#d30614] transition-all leading-snug ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}>
               {task.title}
             </h4>
             {task.isCompleted && <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />}
@@ -26,7 +26,7 @@ const KanbanCard = ({ task, index, onClick }) => {
               {task.assignees?.map((a, i) => (
                 <div 
                   key={i} 
-                  className="w-6 h-6 rounded-full border-2 border-white bg-zinc-800 text-[#fffe01] flex items-center justify-center text-[8px] font-bold" 
+                  className="w-6 h-6 rounded-full border-2 border-white bg-zinc-800 text-[#fffe01] flex items-center justify-center text-[8px] font-bold shadow-sm" 
                   title={a.name}
                 >
                   {a.name.charAt(0)}
@@ -35,6 +35,12 @@ const KanbanCard = ({ task, index, onClick }) => {
             </div>
             
             <div className="flex items-center gap-2 text-zinc-400">
+              {task.isCompleted && (
+                <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Done
+                </div>
+              )}
               {task.mentionCount > 0 && (
                 <div className="flex items-center gap-0.5 text-[9px] text-white font-bold bg-red-500 px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">
                   <Bell className="w-3 h-3 fill-current" />
@@ -57,7 +63,7 @@ const KanbanCard = ({ task, index, onClick }) => {
                 </div>
               )}
 
-              {task.deadline && (
+              {task.deadline && !task.isCompleted && (
                 <div className="flex items-center gap-1 text-[9px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full font-bold">
                   <Calendar className="w-3 h-3" /> 
                   {new Date(task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric' })}

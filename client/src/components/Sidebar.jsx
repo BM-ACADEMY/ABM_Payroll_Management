@@ -1,8 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { PieChart, ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { adminMenuItem } from '../pages/utils/adminMenuItem';
 import { employeeMenuItem } from '../pages/utils/employeeMenuItem';
+import logo from '../assets/logo.png';
 
 const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
   const links = user?.role?.name === 'admin' ? adminMenuItem : employeeMenuItem;
@@ -25,14 +26,13 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
       >
         <div className="flex items-center justify-between mb-10 px-2 mt-2">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-[#fffe01] rounded-xl flex items-center justify-center shadow-sm shrink-0">
-              <PieChart className="w-6 h-6 text-black" />
+            <div className={`flex items-center justify-center transition-all duration-300 ${isCollapsed && !isMobile ? 'w-12 h-12' : 'w-auto h-10'}`}>
+              <img 
+                src={logo} 
+                alt="Logo" 
+                className={`h-full w-auto object-contain transition-all duration-300 ${isCollapsed && !isMobile ? 'scale-110' : ''}`} 
+              />
             </div>
-            {(!isCollapsed || isMobile) && (
-              <span className="text-xl font-medium tracking-tighter text-[#fffe01] whitespace-nowrap animate-in fade-in duration-500">
-                PAYROLL.IO
-              </span>
-            )}
           </div>
           {!isMobile && (
             <button
@@ -44,7 +44,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
           )}
         </div>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2 -mr-2">
           {links.map((link, i) => (
             <NavLink
               key={i}
@@ -99,6 +99,21 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
         )}
       </div>
       </aside>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #27272a;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #3f3f46;
+        }
+      `}</style>
     </>
   );
 };

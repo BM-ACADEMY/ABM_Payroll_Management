@@ -78,14 +78,43 @@ exports.getMyWeeklyScore = async (req, res) => {
 // @desc    Get all scores for a week (Admin)
 // @route   GET /api/admin/scores/all
 exports.getAllWeeklyScores = async (req, res) => {
-  const { weekStartDate } = req.query;
+  const { weekStartDate, page = 1, limit = 10, name, team } = req.query; // Defaulted limit to 10 for better view
   const startDate = weekStartDate || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
   try {
-    const scores = await Score.find({ weekStartDate: startDate })
+    let query = { weekStartDate: startDate };
+
+    // Filter by team
+    if (team && team !== 'all') {
+      query.team = team;
+    }
+
+    // Search by name (Regex)
+    if (name) {
+      const users = await User.find({ name: { $regex: name, $options: 'i' } }).select('_id');
+      const userIds = users.map(u => u._id);
+      query.user = { $in: userIds };
+    }
+
+    const totalCount = await Score.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+    const skip = (page - 1) * limit;
+
+    const scores = await Score.find(query)
       .populate('user', 'name employeeId')
-      .populate('team', 'name');
-    res.json(scores);
+      .populate('team', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.json({
+      scores,
+      pagination: {
+        total: totalCount,
+        pages: totalPages,
+        currentPage: parseInt(page)
+      }
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

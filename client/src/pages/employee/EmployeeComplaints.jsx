@@ -26,6 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const EmployeeComplaints = () => {
   const [loading, setLoading] = useState(false);
@@ -33,20 +34,26 @@ const EmployeeComplaints = () => {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchMyComplaints();
+    fetchMyComplaints(1);
   }, []);
 
-  const fetchMyComplaints = async () => {
+  const handlePageChange = (page) => {
+    fetchMyComplaints(page);
+  };
+
+  const fetchMyComplaints = async (page = 1) => {
     setLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/complaints/my`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/complaints/my?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
-      setComplaints(res.data);
+      setComplaints(res.data.complaints);
+      setPagination(res.data.pagination);
     } catch (err) {
       console.error("Error fetching complaints:", err);
     } finally {
@@ -156,7 +163,8 @@ const EmployeeComplaints = () => {
             <p className="text-gray-300 font-normal">You haven't submitted any complaints yet.</p>
           </div>
         ) : (
-          complaints.map((c) => (
+          <>
+            {complaints.map((c) => (
             <Card key={c._id} className="rounded-2xl border border-gray-200 shadow-sm bg-white overflow-hidden hover:shadow-md transition-all duration-500">
               <div className="p-8 space-y-6">
                 <div className="flex justify-between items-start gap-4">
@@ -198,7 +206,11 @@ const EmployeeComplaints = () => {
                 )}
               </div>
             </Card>
-          ))
+          ))}
+          <div className="flex justify-center pt-8">
+            <PaginationControl pagination={pagination} onPageChange={handlePageChange} />
+          </div>
+        </>
         )}
       </div>
     </div>

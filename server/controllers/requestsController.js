@@ -51,38 +51,68 @@ exports.createRequest = async (req, res) => {
   }
 };
 
-// @desc    Get current user's requests with pagination
 exports.getMyRequests = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 5;
-  const skip = parseInt(req.query.skip) || 0;
+  const skip = (page - 1) * limit;
   try {
+    const total = await Request.countDocuments({ user: req.user.id });
     const requests = await Request.find({ user: req.user.id })
       .populate('verifyByAdminUserId', 'name')
       .sort({ appliedOn: -1 })
       .limit(limit)
       .skip(skip);
     
-    const total = await Request.countDocuments({ user: req.user.id });
-    res.json({ requests, total, hasMore: skip + requests.length < total });
+    res.json({ 
+      requests, 
+      pagination: {
+        total,
+        pages: Math.ceil(total / limit),
+        currentPage: page
+      }
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
   }
 };
 
-// @desc    Get all requests (Admin) with pagination
 exports.getAdminRequests = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 5;
-  const skip = parseInt(req.query.skip) || 0;
+  const skip = (page - 1) * limit;
+  const { name } = req.query;
+
   try {
-    const requests = await Request.find()
+    let query = {};
+    if (name) {
+      const User = require('../models/User');
+      const users = await User.find({ name: { $regex: name, $options: 'i' } }).select('_id');
+      const userIds = users.map(u => u._id);
+      
+      query = {
+        $or: [
+          { user: { $in: userIds } },
+          { reason: { $regex: name, $options: 'i' } }
+        ]
+      };
+    }
+
+    const total = await Request.countDocuments(query);
+    const requests = await Request.find(query)
       .populate('user', 'name email employeeId')
       .sort({ appliedOn: -1 })
       .limit(limit)
       .skip(skip);
     
-    const total = await Request.countDocuments();
-    res.json({ requests, total, hasMore: skip + requests.length < total });
+    res.json({ 
+      requests, 
+      pagination: {
+        total,
+        pages: Math.ceil(total / limit),
+        currentPage: page
+      }
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

@@ -44,7 +44,11 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     }
 
     return () => {
-      socket.disconnect();
+      socket.off('notification');
+      if (user?.role?.name === 'admin') {
+        socket.off('new_request');
+        socket.off('requests_read');
+      }
     };
   }, [user, toast]);
 

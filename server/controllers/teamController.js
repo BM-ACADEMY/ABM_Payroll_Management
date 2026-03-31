@@ -19,12 +19,28 @@ exports.addTeam = async (req, res) => {
   }
 };
 
-// @desc    Get all teams
-// @route   GET /api/admin/teams
 exports.getTeams = async (req, res) => {
   try {
-    const teams = await Team.find().sort({ name: 1 });
-    res.json(teams);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Team.countDocuments();
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const teams = await Team.find()
+      .sort({ name: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      teams,
+      pagination: {
+        total: totalCount,
+        pages: totalPages,
+        currentPage: page
+      }
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
