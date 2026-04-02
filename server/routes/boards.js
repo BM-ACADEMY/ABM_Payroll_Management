@@ -8,6 +8,7 @@ const boardController = require('../controllers/boardController');
 router.get('/shared', auth, boardController.getSharedBoards);
 router.get('/members/search', auth, boardController.searchMembers);
 router.get('/special/:type', auth, boardController.getSpecialBoard);
+router.get('/team/:teamId/destinations', auth, boardController.getBoardDestinations);
 router.get('/team/:teamId', auth, boardController.getBoardsByTeam);
 router.get('/', auth, boardController.getBoardsByTeam);
 

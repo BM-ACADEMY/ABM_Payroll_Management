@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +65,7 @@ const PermissionReview = () => {
   const fetchRequests = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/admin-requests?page=${page}&limit=5&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
@@ -93,7 +93,7 @@ const PermissionReview = () => {
 
   const markAllAsRead = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/requests/mark-read`, {}, {
         headers: { 'x-auth-token': token }
       });
@@ -115,7 +115,7 @@ const PermissionReview = () => {
     if (!window.confirm("Are you sure you want to delete this record?")) return;
     setActionLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -139,7 +139,7 @@ const PermissionReview = () => {
     if (!window.confirm(`Delete ${selectedIds.length} records?`)) return;
     setActionLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/requests/bulk-delete`, {
         ids: selectedIds
       }, {
@@ -179,7 +179,7 @@ const PermissionReview = () => {
   const handleStatusUpdate = async (id, status, reason = '') => {
     setActionLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
         status,
         rejectedReason: reason
@@ -505,3 +505,4 @@ const PermissionReview = () => {
 };
 
 export default PermissionReview;
+

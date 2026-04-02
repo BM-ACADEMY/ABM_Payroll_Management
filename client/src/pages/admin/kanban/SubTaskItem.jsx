@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import axios from 'axios';
-import { Clock, UserPlus, MoreHorizontal, Check, ChevronDown, ChevronRight, X, Plus, AlignLeft, Layout } from 'lucide-react';
+import { Clock, UserPlus, MoreHorizontal, Check, ChevronDown, ChevronRight, X, Plus, AlignLeft, Layout, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -17,15 +17,20 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
   const [isItemDatePickerOpen, setIsItemDatePickerOpen] = useState(false);
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
-  const [boards, setBoards] = useState([]);
-  const [targetLists, setTargetLists] = useState([]);
-  const [selectedBoardId, setSelectedBoardId] = useState('');
-  const [selectedListId, setSelectedListId] = useState('');
+  const [allDestinations, setAllDestinations] = useState([]);
+  const [selectedDestinationId, setSelectedDestinationId] = useState('');
+  const [destSearch, setDestSearch] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState(task.title || task.text);
   const { toast } = useToast();
 
   const assignPickerRef = React.useRef(null);
   const datePickerRef = React.useRef(null);
   const actionsMenuRef = React.useRef(null);
+
+  useEffect(() => {
+    setEditNameValue(task.title || task.text);
+  }, [task.title, task.text]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -50,7 +55,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
   const fetchDetails = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${task._id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -60,47 +65,42 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
     setLoading(false);
   }
 
-  const fetchBoards = async () => {
+  const fetchAllDestinations = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const effectiveTeamId = teamId || sessionStorage.getItem('teamId');
+      const token = localStorage.getItem('token');
+      const effectiveTeamId = teamId || localStorage.getItem('teamId');
       
-      if (!effectiveTeamId) {
-        console.warn('No teamId available for fetching boards');
-        return;
-      }
+      if (!effectiveTeamId) return;
 
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/team/${effectiveTeamId}`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/team/${effectiveTeamId}/destinations`, {
         headers: { 'x-auth-token': token }
       });
-      setBoards(res.data);
-      const currentId = task.board?._id || task.board;
-      if (res.data.find(b => b._id === currentId)) {
-        setSelectedBoardId(currentId);
-        fetchLists(currentId);
+      
+      setAllDestinations(res.data || []);
+      if (res.data?.length > 0) {
+         setSelectedDestinationId(res.data[0].id);
       }
-    } catch(err) {}
+    } catch(err) {
+      console.error('Error fetching destinations:', err);
+    }
   };
 
-  const fetchLists = async (boardId) => {
-    try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${boardId}`, {
-        headers: { 'x-auth-token': token }
-      });
-      setTargetLists(res.data.lists);
-      if (res.data.lists.length > 0) setSelectedListId(res.data.lists[0]._id);
-    } catch(err) {}
+  const handleNameSave = () => {
+    if (editNameValue.trim() && editNameValue !== (task.title || task.text)) {
+      onUpdate(task._id, isChecklist ? { text: editNameValue } : { title: editNameValue });
+    }
+    setIsEditingName(false);
   };
 
   const handleConvert = async () => {
-    if (!selectedListId) {
+    const selectedDest = allDestinations.find(d => d.id === selectedDestinationId);
+    if (!selectedDest) {
       toast({ variant: "destructive", title: "Error", description: "Please select a destination list" });
       return;
     }
     
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const originTaskId = isChecklist ? null : task._id;
       const originChecklistItemId = isChecklist ? task._id : null;
       const initialAssignees = isChecklist 
@@ -110,8 +110,8 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
       const payload = {
         title: task.title || task.text,
         description: task.description || (isChecklist ? `Converted from checklist item: ${task.text}` : `Converted from subtask: ${task.title}`),
-        listId: selectedListId,
-        boardId: selectedBoardId,
+        listId: selectedDest.listId,
+        boardId: selectedDest.boardId,
         position: 0,
         deadline: task.dueDate || task.deadline || null,
         assignees: initialAssignees,
@@ -125,120 +125,14 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
       
       toast({ 
         title: "Success", 
-        description: `Successfully converted "${task.title || task.text}" to a card.` 
+        description: `Successfully sent "${task.title || task.text}" to ${selectedDest.boardTitle}.` 
       });
       
-      if (selectedBoardId === currentBoardId && onRefresh) onRefresh();
+      if (selectedDest.boardId === currentBoardId && onRefresh) onRefresh();
       setIsConvertModalOpen(false);
     } catch (err) {
       console.error('Conversion error:', err);
       toast({ variant: "destructive", title: "Error", description: "Failed to convert to card" });
-    }
-  };
-
-  const handleQuickDailyConvert = async () => {
-    try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/daily`, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      const dailyBoard = res.data.board || res.data;
-      if (!dailyBoard) throw new Error('Could not find daily board');
-      
-      const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${dailyBoard._id}`, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const today = days[new Date().getDay()];
-      const lists = listsRes.data.lists || [];
-      let listId = lists.find(l => l.title === today)?._id || lists[0]?._id;
-      
-      if (!listId) {
-        toast({ variant: "destructive", title: "Error", description: "Daily board has no columns" });
-        return;
-      }
-      
-      const originTaskId = isChecklist ? null : task._id;
-      const originChecklistItemId = isChecklist ? task._id : null;
-      const initialAssignees = isChecklist 
-        ? (task.assignedTo ? [task.assignedTo._id || task.assignedTo] : [])
-        : (task.assignees?.map(a => a._id || a) || []);
-
-      const payload = {
-        title: task.title || task.text,
-        description: task.description || (isChecklist ? `Converted from checklist item: ${task.text}` : `Converted from subtask: ${task.title}`),
-        listId: listId,
-        boardId: dailyBoard._id,
-        position: 0,
-        deadline: task.dueDate || task.deadline || new Date().toISOString(),
-        assignees: initialAssignees,
-        originTaskId,
-        originChecklistItemId
-      };
-      
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      toast({ title: "Success", description: `Sent to Daily Board (${today}).` });
-      if (onRefresh && dailyBoard._id === currentBoardId) onRefresh();
-      setIsConvertModalOpen(false);
-    } catch (err) {
-      console.error('Quick Convert Daily Error:', err);
-      toast({ variant: "destructive", title: "Error", description: "Failed to send to daily board" });
-    }
-  };
-
-  const handleQuickWeeklyConvert = async () => {
-    try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/weekly`, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      const weeklyBoard = res.data.board || res.data;
-      if (!weeklyBoard) throw new Error('Could not find weekly board');
-      
-      const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${weeklyBoard._id}`, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      const listId = listsRes.data.lists?.[0]?._id;
-      if (!listId) {
-        toast({ variant: "destructive", title: "Error", description: "Weekly board has no columns" });
-        return;
-      }
-      
-      const originTaskId = isChecklist ? null : task._id;
-      const originChecklistItemId = isChecklist ? task._id : null;
-      const initialAssignees = isChecklist 
-        ? (task.assignedTo ? [task.assignedTo._id || task.assignedTo] : [])
-        : (task.assignees?.map(a => a._id || a) || []);
-
-      const payload = {
-        title: task.title || task.text,
-        description: task.description || (isChecklist ? `Converted from checklist item: ${task.text}` : `Converted from subtask: ${task.title}`),
-        listId: listId,
-        boardId: weeklyBoard._id,
-        position: 0,
-        deadline: task.dueDate || task.deadline || null,
-        assignees: initialAssignees,
-        originTaskId,
-        originChecklistItemId
-      };
-      
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      toast({ title: "Success", description: `Sent to Weekly Board.` });
-      if (onRefresh && weeklyBoard._id === currentBoardId) onRefresh();
-      setIsConvertModalOpen(false);
-    } catch (err) {
-      console.error('Quick Convert Weekly Error:', err);
-      toast({ variant: "destructive", title: "Error", description: "Failed to send to weekly board" });
     }
   };
 
@@ -261,9 +155,23 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
         </div>
         
         <div className="flex-1 flex flex-col gap-2 min-w-0">
-          <span className={`text-[14px] font-medium leading-relaxed break-words pt-0.5 ${task.isCompleted ? 'text-zinc-400 line-through' : 'text-zinc-800'}`}>
-            {task.title || task.text}
-          </span>
+          {isEditingName ? (
+            <Input 
+              autoFocus
+              className="h-8 text-[14px] font-medium border-black rounded-lg"
+              value={editNameValue}
+              onChange={(e) => setEditNameValue(e.target.value)}
+              onBlur={handleNameSave}
+              onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
+            />
+          ) : (
+            <span 
+              onDoubleClick={() => setIsEditingName(true)}
+              className={`text-[14px] font-medium leading-relaxed break-words pt-0.5 cursor-text ${task.isCompleted ? 'text-zinc-400 line-through' : 'text-zinc-800'}`}
+            >
+              {task.title || task.text}
+            </span>
+          )}
           
           {(dueDate || displayedAssignees.length > 0) && (
             <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -314,7 +222,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                        onChange={(e) => { onUpdate(task._id, { dueDate: e.target.value }); setIsItemDatePickerOpen(false); }}
                     />
                     <div className="pt-2 flex gap-2">
-                      <Button variant="ghost" className="flex-1 text-[11px] h-8 font-bold text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-lg" onClick={() => { onUpdate(task._id, { dueDate: null }); setIsItemDatePickerOpen(false); }}>Remove</Button>
+                       <Button variant="ghost" className="flex-1 text-[11px] h-8 font-bold text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-lg" onClick={() => { onUpdate(task._id, { dueDate: null }); setIsItemDatePickerOpen(false); }}>Remove</Button>
                     </div>
                  </div>
               )}
@@ -372,7 +280,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                     </div>
                     <Button 
                       variant="ghost" 
-                      onClick={() => { setIsActionsMenuOpen(false); fetchBoards(); setIsConvertModalOpen(true); }}
+                      onClick={() => { setIsActionsMenuOpen(false); fetchAllDestinations(); setIsConvertModalOpen(true); }}
                       className="w-full justify-start h-9 px-3 text-[13px] font-bold hover:bg-zinc-100 rounded-lg text-zinc-700"
                     >
                       Convert to card
@@ -400,72 +308,51 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                     </DialogDescription>
                  </DialogHeader>
 
-                 <div className="space-y-6 my-8">
-                    <div className="space-y-2 text-left">
-                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-1">Destination Board</label>
-                       <Select 
-                          key={`board-select-${boards.length}`}
-                          value={selectedBoardId} 
-                          onValueChange={(val) => { setSelectedBoardId(val); fetchLists(val); }}
-                       >
-                          <SelectTrigger className="w-full h-14 rounded-2xl border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 transition-all text-sm font-bold text-zinc-900 px-4 focus:ring-2 focus:ring-yellow-400">
-                             <SelectValue placeholder="Select a destination board" />
-                          </SelectTrigger>
-                          <SelectContent className="z-[300] bg-white border-zinc-200 shadow-2xl rounded-2xl p-1">
-                             <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
-                                {Array.isArray(boards) && boards.map(b => (
-                                   <SelectItem key={b._id} value={b._id} className="py-3 px-4 focus:bg-zinc-50 cursor-pointer rounded-xl font-bold text-zinc-700">
-                                      {b.title}
-                                   </SelectItem>
-                                ))}
-                             </div>
-                          </SelectContent>
-                       </Select>
+                 <div className="space-y-4 my-8 text-left">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-1">Search & Filter</label>
+                       <div className="relative">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                          <Input 
+                             placeholder="Search boards or lists..." 
+                             value={destSearch}
+                             onChange={(e) => setDestSearch(e.target.value)}
+                             className="h-12 pl-11 rounded-2xl border-zinc-200 bg-zinc-50/50 focus:bg-white transition-all text-sm font-bold"
+                          />
+                       </div>
                     </div>
 
-                    <div className="space-y-2 text-left">
-                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-1">Destination List (Column)</label>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-1">Destination List</label>
                        <Select 
-                          key={`list-select-${targetLists.length}-${selectedBoardId}`}
-                          value={selectedListId} 
-                          onValueChange={setSelectedListId}
-                          disabled={!selectedBoardId}
+                          key={`dest-select-${allDestinations.length}`}
+                          value={selectedDestinationId} 
+                          onValueChange={setSelectedDestinationId}
                        >
-                          <SelectTrigger className={`w-full h-14 rounded-2xl border-zinc-200 transition-all text-sm font-bold text-zinc-900 px-4 focus:ring-2 focus:ring-yellow-400 ${!selectedBoardId ? 'bg-zinc-100 opacity-50' : 'bg-zinc-50/50 hover:bg-zinc-50'}`}>
-                             <SelectValue placeholder={selectedBoardId ? "Select a column" : "Select a board first"} />
+                          <SelectTrigger className="w-full h-14 rounded-2xl border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 transition-all text-sm font-black text-zinc-900 px-4 focus:ring-2 focus:ring-yellow-400 shadow-sm">
+                             <SelectValue placeholder="Select destination..." />
                           </SelectTrigger>
-                          <SelectContent className="z-[300] bg-white border-zinc-200 shadow-2xl rounded-2xl p-1">
-                             <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
-                                {Array.isArray(targetLists) && targetLists.map(l => (
-                                   <SelectItem key={l._id} value={l._id} className="py-3 px-4 focus:bg-zinc-50 cursor-pointer rounded-xl font-bold text-zinc-700">
-                                      {l.title}
-                                   </SelectItem>
-                                ))}
-                             </div>
+                          <SelectContent className="z-[300] bg-white border-zinc-200 shadow-2xl rounded-2xl p-1 max-h-[300px]">
+                             {allDestinations
+                               .filter(d => 
+                                 d.boardTitle.toLowerCase().includes(destSearch.toLowerCase()) || 
+                                 d.listTitle.toLowerCase().includes(destSearch.toLowerCase())
+                               )
+                               .map(dest => (
+                                  <SelectItem key={dest.id} value={dest.id} className="py-2 px-3 focus:bg-zinc-50 cursor-pointer rounded-xl font-bold text-zinc-700">
+                                     <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] text-zinc-400 uppercase tracking-tighter">{dest.boardTitle}</span>
+                                        <span className="text-[14px]">{dest.listTitle}</span>
+                                     </div>
+                                  </SelectItem>
+                               ))}
                           </SelectContent>
                        </Select>
                     </div>
                  </div>
 
                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-3">
-                       <Button 
-                          variant="outline"
-                          className="flex-1 h-12 rounded-xl bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100 font-bold transition-all shadow-sm"
-                          onClick={handleQuickDailyConvert}
-                       >
-                          Send to Daily
-                       </Button>
-                       <Button 
-                          variant="outline"
-                          className="flex-1 h-12 rounded-xl bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 font-bold transition-all shadow-sm"
-                          onClick={handleQuickWeeklyConvert}
-                       >
-                          Send to Weekly
-                       </Button>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 pt-4 border-t border-zinc-100 mt-2">
+                    <div className="flex items-center gap-3 pt-2">
                        <Button 
                           variant="ghost" 
                           onClick={() => setIsConvertModalOpen(false)} 
@@ -476,9 +363,9 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                        <Button 
                           className="flex-[2] h-14 rounded-2xl bg-[#fffe01] text-black hover:bg-yellow-400 font-black tracking-wider text-[11px] uppercase shadow-xl shadow-yellow-100 transition-all border-b-4 border-yellow-500 active:border-b-0 active:translate-y-1"
                           onClick={handleConvert} 
-                          disabled={!selectedBoardId || !selectedListId}
+                          disabled={!selectedDestinationId}
                        >
-                          Complete Conversion
+                          Send
                        </Button>
                     </div>
                  </div>
@@ -500,9 +387,23 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
              >
                {task.isCompleted && <Check className="w-3.5 h-3.5" />}
              </div>
-             <span className={`text-[14px] font-semibold leading-tight flex-1 ${task.isCompleted ? 'text-zinc-400 line-through' : 'text-zinc-900 group-hover:text-[#0052cc]'}`}>
-               {task.title || task.text}
-             </span>
+             {isEditingName ? (
+               <Input 
+                 autoFocus
+                 className="h-8 text-[14px] font-semibold border-black rounded-lg flex-1"
+                 value={editNameValue}
+                 onChange={(e) => setEditNameValue(e.target.value)}
+                 onBlur={handleNameSave}
+                 onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
+               />
+             ) : (
+               <span 
+                 onDoubleClick={() => setIsEditingName(true)}
+                 className={`text-[14px] font-semibold leading-tight flex-1 cursor-text ${task.isCompleted ? 'text-zinc-400 line-through' : 'text-zinc-900 group-hover:text-[#0052cc]'}`}
+               >
+                 {task.title || task.text}
+               </span>
+             )}
            </div>
            
            <Button 
@@ -523,7 +424,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                    className={`flex items-center gap-1.5 text-[11px] font-bold hover:text-zinc-900 cursor-pointer transition-colors ${displayedAssignees.length > 0 ? 'text-[#0052cc]' : ''}`}
                  >
                     <UserPlus className="w-4 h-4" />
-                    {displayedAssignees.length > 0 ? displayedAssignees[0].name.split(' ')[0] : 'Assign'}
+                    {displayedAssignees.length > 0 ? (displayedAssignees[0].name?.split(' ')[0] || 'Assigned') : 'Assign'}
                  </div>
 
                  {isAssignPickerOpen && (

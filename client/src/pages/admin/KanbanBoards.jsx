@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
@@ -22,12 +22,12 @@ const KanbanBoards = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  const userRole = sessionStorage.getItem('userRole');
+  const userRole = localStorage.getItem('userRole');
   const isAdmin = userRole === 'admin';
 
   const fetchData = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const teamsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/${isAdmin ? 'admin/teams' : 'auth/my-teams'}`, {
         headers: { 'x-auth-token': token }
       });
@@ -71,7 +71,7 @@ const KanbanBoards = () => {
       return;
     }
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards`, {
         ...formData,
         teamId: selectedTeamId
@@ -229,7 +229,7 @@ const KanbanBoards = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (window.confirm("Delete this board?")) {
-                                  const token = sessionStorage.getItem('token');
+                                  const token = localStorage.getItem('token');
                                   axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${board._id}`, {
                                     headers: { 'x-auth-token': token }
                                   }).then(() => {
@@ -310,3 +310,4 @@ const KanbanBoards = () => {
 };
 
 export default KanbanBoards;
+

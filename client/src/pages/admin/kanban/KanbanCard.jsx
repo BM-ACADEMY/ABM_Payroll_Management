@@ -11,7 +11,7 @@ const KanbanCard = ({ task, index, onClick }) => {
           {...provided.dragHandleProps} 
           ref={provided.innerRef} 
           onClick={onClick} 
-          className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-xl transition-all cursor-pointer group border border-transparent hover:border-yellow-200"
+          className="bg-white p-4 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)] transition-all hover:-translate-y-1 cursor-pointer group border border-zinc-100 hover:border-yellow-400 active:scale-[0.98] duration-300"
         >
           <div className="flex items-start justify-between mb-2">
             <h4 className={`text-sm font-semibold text-zinc-900 group-hover:text-[#d30614] transition-all leading-snug ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}>

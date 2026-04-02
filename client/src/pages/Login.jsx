@@ -40,10 +40,17 @@ const Login = ({ setUser }) => {
         password
       });
 
-      sessionStorage.setItem('token', res.data.token);
+      localStorage.setItem('token', res.data.token);
       const authenticatedUser = res.data.user;
       setUser(authenticatedUser);
-      navigate(authenticatedUser.role.name === 'admin' ? '/admin' : '/dashboard');
+      
+      const redirectUrl = localStorage.getItem('redirectUrl');
+      if (redirectUrl) {
+         localStorage.removeItem('redirectUrl');
+         navigate(redirectUrl);
+      } else {
+         navigate(authenticatedUser.role.name === 'admin' ? '/admin' : '/dashboard');
+      }
     } catch (err) {
       if (err.response?.data?.emailNotVerified) {
         navigate('/otp', { state: { email } });
@@ -137,3 +144,4 @@ const Login = ({ setUser }) => {
 };
 
 export default Login;
+

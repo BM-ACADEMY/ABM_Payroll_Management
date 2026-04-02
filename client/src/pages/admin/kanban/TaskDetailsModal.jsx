@@ -1,7 +1,7 @@
 import { 
   X, ChevronDown, Image, Activity, MoreHorizontal, Plus, Tag, CheckSquare, 
   Paperclip, Layout, Bold, Italic, ListOrdered, Link, Type, MessageSquare,
-  Check, Trash2, Edit2, Send, List, Bell
+  Check, Trash2, Edit2, Send, List, Bell, Calendar
 } from 'lucide-react';
 import { memo, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
@@ -137,7 +137,26 @@ const TaskDetailsModal = ({
     return new Date(deadline) < new Date();
   };
 
-  const currentUser = JSON.parse(sessionStorage.getItem('user'));
+  const currentUser = { 
+    _id: localStorage.getItem('userId'), 
+    name: localStorage.getItem('userName'), 
+    role: localStorage.getItem('userRole') 
+  };
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState(taskDetails?.task?.title || '');
+
+  useEffect(() => {
+    setEditTitleValue(taskDetails?.task?.title || '');
+  }, [taskDetails?.task?.title]);
+
+  const handleTitleSave = () => {
+    const task = taskDetails?.task;
+    if (task && editTitleValue.trim() && editTitleValue !== task.title) {
+      handleUpdateTask(task._id, { title: editTitleValue });
+    }
+    setIsEditingTitle(false);
+  };
 
   // Logic for Mentions
   const handleTextChange = (text, type) => {
@@ -178,7 +197,7 @@ const TaskDetailsModal = ({
 
   const handleCopyTask = async (targetType) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       // 1. Get the special board
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${targetType}`, {
         headers: { 'x-auth-token': token }
@@ -439,10 +458,24 @@ const TaskDetailsModal = ({
                     >
                       {task.isCompleted && <Check className="w-4 h-4" />}
                     </button>
-                    <DialogHeader className="p-0 space-y-0 text-left">
-                      <DialogTitle className={`text-[28px] font-bold text-zinc-900 tracking-tight leading-tight transition-all ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}>
-                        {task.title}
-                      </DialogTitle>
+                    <DialogHeader className="p-0 space-y-0 text-left flex-1">
+                      {isEditingTitle ? (
+                        <Input 
+                          autoFocus
+                          className="text-[28px] font-bold text-zinc-900 tracking-tight leading-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent"
+                          value={editTitleValue}
+                          onChange={(e) => setEditTitleValue(e.target.value)}
+                          onBlur={handleTitleSave}
+                          onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                        />
+                      ) : (
+                        <DialogTitle 
+                          onDoubleClick={() => setIsEditingTitle(true)}
+                          className={`text-[28px] font-bold text-zinc-900 tracking-tight leading-tight transition-all cursor-text ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}
+                        >
+                          {task.title}
+                        </DialogTitle>
+                      )}
                       <DialogDescription className="sr-only">
                         Task details and management for {task.title}
                       </DialogDescription>
@@ -520,7 +553,7 @@ const TaskDetailsModal = ({
                              const formData = new FormData();
                              formData.append('file', file);
                              
-                             const token = sessionStorage.getItem('token');
+                             const token = localStorage.getItem('token');
                              const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/upload`, formData, {
                                headers: { 
                                  'Content-Type': 'multipart/form-data',
@@ -934,3 +967,4 @@ const TaskDetailsModal = ({
 };
 
 export default memo(TaskDetailsModal);
+

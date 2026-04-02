@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,7 @@ const Permissions = () => {
   const fetchMyRequests = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       // We pass a custom query to exclude leaves if the backend supports it, 
       // otherwise we just fetch all and hope for the best or update the backend.
       // Standardizing to page-based fetching.
@@ -90,7 +90,7 @@ const Permissions = () => {
     setFormLoading(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/requests`, {
         type: 'permission',
         date: format(new Date(formData.fromDateTime), 'yyyy-MM-dd'),
@@ -314,3 +314,4 @@ const Permissions = () => {
 };
 
 export default Permissions;
+

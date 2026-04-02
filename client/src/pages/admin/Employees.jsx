@@ -49,7 +49,7 @@ const Employees = () => {
 
   const fetchEmployees = async (page = 1) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?page=${page}&limit=10&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
@@ -73,7 +73,7 @@ const Employees = () => {
 
   const fetchTeams = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
         headers: { 'x-auth-token': token }
       });
@@ -120,7 +120,7 @@ const Employees = () => {
     setFormLoading(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/employees`, formData, {
         headers: { 'x-auth-token': token }
       });
@@ -187,7 +187,7 @@ const Employees = () => {
     setEditLoading(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const payload = { ...editFormData };
       if (!payload.password) delete payload.password;
 
@@ -222,7 +222,7 @@ const Employees = () => {
     setDeleteLoading(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/employees/${employeeToDelete._id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -612,3 +612,4 @@ const Employees = () => {
 };
 
 export default Employees;
+

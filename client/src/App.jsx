@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+﻿import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -49,10 +49,18 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const token = sessionStorage.getItem('token');
-    const savedRole = sessionStorage.getItem('userRole'); 
-    const savedName = sessionStorage.getItem('userName');
-    const savedId = sessionStorage.getItem('userId');
+    const token = localStorage.getItem('token');
+    const savedRole = localStorage.getItem('userRole'); 
+    const savedName = localStorage.getItem('userName');
+    const savedId = localStorage.getItem('userId');
+    
+    // Save deep link if accessing protected route without being logged in
+    const currentPath = window.location.pathname;
+    const isPublicPage = currentPath === '/login' || currentPath === '/signup' || currentPath === '/';
+    if (!token && !isPublicPage) {
+      localStorage.setItem('redirectUrl', window.location.pathname + window.location.search);
+    }
+
     if (token && savedRole) {
       setUser({ id: savedId, role: { name: savedRole }, name: savedName || 'User' });
     }
@@ -62,13 +70,13 @@ function App() {
   const handleSetUser = (u) => {
     setUser(u);
     if (u) {
-      sessionStorage.setItem('userRole', u.role.name);
-      sessionStorage.setItem('userName', u.name);
-      sessionStorage.setItem('userId', u.id);
+      localStorage.setItem('userRole', u.role.name);
+      localStorage.setItem('userName', u.name);
+      localStorage.setItem('userId', u.id);
     } else {
-      sessionStorage.removeItem('userRole');
-      sessionStorage.removeItem('userName');
-      sessionStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userId');
     }
   };
 
@@ -243,3 +251,4 @@ function App() {
 }
 
 export default App;
+

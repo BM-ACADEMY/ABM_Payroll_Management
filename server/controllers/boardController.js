@@ -599,16 +599,6 @@ exports.addComment = async (req, res) => {
     }
 
     await comment.save();
-    
-    // Also add to history
-    const history = new CardHistory({
-      task: taskId,
-      user: req.user.id,
-      action: 'COMMENTED',
-      details: `Added a comment: "${text.substring(0, 20)}..."`
-    });
-    await history.save();
-
     // Tag Notifications
     if (comment.mentions.length > 0 && req.io) {
       comment.mentions.forEach(mention => {
@@ -928,5 +918,44 @@ exports.getSharedBoards = async (req, res) => {
   } catch (err) {
     console.error('getSharedBoards Error:', err.message);
     res.status(500).json({ error: err.message, stack: process.env.NODE_ENV === 'development' ? err.stack : undefined });
+  }
+};
+
+/**
+ * Optimized endpoint to fetch all possible board/list destinations for a team.
+ */
+exports.getBoardDestinations = async (req, res) => {
+  const { teamId } = req.params;
+  try {
+    const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
+                    req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
+    
+    // Find all boards for the team (including tactical ones)
+    const query = { team: teamId };
+    
+    if (!isAdmin) {
+      query.$or = [{ members: req.user.id }, { admins: req.user.id }];
+    }
+
+    const boards = await Board.find(query).select('title _id type').lean();
+    const boardIds = boards.map(b => b._id);
+    const lists = await List.find({ board: { $in: boardIds } }).sort('position').lean();
+
+    const destinations = lists.map(list => {
+      const parentBoard = boards.find(b => b._id.toString() === list.board.toString());
+      return {
+        id: `${list.board}|${list._id}`,
+        boardId: list.board,
+        boardTitle: parentBoard ? parentBoard.title : 'Unknown Board',
+        boardType: parentBoard ? parentBoard.type : 'regular',
+        listId: list._id,
+        listTitle: list.title
+      };
+    });
+
+    res.json(destinations);
+  } catch (err) {
+    console.error('getBoardDestinations Error:', err.message);
+    res.status(500).send('Server Error');
   }
 };
