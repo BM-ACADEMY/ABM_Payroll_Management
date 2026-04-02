@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format, startOfWeek, addDays } from 'date-fns';
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Trophy, Calendar, CheckCircle2, User, HelpCircle, History, Edit, Trash2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const WeeklyScoring = () => {
   const [employees, setEmployees] = useState([]);
@@ -34,14 +35,15 @@ const WeeklyScoring = () => {
   const [isTeamFilterOpen, setIsTeamFilterOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [idToDelete, setIdToDelete] = useState(null);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
 
   const fetchEmployees = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees`, {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?limit=1000`, {
         headers: { 'x-auth-token': token }
       });
-      setEmployees(res.data);
+      setEmployees(res.data.employees || res.data);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -50,25 +52,30 @@ const WeeklyScoring = () => {
     }
   };
 
-  const fetchRecentScores = async () => {
+  const fetchRecentScores = async (page = 1) => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/scores/all?weekStartDate=${weekStart}`, {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/scores/all?weekStartDate=${weekStart}&page=${page}&limit=10&name=${scoreSearchTerm}&team=${teamFilter}`, {
         headers: { 'x-auth-token': token }
       });
-      setRecentScores(res.data);
+      setRecentScores(res.data.scores);
+      setPagination(res.data.pagination);
     } catch (err) {
       console.error(err);
     }
   };
 
+  const handlePageChange = (page) => {
+    fetchRecentScores(page);
+  };
+
   const fetchTeams = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
         headers: { 'x-auth-token': token }
       });
-      setAllTeams(res.data);
+      setAllTeams(res.data.teams);
     } catch (err) {
       console.error(err);
     }
@@ -76,10 +83,17 @@ const WeeklyScoring = () => {
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([fetchEmployees(), fetchRecentScores(), fetchTeams()]);
+      await Promise.all([fetchEmployees(), fetchRecentScores(1), fetchTeams()]);
     };
     init();
   }, [weekStart]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchRecentScores(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [scoreSearchTerm, teamFilter]);
 
   const handleEmployeeChange = (empId) => {
     const emp = employees.find(e => e._id === empId);
@@ -117,7 +131,7 @@ const WeeklyScoring = () => {
 
     setIsSubmitting(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/scores`, {
         userId: selectedEmployee._id,
         teamId: selectedTeam._id,
@@ -181,7 +195,7 @@ const WeeklyScoring = () => {
     if (!idToDelete) return;
     
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/scores/${idToDelete}`, {
         headers: { 'x-auth-token': token }
       });
@@ -269,19 +283,19 @@ const WeeklyScoring = () => {
                       />
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[1000] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                          {employees.filter(emp => 
-                            emp.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) || 
-                            emp.employeeId.toLowerCase().includes(memberSearchTerm.toLowerCase())
+                          {(Array.isArray(employees) ? employees : []).filter(emp => 
+                            (emp.name || "").toLowerCase().includes(memberSearchTerm.toLowerCase()) || 
+                            (emp.employeeId || "").toLowerCase().includes(memberSearchTerm.toLowerCase())
                           ).length === 0 ? (
                             <div className="p-8 text-center text-zinc-400">
                               <User className="w-8 h-8 mx-auto mb-2 opacity-20" />
                               <p className="text-xs">No employees found matching "{memberSearchTerm}"</p>
                             </div>
                           ) : (
-                            employees
+                            (Array.isArray(employees) ? employees : [])
                               .filter(emp => 
-                                emp.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) || 
-                                emp.employeeId.toLowerCase().includes(memberSearchTerm.toLowerCase())
+                                (emp.name || "").toLowerCase().includes(memberSearchTerm.toLowerCase()) || 
+                                (emp.employeeId || "").toLowerCase().includes(memberSearchTerm.toLowerCase())
                               )
                               .map(emp => (
                                 <div 
@@ -484,77 +498,77 @@ const WeeklyScoring = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentScores.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-64 text-center text-zinc-400">
-                        <Trophy className="w-10 h-10 mx-auto mb-2 opacity-10" />
-                        No evaluations found for this week.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    recentScores
-                      .filter(score => {
-                        const matchesSearch = score.user?.name.toLowerCase().includes(scoreSearchTerm.toLowerCase());
-                        const matchesTeam = teamFilter === 'all' || (score.team?._id || score.team) === teamFilter;
-                        return matchesSearch && matchesTeam;
-                      })
-                      .map((score) => {
-                      const assessment = getPerformanceMessage(score.totalCredits);
-                      return (
-                        <TableRow key={score._id} className="group hover:bg-zinc-50/50 transition-colors">
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-black">{score.user?.name}</span>
-                              <span className="text-[10px] uppercase text-zinc-400 font-mono tracking-tighter">{score.user?.employeeId}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-[10px] border-zinc-200 font-normal">{score.team?.name}</Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-col items-center">
-                              <span className="text-lg font-bold">{score.totalCredits}</span>
-                              <div className="w-12 h-1 bg-zinc-100 rounded-full overflow-hidden mt-1">
-                                <div 
-                                  className="h-full bg-black" 
-                                  style={{ width: `${score.totalCredits}%` }}
-                                />
+                    {recentScores.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-64 text-center text-zinc-400">
+                          <Trophy className="w-10 h-10 mx-auto mb-2 opacity-10" />
+                          No evaluations found for this week.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      recentScores.map((score) => {
+                        const assessment = getPerformanceMessage(score.totalCredits);
+                        return (
+                          <TableRow key={score._id} className="group hover:bg-zinc-50/50 transition-colors">
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-medium text-black">{score.user?.name}</span>
+                                <span className="text-[10px] uppercase text-zinc-400 font-mono tracking-tighter">{score.user?.employeeId}</span>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={`shadow-none font-medium px-2 py-0.5 rounded-lg border uppercase text-[10px] ${assessment.color}`}>
-                              {assessment.title}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleEditScore(score)}
-                                className="h-8 w-8 text-zinc-400 hover:text-black"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleDeleteScore(score._id)}
-                                className="h-8 w-8 text-zinc-400 hover:text-rose-500"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[10px] border-zinc-200 font-normal">{score.team?.name}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex flex-col items-center">
+                                <span className="text-lg font-bold">{score.totalCredits}</span>
+                                <div className="w-12 h-1 bg-zinc-100 rounded-full overflow-hidden mt-1">
+                                  <div 
+                                    className="h-full bg-black" 
+                                    style={{ width: `${score.totalCredits}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge className={`shadow-none font-medium px-2 py-0.5 rounded-lg border uppercase text-[10px] ${assessment.color}`}>
+                                {assessment.title}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleEditScore(score)}
+                                  className="h-8 w-8 text-zinc-400 hover:text-black"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleDeleteScore(score._id)}
+                                  className="h-8 w-8 text-zinc-400 hover:text-rose-500"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+              <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+                <PaginationControl 
+                  pagination={pagination} 
+                  onPageChange={handlePageChange} 
+                />
+              </div>
+            </Card>
 
           <Card className="rounded-3xl border-dashed border-2 border-zinc-200 bg-transparent p-8">
             <div className="flex gap-6 items-start">
@@ -619,3 +633,4 @@ const WeeklyScoring = () => {
 };
 
 export default WeeklyScoring;
+

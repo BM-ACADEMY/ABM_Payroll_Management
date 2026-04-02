@@ -22,11 +22,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const AdminPayrollReport = () => {
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   
   // Salary Generation Modal State
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
@@ -47,8 +49,12 @@ const AdminPayrollReport = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+    fetchEmployees(1);
+  }, [searchTerm]);
+
+  const handlePageChange = (page) => {
+    fetchEmployees(page);
+  };
 
   const resetDates = () => {
     const d = new Date();
@@ -56,14 +62,15 @@ const AdminPayrollReport = () => {
     setEndDate(new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]);
   };
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees`, {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?page=${page}&limit=5&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
-      setEmployees(res.data);
+      setEmployees(res.data.employees);
+      setPagination(res.data.pagination);
     } catch (err) {
       toast({
         variant: "destructive",
@@ -97,7 +104,7 @@ const AdminPayrollReport = () => {
     e.preventDefault();
     setGeneratingLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/payroll/generate/${selectedEmployee._id}?startDate=${startDate}&endDate=${endDate}`,
         { headers: { 'x-auth-token': token } }
@@ -173,12 +180,12 @@ const AdminPayrollReport = () => {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredEmployees.length === 0 ? (
+              ) : employees.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-32 text-center text-slate-500 font-medium">No employees found.</TableCell>
                 </TableRow>
               ) : (
-                filteredEmployees.map((emp) => (
+                employees.map((emp) => (
                   <TableRow key={emp._id} className="hover:bg-slate-50/50 border-b border-slate-50 transition-colors">
                     <TableCell className="py-6 px-8">
                       <div className="flex items-center gap-4">
@@ -213,6 +220,12 @@ const AdminPayrollReport = () => {
             </TableBody>
           </Table>
         </CardContent>
+        <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+          <PaginationControl 
+            pagination={pagination} 
+            onPageChange={handlePageChange} 
+          />
+        </div>
       </Card>
 
       {/* Salary Generation Dialog */}
@@ -385,4 +398,5 @@ const AdminPayrollReport = () => {
 };
 
 export default AdminPayrollReport;
+
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
   Plus, Users, Search, MoreHorizontal, Calendar, 
-  MessageSquare, CheckSquare, Clock, Layout, X, UserPlus
+  MessageSquare, CheckSquare, Clock, Layout, X, UserPlus,
+  Settings, Trash2, Edit
 } from 'lucide-react';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
@@ -22,13 +23,16 @@ const TaskDetailsModal = lazy(() => import('./kanban/TaskDetailsModal'));
 
 
 const KanbanBoard = () => {
-  const { id } = useParams();
+  const { id, type } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [boardData, setBoardData] = useState(null);
   const [lists, setLists] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
+
   
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [newListTitle, setNewListTitle] = useState('');
@@ -40,6 +44,12 @@ const KanbanBoard = () => {
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
+  const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
+  const [editBoardData, setEditBoardData] = useState({ title: '', description: '' });
+  const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
+  const [editingList, setEditingList] = useState(null);
+  const [teamsForAdmin, setTeamsForAdmin] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
 
   // Refs for socket listener to avoid closure issues
   const isDetailsOpenRef = useRef(isDetailsOpen);
@@ -48,39 +58,82 @@ const KanbanBoard = () => {
   useEffect(() => { isDetailsOpenRef.current = isDetailsOpen; }, [isDetailsOpen]);
   useEffect(() => { taskDetailsRef.current = taskDetails; }, [taskDetails]);
 
-  const userRole = sessionStorage.getItem('userRole');
-  const isAdmin = userRole === 'admin';
+  const userRole = localStorage.getItem('userRole');
+  const isAdmin = userRole === 'admin' || userRole === 'subadmin';
 
   const fetchData = React.useCallback(async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${id}`, {
+      const token = localStorage.getItem('token');
+      // If type exists ('daily' or 'weekly'), fetch from the special endpoint
+      const url = type 
+        ? `${import.meta.env.VITE_API_URL}/api/boards/special/${type}${selectedTeamId ? `?teamId=${selectedTeamId}` : ''}`
+        : `${import.meta.env.VITE_API_URL}/api/boards/${id}`;
+        
+      const res = await axios.get(url, {
         headers: { 'x-auth-token': token }
       });
-      setBoardData(res.data.board);
-      setLists(res.data.lists);
-      setTasks(res.data.tasks);
+      setBoardData(res.data.board || null);
+      setLists(res.data.lists || []);
+      setTasks(res.data.tasks || []);
+      if (res.data.board) {
+        setEditBoardData({
+          title: res.data.board.title,
+          description: res.data.board.description || ''
+        });
+      }
       setLoading(false);
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch board" });
+      if (err.response && (err.response.status === 403 || err.response.status === 401)) {
+        setAuthError(true);
+      } else {
+        toast({ variant: "destructive", title: "Error", description: "Failed to fetch board" });
+      }
       setLoading(false);
     }
-  }, [id, toast]);
+  }, [id, type, toast, selectedTeamId]);
 
   const fetchUsers = async () => {
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees`, {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/members/search`, {
         headers: { 'x-auth-token': token }
       });
-      setAllUsers(res.data);
-    } catch (err) {}
+      // Handle both { employees: [...] } and [...] formats
+      const data = res.data.employees || (Array.isArray(res.data) ? res.data : []);
+      setAllUsers(data);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setAllUsers([]);
+    }
   };
 
   useEffect(() => { 
     fetchData(); 
-    if (isAdmin) fetchUsers();
-  }, [fetchData, isAdmin]);
+    fetchUsers(); // All authenticated users can now fetch directory info for boards
+    
+    if (isAdmin) {
+      const fetchTeams = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
+            headers: { 'x-auth-token': token }
+          });
+          const teamsArray = res.data.teams || (Array.isArray(res.data) ? res.data : []);
+          setTeamsForAdmin(teamsArray);
+        } catch (err) {
+          console.error('Error fetching teams:', err);
+        }
+      };
+      fetchTeams();
+    }
+  }, [fetchData]);
+
+  // Update selectedTeamId when boardData changes to ensure sync
+  useEffect(() => {
+    if (boardData?.team?._id && !selectedTeamId) {
+      setSelectedTeamId(boardData.team._id);
+    }
+  }, [boardData]);
 
   // Handle Board Socket Connections
   useEffect(() => {
@@ -102,7 +155,7 @@ const KanbanBoard = () => {
     });
 
     socket.on('notification', (data) => {
-      if (data.userId === JSON.parse(sessionStorage.getItem('user'))?._id) {
+      if (data.userId === localStorage.getItem('userId')) {
          toast({
            title: "New Mention",
            description: data.message,
@@ -124,14 +177,17 @@ const KanbanBoard = () => {
     // Optimistic Update
     const userToAdd = allUsers.find(u => u._id === userId);
     if (userToAdd) {
-      setBoardData(prev => ({
-        ...prev,
-        members: [...prev.members, userToAdd]
-      }));
+      setBoardData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          members: [...(prev.members || []), userToAdd]
+        };
+      });
     }
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/${id}/members`, { userId }, {
         headers: { 'x-auth-token': token }
       });
@@ -140,6 +196,32 @@ const KanbanBoard = () => {
     } catch (err) { 
       toast({ variant: "destructive", title: "Error", description: "Failed to add member" });
       fetchData(); // Rollback on error
+    }
+  };
+
+  const handleRemoveMember = async (userId) => {
+    if (!window.confirm("Are you sure you want to remove this member?")) return;
+    
+    // Optimistic Update
+    setBoardData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        members: (prev.members || []).filter(m => m._id !== userId),
+        admins: (prev.admins || []).filter(a => a._id !== userId)
+      };
+    });
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${id}/members/${userId}`, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({ title: "Success", description: "Member removed from board" });
+      fetchData();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to remove member" });
+      fetchData();
     }
   };
 
@@ -215,16 +297,29 @@ const KanbanBoard = () => {
 
   const fetchTaskDetails = React.useCallback(async (taskId) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, {
         headers: { 'x-auth-token': token }
       });
       setTaskDetails(res.data);
       setIsDetailsOpen(true);
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch task details" });
+      // Don't toast if the task just isn't found for a deep link, or customize it
+      if (err.response?.status !== 404 && err.response?.status !== 403) {
+         toast({ variant: "destructive", title: "Error", description: "Failed to fetch task details" });
+      }
     }
   }, [toast]);
+
+  // Handle deep link auto-open
+  useEffect(() => {
+     const searchParams = new URLSearchParams(location.search);
+     const deepLinkTaskId = searchParams.get('task');
+     if (deepLinkTaskId && !isDetailsOpen && !loading && !authError) {
+        fetchTaskDetails(deepLinkTaskId);
+     }
+  }, [location.search, loading, authError, isDetailsOpen, fetchTaskDetails]);
+
 
   useEffect(() => { fetchData(); }, [id]);
 
@@ -247,7 +342,7 @@ const KanbanBoard = () => {
       setLists(newLists);
       try {
         await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/lists/${draggableId}`, { position: destination.index }, {
-          headers: { 'x-auth-token': sessionStorage.getItem('token') }
+          headers: { 'x-auth-token': localStorage.getItem('token') }
         });
       } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to move list" }); }
       return;
@@ -261,15 +356,20 @@ const KanbanBoard = () => {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${draggableId}`, {
         list: destination.droppableId,
         position: destination.index
-      }, { headers: { 'x-auth-token': sessionStorage.getItem('token') } });
+      }, { headers: { 'x-auth-token': localStorage.getItem('token') } });
     } catch (err) { fetchData(); }
   };
 
   const handleCreateList = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/lists`, { title: newListTitle, boardId: id, position: lists.length }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+      const activeBoardId = boardData?._id || id;
+      if (!activeBoardId) {
+        toast({ variant: "destructive", title: "Error", description: "Board ID not found" });
+        return;
+      }
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/lists`, { title: newListTitle, boardId: activeBoardId, position: lists.length }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       setNewListTitle(''); setIsListModalOpen(false); fetchData();
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to create list" }); }
@@ -278,17 +378,18 @@ const KanbanBoard = () => {
   const handleCreateTask = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { ...newTaskData, position: tasks.filter(t => t.list === newTaskData.listId).length }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+      const activeBoardId = boardData?._id || id;
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { ...newTaskData, boardId: activeBoardId, position: tasks.filter(t => t.list === newTaskData.listId).length }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
-      setNewTaskData({ title: '', listId: '', boardId: id }); setIsTaskModalOpen(false); fetchData();
+      setNewTaskData({ title: '', listId: '', boardId: activeBoardId }); setIsTaskModalOpen(false); fetchData();
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to create task" }); }
   };
 
   const handleAddComment = async (taskId, text) => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/comments`, { taskId, text }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskId);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to add comment" }); }
@@ -297,7 +398,7 @@ const KanbanBoard = () => {
   const handleUpdateComment = async (commentId, text) => {
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/comments/${commentId}`, { text }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update comment" }); }
@@ -306,7 +407,7 @@ const KanbanBoard = () => {
   const handleDeleteComment = async (commentId) => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/comments/${commentId}`, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to delete comment" }); }
@@ -316,7 +417,7 @@ const KanbanBoard = () => {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       setIsDetailsOpen(false);
       setTaskDetails(null);
@@ -356,13 +457,13 @@ const KanbanBoard = () => {
     try {
       if (updates.delete) {
         await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/checklists/${checklistId}/items/${itemId}`, {
-           headers: { 'x-auth-token': sessionStorage.getItem('token') }
+           headers: { 'x-auth-token': localStorage.getItem('token') }
         });
         toast({ title: "Item Deleted" });
       } else {
         await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/checklists/update`, {
           checklistId, itemId, ...updates
-        }, { headers: { 'x-auth-token': sessionStorage.getItem('token') } });
+        }, { headers: { 'x-auth-token': localStorage.getItem('token') } });
       }
       // Re-fetch only after a slight delay or if critical, 
       // but with optimistic update, the UI is already correct.
@@ -380,7 +481,7 @@ const KanbanBoard = () => {
   const handleAddSubTask = async (parentTaskId, title) => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { title, listId: taskDetails.task.list, boardId: id, parentTaskId }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(parentTaskId);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to add subtask" }); }
@@ -389,7 +490,7 @@ const KanbanBoard = () => {
   const toggleTaskCompletion = async (taskId, current) => {
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, { isCompleted: !current }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskId);
       fetchData();
@@ -428,7 +529,7 @@ const KanbanBoard = () => {
 
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, payload, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       // Re-fetch to ensure sync, but optimistic update makes it feel instant
       fetchTaskDetails(taskDetails?.task?._id || taskId);
@@ -441,10 +542,64 @@ const KanbanBoard = () => {
     }
   };
 
+  const handleUpdateBoard = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/${id}`, editBoardData, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({ title: "Success", description: "Board updated successfully" });
+      setIsEditBoardModalOpen(false);
+      fetchData();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to update board" });
+    }
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!window.confirm("ARE YOU SURE? This will permanently delete the board and all its tasks, comments, and history. This action cannot be undone.")) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({ title: "Board Deleted", description: "The board has been permanently removed." });
+      navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban`);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete board" });
+    }
+  };
+
+  const handleUpdateList = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/lists/${editingList._id}`, { title: editingList.title }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      toast({ title: "Updated", description: "List name changed" });
+      setIsEditListModalOpen(false);
+      fetchData();
+    } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update list" }); }
+  };
+
+  const handleDeleteList = async (listId) => {
+    if (!window.confirm("Delete this list and all its tasks?")) return;
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/lists/${listId}`, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      toast({ title: "Deleted", description: "List removed" });
+      setIsEditListModalOpen(false);
+      fetchData();
+    } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to delete list" }); }
+  };
+
   const handleAddChecklist = async (taskId, name = "Checklist") => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/checklists`, { name }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskId);
       toast({ title: "Success", description: "Checklist added" });
@@ -459,7 +614,7 @@ const KanbanBoard = () => {
         assignedTo,
         dueDate
       }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to add item" }); }
@@ -468,7 +623,7 @@ const KanbanBoard = () => {
   const handleToggleChecklistItem = async (checklistId, itemId, isCompleted) => {
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskDetails.task._id}/checklists/toggle`, { checklistId, itemId, isCompleted }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update item" }); }
@@ -481,7 +636,7 @@ const KanbanBoard = () => {
       const newLabels = exists ? currentLabels.filter(l => l.text !== label.text) : [...currentLabels, label];
       
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskDetails.task._id}/labels`, { labels: newLabels }, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update labels" }); }
@@ -490,17 +645,18 @@ const KanbanBoard = () => {
   const handleRemoveChecklist = async (checklistId) => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskDetails.task._id}/checklists/${checklistId}`, {
-         headers: { 'x-auth-token': sessionStorage.getItem('token') }
+         headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
       toast({ title: "Checklist Deleted", description: "The checklist has been removed." });
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to delete checklist" }); }
   };
 
+  // Memoize tasks grouped by list
   const tasksByList = useMemo(() => {
     const map = {};
-    if (!lists || !tasks) return map;
-    lists.forEach(l => map[l._id] = []);
+    if (!Array.isArray(lists) || !Array.isArray(tasks)) return map;
+    lists.forEach(l => { map[l._id] = []; });
     tasks.forEach(t => {
       const listId = t.list?._id || t.list;
       if (!t.parentTask && map[listId]) {
@@ -515,6 +671,28 @@ const KanbanBoard = () => {
 
   if (loading) return <div className="h-full flex items-center justify-center bg-zinc-50"><div className="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-yellow-400"></div></div>;
 
+  if (authError) {
+     return (
+       <div className="h-[calc(100vh-80px)] xl:h-screen w-full flex flex-col items-center justify-center bg-white p-8">
+         <div className="max-w-md w-full bg-zinc-50 rounded-3xl p-10 border border-zinc-100 shadow-xl flex flex-col items-center text-center">
+           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
+             <div className="text-4xl text-red-500">ðŸ”’</div>
+           </div>
+           <h2 className="text-2xl font-black text-zinc-900 mb-3 tracking-tight">Access Restricted</h2>
+           <p className="text-sm font-medium text-zinc-500 leading-relaxed max-w-[280px] mx-auto mb-8">
+             You don't have permission to view this board. Please contact the administrator.
+           </p>
+           <Button 
+             onClick={() => navigate('/dashboard')} 
+             className="w-full h-14 rounded-2xl bg-black text-[#fffe01] font-black tracking-widest text-[11px] uppercase shadow-2xl hover:-translate-y-1 hover:shadow-black/20 transition-all border-b-4 border-zinc-800 active:border-b-0 active:translate-y-0"
+           >
+             Return Home
+           </Button>
+         </div>
+       </div>
+     );
+  }
+
   return (
     <div className="h-[calc(100vh-80px)] overflow-hidden flex flex-col bg-zinc-50/50">
       <header className="px-6 py-4 flex items-center justify-between border-b bg-white shadow-sm z-10">
@@ -525,16 +703,31 @@ const KanbanBoard = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-zinc-900 tracking-tight">{boardData?.title}</h1>
-              <Badge variant="outline" className="text-[10px] uppercase font-medium bg-zinc-50">{boardData?.team?.name}</Badge>
+              {isAdmin && type ? (
+                <select 
+                  className="bg-zinc-50 border border-zinc-200 rounded-lg text-[10px] uppercase font-medium px-2 py-1 outline-none focus:ring-1 focus:ring-yellow-400"
+                  value={selectedTeamId || ''}
+                  onChange={(e) => {
+                    setSelectedTeamId(e.target.value);
+                    setLoading(true);
+                  }}
+                >
+                  {teamsForAdmin.map(team => (
+                    <option key={team._id} value={team._id}>{team.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <Badge variant="outline" className="text-[10px] uppercase font-medium bg-zinc-50">{boardData?.team?.name}</Badge>
+              )}
             </div>
             <p className="text-zinc-500 text-xs font-normal">{boardData?.description}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2 mr-2">
-            {boardData?.members?.slice(0, 3).map((m, i) => (
-              <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-zinc-200 flex items-center justify-center text-[10px] font-bold shadow-sm" title={m.name}>{m.name.charAt(0)}</div>
-            ))}
+             {boardData?.members?.slice(0, 3).map((m, i) => (
+               <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-zinc-200 flex items-center justify-center text-[10px] font-bold shadow-sm" title={m?.name}>{m?.name?.charAt(0) || '?'}</div>
+             ))}
             {boardData?.members?.length > 3 && <div className="w-9 h-9 rounded-full border-2 border-white bg-black text-[#fffe01] flex items-center justify-center text-[10px] font-bold shadow-sm">+{boardData.members.length - 3}</div>}
           </div>
 
@@ -544,7 +737,7 @@ const KanbanBoard = () => {
                 <UserPlus className="w-4 h-4 text-zinc-400" /> Share
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[480px] border-none shadow-2xl rounded-[40px] bg-white p-8">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto border-none shadow-2xl rounded-[40px] bg-white p-8 custom-scrollbar">
               <DialogHeader>
                 <DialogTitle className="text-3xl font-black tracking-tighter text-zinc-900">Collaborators</DialogTitle>
                 <DialogDescription className="font-medium text-zinc-500 text-sm">Manage who can access and edit this board.</DialogDescription>
@@ -552,36 +745,64 @@ const KanbanBoard = () => {
               <div className="space-y-8 pt-6">
                 <div className="space-y-4">
                   <h4 className="text-[10px] uppercase font-black tracking-widest text-zinc-400 ml-1">Current Access</h4>
-                  <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                    {boardData?.members?.map(m => (
-                      <div key={m._id} className="flex items-center gap-4 bg-zinc-50 p-4 rounded-3xl border border-zinc-100/50">
-                        <div className="w-12 h-12 rounded-[20px] bg-white shadow-sm flex items-center justify-center text-zinc-900 font-black border border-zinc-100">{m.name.charAt(0)}</div>
-                        <div className="flex-1">
-                           <p className="text-sm font-black text-zinc-900">{m.name}</p>
-                           <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">{m.email}</p>
+                  <div className="space-y-3">
+                    {boardData?.members?.map(m => {
+                      const currentUserId = localStorage.getItem('userId');
+                      const isBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(m._id));
+                      const isCurrentUserBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(currentUserId));
+                      const canRemove = isAdmin; // Only system administrators can remove members
+
+                      return (
+                        <div key={m._id} className="flex items-center gap-4 bg-zinc-50 p-4 rounded-3xl border border-zinc-100/50">
+                          <div className="w-12 h-12 rounded-[20px] bg-white shadow-sm flex items-center justify-center text-zinc-900 font-black border border-zinc-100">{m.name.charAt(0)}</div>
+                          <div className="flex-1">
+                             <p className="text-sm font-black text-zinc-900">{m.name}</p>
+                             <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">{m.email}</p>
+                          </div>
+                          {isBoardAdmin && <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none text-[8px] font-black tracking-widest">ADMIN</Badge>}
+                          
+                          {canRemove && String(m._id) !== String(currentUserId) && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleRemoveMember(m._id)}
+                              className="h-9 w-9 text-red-400 hover:text-red-700 hover:bg-red-100 rounded-2xl transition-all"
+                              title="Remove Member"
+                            >
+                              <X className="w-5 h-5" />
+                            </Button>
+                          )}
                         </div>
-                        {boardData.admins.some(a => a._id === m._id) && <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none text-[8px] font-black tracking-widest">ADMIN</Badge>}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
                 
-                {isAdmin && (
-                  <div className="space-y-4 pt-8 border-t border-zinc-100">
-                    <h4 className="text-[10px] uppercase font-black tracking-widest text-zinc-400 ml-1">Add New Members</h4>
-                    <div className="space-y-4">
-                       <div className="relative group/search">
-                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within/search:text-black transition-colors" />
-                         <Input 
-                          placeholder="Search by name or email..." 
-                          value={userSearch} 
-                          onChange={e => setUserSearch(e.target.value)}
-                          className="rounded-[20px] h-12 pl-12 border-zinc-100 bg-zinc-50 focus:bg-white transition-all text-sm font-medium"
-                         />
-                       </div>
-                       <div className="max-h-[250px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                         {allUsers
-                          .filter(u => (u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase())) && !boardData.members.some(m => m._id === u._id))
+                <div className="space-y-4 pt-8 border-t border-zinc-100">
+                  <h4 className="text-[10px] uppercase font-black tracking-widest text-zinc-400 ml-1">Add New Members</h4>
+                  <div className="space-y-4">
+                     <div className="relative group/search">
+                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within/search:text-black transition-colors" />
+                       <Input 
+                        placeholder={isAdmin ? "Search all members..." : "Search team members..."} 
+                        value={userSearch} 
+                        onChange={e => setUserSearch(e.target.value)}
+                        className="rounded-[20px] h-12 pl-12 border-zinc-100 bg-zinc-50 focus:bg-white transition-all text-sm font-medium"
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       {Array.isArray(allUsers) ? (
+                         allUsers
+                          .filter(u => {
+                            const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase());
+                            const notInBoard = !boardData?.members?.some(m => m._id === u._id);
+                            
+                            if (isAdmin) return matchesSearch && notInBoard;
+                            
+                            // If employee: Must be in the same team as the board
+                            const isInSameTeam = u.teams?.some(t => String(t._id || t) === String(boardData?.team?._id || boardData?.team));
+                            return matchesSearch && notInBoard && isInSameTeam;
+                          })
                           .map(u => (
                             <div key={u._id} className="flex items-center justify-between p-4 rounded-[24px] hover:bg-zinc-50 border border-transparent hover:border-zinc-200 transition-all group/user">
                                <div className="flex items-center gap-4">
@@ -593,15 +814,71 @@ const KanbanBoard = () => {
                                </div>
                                <Button size="sm" onClick={() => handleAddMember(u._id)} className="h-9 rounded-xl bg-black text-[#fffe01] hover:bg-zinc-800 px-6 font-black text-[10px] tracking-widest shadow-lg active:scale-95 transition-all">INVITE</Button>
                             </div>
-                         ))}
-                         {userSearch && allUsers.filter(u => u.name.toLowerCase().includes(userSearch.toLowerCase()) && !boardData.members.some(m => m._id === u._id)).length === 0 && (
-                            <p className="text-center py-8 text-xs font-bold text-zinc-400 italic">No matching employees found...</p>
-                         )}
-                       </div>
-                    </div>
+                          ))
+                       ) : (
+                         <div className="text-center py-4 text-xs font-bold text-zinc-400">Loading members...</div>
+                       )}
+                       {userSearch && Array.isArray(allUsers) && allUsers.filter(u => {
+                          const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase());
+                          const notInBoard = !boardData?.members?.some(m => m._id === u._id);
+                          if (isAdmin) return matchesSearch && notInBoard;
+                          const isInSameTeam = u.teams?.some(t => String(t._id || t) === String(boardData?.team?._id || boardData?.team));
+                          return matchesSearch && notInBoard && isInSameTeam;
+                       }).length === 0 && (
+                          <p className="text-center py-8 text-xs font-bold text-zinc-400 italic">No matching members found...</p>
+                       )}
+                     </div>
                   </div>
-                )}
+                </div>
               </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isEditBoardModalOpen} onOpenChange={setIsEditBoardModalOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="rounded-2xl h-10 px-4 text-xs gap-2 border-zinc-200 hover:bg-zinc-50 font-bold transition-all shadow-sm">
+                <Settings className="w-4 h-4 text-zinc-400" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[450px] border-none shadow-2xl rounded-[32px] bg-white p-8">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-zinc-900">Board Settings</DialogTitle>
+                <DialogDescription className="font-medium text-zinc-500">Edit board details or manage its lifecycle.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleUpdateBoard} className="space-y-6 pt-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Board Title</Label>
+                  <Input 
+                    placeholder="Board name..." 
+                    value={editBoardData.title} 
+                    onChange={e => setEditBoardData({...editBoardData, title: e.target.value})}
+                    className="rounded-[20px] h-14 border-zinc-200 bg-zinc-50 focus:bg-white transition-all text-base font-bold px-5"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Description</Label>
+                  <Textarea 
+                    placeholder="What is this board for?" 
+                    value={editBoardData.description} 
+                    onChange={e => setEditBoardData({...editBoardData, description: e.target.value})}
+                    className="rounded-[20px] min-h-[120px] border-zinc-200 bg-zinc-50 focus:bg-white transition-all text-sm font-medium p-5"
+                  />
+                </div>
+                <div className="flex flex-col gap-3 pt-4">
+                  <Button type="submit" className="w-full bg-black text-[#fffe01] rounded-2xl h-14 font-black text-sm tracking-widest shadow-xl active:scale-95 transition-all">SAVE CHANGES</Button>
+                  {(isAdmin || boardData?.admins?.some(a => String(a._id || a) === String(localStorage.getItem('userId')))) && (
+                    <Button 
+                      type="button" 
+                      onClick={handleDeleteBoard}
+                      variant="ghost" 
+                      className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 rounded-2xl h-14 font-black text-xs tracking-widest transition-all"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" /> DELETE BOARD
+                    </Button>
+                  )}
+                </div>
+              </form>
             </DialogContent>
           </Dialog>
 
@@ -616,7 +893,7 @@ const KanbanBoard = () => {
           <Droppable droppableId="board" type="list" direction="horizontal">
             {(provided) => (
               <div {...provided.droppableProps} ref={provided.innerRef} className="flex gap-6 h-full items-start">
-                {lists.map((list, index) => (
+                {Array.isArray(lists) && lists.map((list, index) => (
                   <Draggable key={list._id} draggableId={list._id} index={index}>
                     {(provided) => (
                       <div {...provided.draggableProps} ref={provided.innerRef} className="w-80 shrink-0 bg-zinc-100/80 backdrop-blur-sm rounded-[32px] flex flex-col max-h-full shadow-sm border border-zinc-200/50">
@@ -627,7 +904,14 @@ const KanbanBoard = () => {
                               {tasksByList[list._id]?.length || 0}
                             </span>
                           </h3>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-black hover:bg-white rounded-xl transition-colors"><MoreHorizontal className="w-4 h-4" /></Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => { setEditingList(list); setIsEditListModalOpen(true); }}
+                            className="h-8 w-8 text-zinc-400 hover:text-black hover:bg-white rounded-xl transition-colors"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
                         </div>
                         <Droppable droppableId={list._id} type="task">
                           {(provided, snapshot) => (
@@ -659,6 +943,39 @@ const KanbanBoard = () => {
       </div>
 
       <Dialog open={isListModalOpen} onOpenChange={setIsListModalOpen}><DialogContent className="sm:max-w-[400px] border-none shadow-2xl rounded-[32px] bg-white p-6"><DialogHeader><DialogTitle className="text-xl font-bold">Create New List</DialogTitle><DialogDescription className="sr-only">Form to create a new task list on the board.</DialogDescription></DialogHeader><form onSubmit={handleCreateList} className="space-y-4 pt-4"><div className="space-y-2"><Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">List Title</Label><Input placeholder="e.g. To Do, Done" value={newListTitle} onChange={(e) => setNewListTitle(e.target.value)} required className="rounded-2xl h-12 border-zinc-200" /></div><DialogFooter><Button type="submit" className="w-full bg-black text-[#fffe01] rounded-2xl h-12 font-bold shadow-lg">Create List</Button></DialogFooter></form></DialogContent></Dialog>
+      
+      <Dialog open={isEditListModalOpen} onOpenChange={setIsEditListModalOpen}>
+        <DialogContent className="sm:max-w-[400px] border-none shadow-2xl rounded-[32px] bg-white p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">List Settings</DialogTitle>
+            <DialogDescription className="sr-only">Edit list name or delete list.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateList} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">List Title</Label>
+              <Input 
+                placeholder="List name..." 
+                value={editingList?.title || ''} 
+                onChange={(e) => setEditingList({ ...editingList, title: e.target.value })} 
+                required 
+                className="rounded-2xl h-12 border-zinc-200" 
+              />
+            </div>
+            <div className="flex flex-col gap-3 pt-2">
+              <Button type="submit" className="w-full bg-black text-[#fffe01] rounded-2xl h-12 font-bold shadow-lg">Save Changes</Button>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => handleDeleteList(editingList?._id)}
+                className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 rounded-2xl h-12 font-bold"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Delete List
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}><DialogContent className="sm:max-w-[450px] border-none shadow-2xl rounded-[32px] bg-white p-6"><DialogHeader><DialogTitle className="text-xl font-bold">New Card</DialogTitle><DialogDescription className="sr-only">Form to create a new task card in a list.</DialogDescription></DialogHeader><form onSubmit={handleCreateTask} className="space-y-4 pt-4"><div className="space-y-2"><Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Title</Label><Input placeholder="Task title..." value={newTaskData.title} onChange={(e) => setNewTaskData({ ...newTaskData, title: e.target.value })} required className="rounded-2xl h-12 border-zinc-200" /></div><div className="space-y-2"><Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Description</Label><Textarea placeholder="Details..." value={newTaskData.description || ''} onChange={(e) => setNewTaskData({ ...newTaskData, description: e.target.value })} className="rounded-2xl min-h-[120px] border-zinc-200" /></div><DialogFooter><Button type="submit" className="w-full bg-black text-[#fffe01] rounded-2xl h-12 font-bold shadow-lg">Add Card</Button></DialogFooter></form></DialogContent></Dialog>
 
       {/* Task Details Dialog */}
@@ -669,10 +986,12 @@ const KanbanBoard = () => {
             onClose={() => { setIsDetailsOpen(false); setTaskDetails(null); }}
             taskDetails={taskDetails}
             boardData={boardData}
+            currentBoardId={boardData._id}
             lists={lists}
             isAdmin={isAdmin}
             handleUpdateTask={handleUpdateTask}
             handleDeleteTask={handleDeleteTask}
+            onRefresh={fetchData}
             handleAddComment={handleAddComment}
             handleUpdateComment={handleUpdateComment}
             handleDeleteComment={handleDeleteComment}
@@ -692,3 +1011,4 @@ const KanbanBoard = () => {
 };
 
 export default KanbanBoard;
+

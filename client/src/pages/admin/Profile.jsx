@@ -10,7 +10,9 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Lock
+  Lock,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import axios from 'axios';
 
@@ -30,6 +32,10 @@ const Profile = ({ setUser }) => {
     newPassword: '',
     confirmPassword: ''
   });
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -39,7 +45,7 @@ const Profile = ({ setUser }) => {
 
   const fetchProfile = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth`, {
         headers: { 'x-auth-token': token }
       });
@@ -49,7 +55,7 @@ const Profile = ({ setUser }) => {
         phoneNumber: res.data.phoneNumber || ''
       });
       // Sync names just in case
-      sessionStorage.setItem('userName', res.data.name);
+      localStorage.setItem('userName', res.data.name);
     } catch (err) {
       console.error("Error fetching profile:", err);
       setMessage({ type: 'error', text: 'Failed to load profile data.' });
@@ -100,7 +106,7 @@ const Profile = ({ setUser }) => {
     setMessage({ type: '', text: '' });
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         ...userData,
         email: normalizedEmail
@@ -109,8 +115,8 @@ const Profile = ({ setUser }) => {
       });
       
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
-      // Update sessionStorage to reflect new name/email
-      sessionStorage.setItem('userName', res.data.name);
+      // Update localStorage to reflect new name/email
+      localStorage.setItem('userName', res.data.name);
       
       // Update App state for instant sync
       if (setUser) {
@@ -139,7 +145,7 @@ const Profile = ({ setUser }) => {
     setMessage({ type: '', text: '' });
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.put(`${import.meta.env.VITE_API_URL}/api/auth/change-password`, {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
@@ -166,7 +172,7 @@ const Profile = ({ setUser }) => {
     );
   }
 
-  const userRole = sessionStorage.getItem('userRole') || 'admin';
+  const userRole = localStorage.getItem('userRole') || 'admin';
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-700 pb-20">
@@ -273,15 +279,29 @@ const Profile = ({ setUser }) => {
                     <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                       Current Password
                     </Label>
-                    <Input
-                      type="password"
-                      name="currentPassword"
-                      value={passwordData.currentPassword}
-                      onChange={handlePasswordChangeInput}
-                      placeholder="••••••••"
-                      required
-                      className="h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 px-6"
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showCurrentPassword ? "text" : "password"}
+                        name="currentPassword"
+                        value={passwordData.currentPassword}
+                        onChange={handlePasswordChangeInput}
+                        placeholder="••••••••"
+                        required
+                        className="h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 px-6 pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-black transition-colors duration-200 focus:outline-none p-1 rounded-md"
+                        aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+                      >
+                        {showCurrentPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -289,29 +309,57 @@ const Profile = ({ setUser }) => {
                       <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                         New Password
                       </Label>
-                      <Input
-                        type="password"
-                        name="newPassword"
-                        value={passwordData.newPassword}
-                        onChange={handlePasswordChangeInput}
-                        placeholder="••••••••"
-                        required
-                        className="h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 px-6"
-                      />
+                        <div className="relative">
+                          <Input
+                            type={showNewPassword ? "text" : "password"}
+                            name="newPassword"
+                            value={passwordData.newPassword}
+                            onChange={handlePasswordChangeInput}
+                            placeholder="••••••••"
+                            required
+                            className="h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 px-6 pr-12"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-black transition-colors duration-200 focus:outline-none p-1 rounded-md"
+                            aria-label={showNewPassword ? "Hide password" : "Show password"}
+                          >
+                            {showNewPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
                     </div>
                     <div className="space-y-3">
                       <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
                         Confirm New Password
                       </Label>
-                      <Input
-                        type="password"
-                        name="confirmPassword"
-                        value={passwordData.confirmPassword}
-                        onChange={handlePasswordChangeInput}
-                        placeholder="••••••••"
-                        required
-                        className="h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 px-6"
-                      />
+                        <div className="relative">
+                          <Input
+                            type={showConfirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            value={passwordData.confirmPassword}
+                            onChange={handlePasswordChangeInput}
+                            placeholder="••••••••"
+                            required
+                            className="h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 px-6 pr-12"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-black transition-colors duration-200 focus:outline-none p-1 rounded-md"
+                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -387,3 +435,4 @@ const Profile = ({ setUser }) => {
 };
 
 export default Profile;
+

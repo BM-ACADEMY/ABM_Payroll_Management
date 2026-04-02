@@ -19,20 +19,21 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const LeaveRequest = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const { toast } = useToast();
-  const [hasMore, setHasMore] = useState(false);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
 
   const [leaveDate, setLeaveDate] = useState(new Date().toISOString().split('T')[0]);
   const [leaveType, setLeaveType] = useState('full');
   const [leaveReason, setLeaveReason] = useState('');
 
   useEffect(() => {
-    fetchMyRequests(true);
+    fetchMyRequests(1);
 
     // Socket handled via shared service
     socket.on('leave_updated', (data) => {
@@ -48,27 +49,26 @@ const LeaveRequest = () => {
     };
   }, []);
 
-  const fetchMyRequests = async (reset = false) => {
+  const fetchMyRequests = async (page = 1) => {
+    setLoading(true);
     try {
-      const skip = reset ? 0 : requests.length;
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/my-requests?limit=10&skip=${skip}`, {
+      const token = localStorage.getItem('token');
+      // We explicitly pass type=leave to the backend to get correct pagination for leaves only
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/my-requests?page=${page}&limit=5&type=leave`, {
         headers: { 'x-auth-token': token }
       });
       
-      const leaveOnly = res.data.requests.filter(req => req.type === 'leave');
-      
-      if (reset) {
-        setRequests(leaveOnly);
-      } else {
-        setRequests(prev => [...prev, ...leaveOnly]);
-      }
-      setHasMore(res.data.hasMore);
+      setRequests(res.data.requests);
+      setPagination(res.data.pagination);
     } catch (err) {
       console.error("Error fetching requests:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page) => {
+    fetchMyRequests(page);
   };
 
   const handleApplyLeave = async (e) => {
@@ -80,7 +80,7 @@ const LeaveRequest = () => {
 
     setFormLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/requests`, {
         type: 'leave',
         date: leaveDate,
@@ -93,7 +93,7 @@ const LeaveRequest = () => {
         description: `Formal request for ${leaveDate} has been submitted.`,
       });
       setLeaveReason('');
-      fetchMyRequests(true);
+      fetchMyRequests(1);
     } catch (err) {
       toast({
         variant: "destructive",
@@ -277,19 +277,12 @@ const LeaveRequest = () => {
                 ))}
               </div>
             )}
-            {hasMore && (
-              <div className="p-8 border-t border-gray-100 flex justify-center bg-gray-50/30">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => fetchMyRequests()}
-                  disabled={loading}
-                  className="rounded-2xl font-medium text-[10px] uppercase tracking-widest text-black hover:bg-gray-100 px-10 h-14 transition-all"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <History className="w-4 h-4 mr-2" />}
-                  Scroll for More Logged Applications
-                </Button>
-              </div>
-            )}
+            <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+              <PaginationControl 
+                pagination={pagination} 
+                onPageChange={handlePageChange} 
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -298,3 +291,4 @@ const LeaveRequest = () => {
 };
 
 export default LeaveRequest;
+

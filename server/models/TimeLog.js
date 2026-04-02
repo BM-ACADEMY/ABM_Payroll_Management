@@ -26,9 +26,27 @@ const TimeLogSchema = new mongoose.Schema({
     enum: ['running', 'paused', 'completed'],
     default: 'running'
   },
+  label: {
+    type: String,
+    enum: ['pending', 'qc', 'requirement needed', 'in process', 'done', 'holded'],
+    default: 'in process'
+  },
+  comments: [{
+    text: { type: String, required: true },
+    author: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
   pauses: [{
     pauseStart: Date,
-    pauseEnd: Date
+    pauseEnd: Date,
+    label: String
+  }],
+  activityLog: [{
+    type: { type: String, enum: ['play', 'pause'] },
+    startTime: Date,
+    endTime: Date,
+    duration: Number,
+    label: String
   }],
   createdAt: {
     type: Date,

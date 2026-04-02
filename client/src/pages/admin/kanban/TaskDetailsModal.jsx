@@ -1,9 +1,10 @@
 import { 
   X, ChevronDown, Image, Activity, MoreHorizontal, Plus, Tag, CheckSquare, 
   Paperclip, Layout, Bold, Italic, ListOrdered, Link, Type, MessageSquare,
-  Check, Trash2, Edit2, Send, List, Bell
+  Check, Trash2, Edit2, Send, List, Bell, Calendar
 } from 'lucide-react';
 import { memo, useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,9 @@ const TaskDetailsModal = ({
   renderMarkdown,
   handleUpdateComment,
   handleDeleteComment,
-  handleDeleteTask
+  handleDeleteTask,
+  onRefresh,
+  currentBoardId
 }) => {
   const { toast } = useToast();
   const [commentText, setCommentText] = useState('');
@@ -134,7 +137,26 @@ const TaskDetailsModal = ({
     return new Date(deadline) < new Date();
   };
 
-  const currentUser = JSON.parse(sessionStorage.getItem('user'));
+  const currentUser = { 
+    _id: localStorage.getItem('userId'), 
+    name: localStorage.getItem('userName'), 
+    role: localStorage.getItem('userRole') 
+  };
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState(taskDetails?.task?.title || '');
+
+  useEffect(() => {
+    setEditTitleValue(taskDetails?.task?.title || '');
+  }, [taskDetails?.task?.title]);
+
+  const handleTitleSave = () => {
+    const task = taskDetails?.task;
+    if (task && editTitleValue.trim() && editTitleValue !== task.title) {
+      handleUpdateTask(task._id, { title: editTitleValue });
+    }
+    setIsEditingTitle(false);
+  };
 
   // Logic for Mentions
   const handleTextChange = (text, type) => {
@@ -171,6 +193,65 @@ const TaskDetailsModal = ({
     setMentionSearch('');
     setMentionTriggerPos(null);
     setActiveInput(null);
+  };
+
+  const handleCopyTask = async (targetType) => {
+    try {
+      const token = localStorage.getItem('token');
+      // 1. Get the special board
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${targetType}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const targetBoard = res.data.board || res.data;
+      if (!targetBoard) throw new Error(`Could not find ${targetType} board`);
+      
+      // 2. Refresh the board/list IDs
+      const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${targetBoard._id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const targetLists = listsRes.data.lists || [];
+      let listId = targetLists[0]?._id;
+      let todayName = '';
+
+      if (targetType === 'daily') {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        todayName = days[new Date().getDay()];
+        listId = targetLists.find(l => l.title === todayName)?._id || listId;
+      }
+      
+      if (!listId) {
+        toast({ variant: "destructive", title: "Error", description: "Target board has no columns" });
+        return;
+      }
+      
+      // 3. Perform conversion (Copy)
+      const payload = {
+        title: task.title,
+        description: task.description || `Copied from ${boardData.title}`,
+        listId: listId,
+        boardId: targetBoard._id,
+        position: 0,
+        deadline: task.deadline,
+        assignees: task.assignees?.map(a => a._id || a) || [],
+        originTaskId: task._id
+      };
+      
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      toast({ 
+        title: "Success", 
+        description: `Copied to ${targetType === 'daily' ? `Daily Board (${todayName})` : 'Weekly Board'}.` 
+      });
+      setIsMoreMenuOpen(false);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Copy Error:', err);
+      toast({ variant: "destructive", title: "Error", description: "Failed to copy task" });
+    }
   };
 
   const Toolbar = ({ targetText, setTargetText, onSave, onCancel, showActions = true, textareaRef }) => {
@@ -257,7 +338,7 @@ const TaskDetailsModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[1100px] h-[90vh] border-none shadow-2xl rounded-lg p-0 overflow-hidden bg-white flex flex-col">
+      <DialogContent className="sm:max-w-[1100px] h-[90vh] border-none shadow-2xl rounded-lg p-0 overflow-hidden bg-white flex flex-col" showClose={false}>
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-zinc-100 shrink-0">
            <div className="flex items-center gap-2">
@@ -277,27 +358,30 @@ const TaskDetailsModal = ({
                 </select>
              </div>
            </div>
-           <div className="flex items-center gap-5">
+
+           <div className="flex items-center gap-3">
               {task?.mentionCount > 0 && (
                 <div className="relative group/mention">
-                  <Bell className="w-5 h-5 text-red-500 fill-current animate-pulse cursor-pointer shadow-sm" />
-                  <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white font-bold">
+                  <Bell className="w-4 h-4 text-red-500 fill-current animate-pulse cursor-pointer shadow-sm" />
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white font-bold">
                     {task.mentionCount}
                   </span>
                 </div>
               )}
 
               {task.checklists?.some(cl => cl.items?.length > 0) && (
-                <div className="flex items-center gap-1.5 text-zinc-500 bg-zinc-50 px-2.5 py-1 rounded-md border border-zinc-200">
-                  <CheckSquare className="w-4 h-4" />
-                  <span className="text-[12px] font-bold text-zinc-700">
+                <div className="flex items-center gap-1.5 text-zinc-400 bg-zinc-50 px-2 py-1 rounded border border-zinc-200">
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-bold text-zinc-600">
                     {task.checklists.reduce((acc, cl) => acc + (cl.items?.filter(i => i.isCompleted).length || 0), 0)}/
                     {task.checklists.reduce((acc, cl) => acc + (cl.items?.length || 0), 0)}
                   </span>
                 </div>
               )}
 
-              <div className="relative">
+              <div className="h-4 w-px bg-zinc-200 mx-1"></div>
+
+              <div className="relative flex items-center">
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -305,7 +389,7 @@ const TaskDetailsModal = ({
                   onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                   className="h-8 w-8 text-zinc-400 hover:text-black hover:bg-zinc-100 transition-colors"
                 >
-                  <MoreHorizontal className="w-5 h-5" />
+                  <MoreHorizontal className="w-4 h-4" />
                 </Button>
                 
                 {isMoreMenuOpen && (
@@ -321,6 +405,25 @@ const TaskDetailsModal = ({
                     >
                       <Link className="w-4 h-4" /> Share Card
                     </button>
+                    
+                    {boardData.type === 'regular' && (
+                      <button 
+                        onClick={() => handleCopyTask('weekly')}
+                        className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2"
+                      >
+                        <Calendar className="w-4 h-4" /> Copy to Weekly
+                      </button>
+                    )}
+
+                    {boardData.type === 'weekly' && (
+                      <button 
+                        onClick={() => handleCopyTask('daily')}
+                        className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                      >
+                        <Clock className="w-4 h-4" /> Copy to Daily
+                      </button>
+                    )}
+
                     <div className="h-px bg-zinc-100 my-1" />
                     <button 
                       onClick={() => handleDeleteTask(task._id)}
@@ -330,6 +433,15 @@ const TaskDetailsModal = ({
                     </button>
                   </div>
                 )}
+
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={onClose}
+                  className="h-8 w-8 text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors ml-1"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
               </div>
            </div>
         </div>
@@ -340,16 +452,44 @@ const TaskDetailsModal = ({
             <div className="flex-1 p-10 space-y-12 overflow-y-auto custom-scrollbar">
               <div className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-6 h-6 rounded-full border-2 border-zinc-300 shrink-0"></div>
-                    <DialogHeader className="p-0 space-y-0 text-left">
-                      <DialogTitle className="text-[28px] font-bold text-zinc-900 tracking-tight leading-tight">
-                        {task.title}
-                      </DialogTitle>
+                    <button 
+                      onClick={() => handleUpdateTask(task._id, { isCompleted: !task.isCompleted })}
+                      className={`w-7 h-7 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${task.isCompleted ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm' : 'border-zinc-300 hover:border-zinc-400 bg-white'}`}
+                    >
+                      {task.isCompleted && <Check className="w-4 h-4" />}
+                    </button>
+                    <DialogHeader className="p-0 space-y-0 text-left flex-1">
+                      {isEditingTitle ? (
+                        <Input 
+                          autoFocus
+                          className="text-[28px] font-bold text-zinc-900 tracking-tight leading-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent"
+                          value={editTitleValue}
+                          onChange={(e) => setEditTitleValue(e.target.value)}
+                          onBlur={handleTitleSave}
+                          onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                        />
+                      ) : (
+                        <DialogTitle 
+                          onDoubleClick={() => setIsEditingTitle(true)}
+                          className={`text-[28px] font-bold text-zinc-900 tracking-tight leading-tight transition-all cursor-text ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}
+                        >
+                          {task.title}
+                        </DialogTitle>
+                      )}
                       <DialogDescription className="sr-only">
                         Task details and management for {task.title}
                       </DialogDescription>
                     </DialogHeader>
                   </div>
+                  
+                  {task.originTaskId && (
+                    <div className="flex items-center gap-2 pl-12">
+                       <Badge variant="outline" className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[10px] font-bold py-0 h-5">
+                          COPIED FROM PROJECT
+                       </Badge>
+                       <span className="text-[11px] text-zinc-400 font-medium italic">Track progress across boards</span>
+                    </div>
+                  )}
                  
                  <div className="flex items-center gap-2 pl-10">
                    <Button 
@@ -408,9 +548,31 @@ const TaskDetailsModal = ({
                        onChange={async (e) => { 
                            const file = e.target.files?.[0];
                            if(!file) return;
-                           const url = URL.createObjectURL(file);
-                           const newAttachment = { name: file.name, url: url, fileType: file.type, createdAt: new Date().toISOString() };
-                           handleUpdateTask(task._id, { attachments: [...(task.attachments || []), newAttachment] });
+                           
+                           try {
+                             const formData = new FormData();
+                             formData.append('file', file);
+                             
+                             const token = localStorage.getItem('token');
+                             const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/upload`, formData, {
+                               headers: { 
+                                 'Content-Type': 'multipart/form-data',
+                                 'x-auth-token': token 
+                               }
+                             });
+                             
+                             const newAttachment = { 
+                               name: res.data.name, 
+                               url: res.data.url, 
+                               fileType: res.data.fileType, 
+                               createdAt: new Date().toISOString() 
+                             };
+                             handleUpdateTask(task._id, { attachments: [...(task.attachments || []), newAttachment] });
+                             toast({ title: "Success", description: "File uploaded successfully" });
+                           } catch (err) {
+                             console.error('Upload Error:', err);
+                             toast({ variant: "destructive", title: "Error", description: "Failed to upload file" });
+                           }
                         }} 
                      />
                   </div>
@@ -614,7 +776,12 @@ const TaskDetailsModal = ({
                            {task.attachments.map((file, idx) => (
                              <div 
                                key={idx} 
-                               onClick={() => window.open(file.url, '_blank')}
+                               onClick={() => {
+                                 const fullUrl = file.url.startsWith('blob:') 
+                                   ? file.url 
+                                   : `${import.meta.env.VITE_API_URL}${file.url}`;
+                                 window.open(fullUrl, '_blank');
+                               }}
                                className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl hover:bg-white transition-all cursor-pointer group/file"
                              >
                                 <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 flex items-center justify-center text-zinc-500 group-hover/file:bg-black group-hover/file:text-[#fffe01] transition-colors">
@@ -655,11 +822,16 @@ const TaskDetailsModal = ({
                           <div className="space-y-3">
                              {checklist.items?.map(item => (
                                 <SubTaskItem 
-                                  key={item._id} task={{ ...item, title: item.text, assignees: item.assignedTo ? [item.assignedTo] : [], deadline: item.dueDate }} 
-                                  boardMembers={boardData.members} isChecklist={true}
-                                  onUpdate={(id, p) => handleUpdateChecklistItem(task._id, checklist._id, id, p)}
+                                  key={item._id} 
+                                  task={{ ...item, checklistId: checklist._id }} 
+                                  boardMembers={boardData?.members} 
+                                  teamId={boardData?.team?._id || boardData?.team}
+                                  onUpdate={(id, updates) => handleUpdateChecklistItem(task._id, checklist._id, id, updates)}
                                   onAddSubTask={handleAddSubTask}
-                                  onToggleCompletion={(id, cur) => handleUpdateChecklistItem(task._id, checklist._id, id, { isCompleted: !cur })}
+                                  onToggleCompletion={(id, completed) => handleUpdateChecklistItem(task._id, checklist._id, id, { isCompleted: !completed })}
+                                  isChecklist={true}
+                                  onRefresh={onRefresh}
+                                  currentBoardId={boardData._id}
                                 />
                              ))}
                              {activeChecklistForNewItem === checklist._id ? (
@@ -795,3 +967,4 @@ const TaskDetailsModal = ({
 };
 
 export default memo(TaskDetailsModal);
+

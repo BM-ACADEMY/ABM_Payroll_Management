@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,7 +27,7 @@ const LeaveCalendar = () => {
 
   const fetchLeaves = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/company-leaves`, {
         headers: { 'x-auth-token': token }
       });
@@ -48,7 +48,7 @@ const LeaveCalendar = () => {
     e.preventDefault();
     setAdding(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/company-leaves`, formData, {
         headers: { 'x-auth-token': token }
       });
@@ -72,7 +72,7 @@ const LeaveCalendar = () => {
   const handleDeleteLeave = async (id) => {
     if (!window.confirm('Are you sure you want to remove this company leave? Attendance records will be reverted.')) return;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/company-leaves/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -216,3 +216,4 @@ const LeaveCalendar = () => {
 };
 
 export default LeaveCalendar;
+

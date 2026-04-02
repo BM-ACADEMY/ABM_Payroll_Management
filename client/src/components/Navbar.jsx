@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+﻿import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { LogOut, Bell, Search, LayoutGrid, Users2, UserCheck2, Banknote, Settings2, ChevronRight, FileText, Menu, CalendarDays, CalendarCheck2, ShieldCheck, MessageSquareWarning } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     // Socket handled via shared service
     socket.on('notification', (data) => {
       // Check if this notification is for the current logged in user
-      const currentUserId = sessionStorage.getItem('userId') || (user?.id);
+      const currentUserId = localStorage.getItem('userId') || (user?.id);
       if (data.userId === currentUserId) {
         toast({
           title: "New Mention",
@@ -44,13 +44,17 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     }
 
     return () => {
-      socket.disconnect();
+      socket.off('notification');
+      if (user?.role?.name === 'admin') {
+        socket.off('new_request');
+        socket.off('requests_read');
+      }
     };
   }, [user, toast]);
 
   const fetchUnreadCount = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/unread-count`, {
         headers: { 'x-auth-token': token }
       });
@@ -61,7 +65,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('token');
+    localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
   };
@@ -189,3 +193,4 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
 };
 
 export default Navbar;
+

@@ -49,29 +49,45 @@ exports.addEmployee = async (req, res) => {
 
 // @desc    Get all employees
 exports.getEmployees = async (req, res) => {
-  const { limit, fields } = req.query;
   try {
+    const { page = 1, limit = 5, fields, name } = req.query;
     const employeeRole = await Role.findOne({ name: 'employee' });
     if (!employeeRole) return res.status(500).json({ msg: 'Employee role not found' });
 
-    let query = User.find({ role: employeeRole._id });
+    let query = { role: employeeRole._id };
+    
+    if (name) {
+      query.name = { $regex: name, $options: 'i' };
+    }
+
+    const totalCount = await User.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+    const skip = (page - 1) * limit;
+
+    let mongoQuery = User.find(query);
     
     if (fields) {
-      query = query.select(fields.split(',').join(' '));
+      mongoQuery = mongoQuery.select(fields.split(',').join(' '));
     } else {
-      query = query.select('-password -otp -otpExpires');
+      mongoQuery = mongoQuery.select('-password -otp -otpExpires');
     }
 
-    query = query.populate('role', 'name permissions')
+    mongoQuery = mongoQuery.populate('role', 'name permissions')
       .populate('teams', 'name questions')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
-    if (limit) {
-      query = query.limit(parseInt(limit));
-    }
-
-    const employees = await query;
-    res.json(employees);
+    const employees = await mongoQuery;
+    
+    res.json({
+      employees,
+      pagination: {
+        total: totalCount,
+        pages: totalPages,
+        currentPage: parseInt(page)
+      }
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

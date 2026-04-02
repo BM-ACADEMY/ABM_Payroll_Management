@@ -72,7 +72,7 @@ const Attendance = () => {
   const fetchAttendanceLogs = async () => {
     setLogsLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/logs`, {
         headers: { 'x-auth-token': token }
       });
@@ -87,7 +87,7 @@ const Attendance = () => {
 
   const fetchEstimatedEarnings = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/payroll/my-summary`, {
         headers: { 'x-auth-token': token }
       });
@@ -99,7 +99,7 @@ const Attendance = () => {
 
   const fetchUserTimings = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth`, {
         headers: { 'x-auth-token': token }
       });
@@ -111,7 +111,7 @@ const Attendance = () => {
 
   const fetchCurrentStatus = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/today`, {
         headers: { 'x-auth-token': token }
       });
@@ -140,33 +140,18 @@ const Attendance = () => {
   const handleAction = async (action) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const config = { headers: { 'x-auth-token': token } };
       let res;
 
       switch (action) {
         case 'check-in':
-          if (userTimings) {
-            const now = new Date();
-            const [hours, minutes] = userTimings.loginTime.split(':');
-            const expected = new Date();
-            expected.setHours(parseInt(hours), parseInt(minutes), 0);
-            const graceLimit = new Date(expected.getTime() + (userTimings.graceTime || 15) * 60000);
-            
-            if (now > graceLimit && !lateReason) {
-              setShowLateDialog(true);
-              setLoading(false);
-              return;
-            }
-          }
-          
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/checkin`, { 
             mode: workingMode,
-            lateReason 
+            lateReason: '' 
           }, config);
           setAttendanceState('working');
           setSessionTimes(prev => ({ ...prev, checkIn: res.data.checkIn.time }));
-          setShowLateDialog(false);
           setLateReason('');
           fetchEstimatedEarnings();
           break;
@@ -176,13 +161,16 @@ const Attendance = () => {
           setSessionTimes(prev => ({ ...prev, lunchOut: res.data.lunch.out }));
           break;
         case 'lunch-in':
-          if (userTimings) {
-            const lunchOutTime = parse(sessionTimes.lunchOut, 'HH:mm', new Date());
+          if (userTimings && sessionTimes.lunchOut) {
             const now = new Date();
-            const durationArr = (now - lunchOutTime) / (1000 * 60);
-            const maxDuration = userTimings.lunchDuration || 45;
+            const lunchOutTime = parse(sessionTimes.lunchOut, 'HH:mm', new Date());
+            
+            const limitOut = parse('14:00', 'HH:mm', new Date());
+            const limitIn = parse('14:30', 'HH:mm', new Date());
+            
+            const isSpecialCase = lunchOutTime > limitOut && now > limitIn;
 
-            if (durationArr > maxDuration && !lunchDelayReason) {
+            if (isSpecialCase && !lunchDelayReason) {
               setShowLunchDelayDialog(true);
               setLoading(false);
               return;
@@ -199,27 +187,11 @@ const Attendance = () => {
           fetchEstimatedEarnings();
           break;
         case 'check-out':
-          if (userTimings) {
-            const lunchStartTimeStr = userTimings.lunchStart || '13:30';
-            const [lHours, lMinutes] = lunchStartTimeStr.split(':');
-            const scheduledLunchStart = new Date();
-            scheduledLunchStart.setHours(parseInt(lHours), parseInt(lMinutes), 0);
-
-            const now = new Date();
-
-            if (now < scheduledLunchStart && !earlyLogoutReason) {
-              setShowEarlyLogoutDialog(true);
-              setLoading(false);
-              return;
-            }
-          }
-
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/checkout`, { 
-            reason: earlyLogoutReason 
+            reason: '' 
           }, config);
           setAttendanceState('completed');
           setSessionTimes(prev => ({ ...prev, checkOut: res.data.checkOut.time }));
-          setShowEarlyLogoutDialog(false);
           setEarlyLogoutReason('');
           fetchEstimatedEarnings();
           break;
@@ -256,7 +228,7 @@ const Attendance = () => {
 
   const StatusConfig = getStatusConfig(attendanceState);
   const StatusIcon = StatusConfig.icon;
-  const user = JSON.parse(sessionStorage.getItem('user')) || { name: 'Employee' };
+  // const user = localStorage.getItem('user'); // removed due to encryption crash
 
   const filteredLogs = attendanceLogs.filter(log => {
      if (filterPeriod === 'weekly') {
@@ -739,48 +711,6 @@ const Attendance = () => {
         )}
       </div>
 
-      {/* Late Check-in Dialog */}
-      <Dialog open={showLateDialog} onOpenChange={setShowLateDialog}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 shadow-xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="p-8 bg-gray-50 border-b border-gray-100">
-            <div className="flex items-center gap-3 text-amber-500 mb-2">
-              <AlertCircle className="w-6 h-6" />
-              <DialogTitle className="text-xl font-medium uppercase tracking-tight text-gray-900">Late Login Detected</DialogTitle>
-            </div>
-            <DialogDescription className="text-gray-500 font-normal">
-              You are checking in after the allowed grace period. Please provide a reason to initiate a permission request.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-8 space-y-6">
-            <div className="space-y-3">
-               <Label className="text-[10px] font-medium text-gray-400 uppercase tracking-widest ml-1">Reason for Late Arrival</Label>
-                <Textarea 
-                  placeholder="Enter your reason here..."
-                  value={lateReason}
-                  onChange={(e) => setLateReason(e.target.value)}
-                  className="min-h-[120px] rounded-2xl border border-gray-200 focus:border-black bg-gray-50 p-4 font-normal transition-all text-gray-900"
-                />
-             </div>
-             <div className="flex gap-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowLateDialog(false)}
-                  className="flex-1 h-14 rounded-2xl font-medium uppercase text-[10px] tracking-widest border border-gray-200 hover:bg-gray-50 text-gray-500"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  disabled={!lateReason.trim() || loading}
-                  onClick={() => handleAction('check-in')}
-                  className="flex-1 h-14 rounded-2xl bg-[#fffe01] hover:bg-black hover:text-[#fffe01] text-black font-medium uppercase text-[10px] tracking-widest shadow-lg transition-all active:scale-95"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm & Check-in'}
-                </Button>
-             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Lunch Delay Dialog */}
       <Dialog open={showLunchDelayDialog} onOpenChange={setShowLunchDelayDialog}>
         <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 shadow-xl p-0 overflow-hidden bg-white">
@@ -790,7 +720,7 @@ const Attendance = () => {
               <DialogTitle className="text-xl font-medium uppercase tracking-tight text-gray-900">Lunch Delay Reason</DialogTitle>
             </div>
             <DialogDescription className="text-gray-500 font-normal">
-              Your lunch break exceeded the 45-minute limit. Please provide a reason for the delay.
+              Lunch logout after 2:00 PM and login after 2:30 PM requires a reason for admin approval.
             </DialogDescription>
           </DialogHeader>
           <div className="p-8 space-y-6">
@@ -818,46 +748,9 @@ const Attendance = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Early Logout Dialog */}
-      <Dialog open={showEarlyLogoutDialog} onOpenChange={setShowEarlyLogoutDialog}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 shadow-xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="p-8 bg-gray-50 border-b border-gray-100">
-            <div className="flex items-center gap-3 text-rose-500 mb-2">
-              <LogOut className="w-6 h-6" />
-              <DialogTitle className="text-xl font-medium uppercase tracking-tight text-gray-900">Early Logout Protocol</DialogTitle>
-            </div>
-            <DialogDescription className="text-gray-500 font-normal">
-              Logging out before lunch requires a reason. The interval will be added to permissions, and the second half marked as leave.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-8 space-y-6">
-            <div className="space-y-3">
-               <Label className="text-[10px] font-medium text-gray-400 uppercase tracking-widest ml-1">Reason for Early Logout</Label>
-               <Textarea 
-                 placeholder="Enter emergency reason..."
-                 value={earlyLogoutReason}
-                 onChange={(e) => setEarlyLogoutReason(e.target.value)}
-                 className="min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 p-4 font-normal transition-all text-gray-900 focus:border-black"
-               />
-            </div>
-            <div className="flex gap-4">
-               <Button variant="outline" onClick={() => setShowEarlyLogoutDialog(false)} className="flex-1 h-14 rounded-2xl font-medium uppercase text-[10px] tracking-widest border border-gray-200 text-gray-500">
-                 Cancel
-               </Button>
-               <Button 
-                 disabled={!earlyLogoutReason.trim() || loading}
-                 onClick={() => handleAction('check-out')}
-                 className="flex-1 h-14 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-medium uppercase text-[10px] tracking-widest shadow-lg shadow-rose-500/10"
-               >
-                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Logout'}
-               </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
 export default Attendance;
+

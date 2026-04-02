@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { memo, useMemo, lazy, Suspense } from 'react';
+import PaginationControl from '@/components/ui/PaginationControl';
 
 const EmergencyModalContent = lazy(() => import('./EmergencyModalContent'));
 
@@ -164,25 +165,22 @@ const AdminAttendance = () => {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [searchTerm, setSearchTerm] = useState('');
   
-  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
-  const [emergencyData, setEmergencyData] = useState({
-    userId: '',
-    checkInTime: '',
-    checkOutTime: '',
-    mode: 'WFO'
-  });
   const [emergencyLoading, setEmergencyLoading] = useState(false);
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
+  const [emergencyData, setEmergencyData] = useState({ userId: '', checkInTime: '', checkOutTime: '', mode: 'WFO' });
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
 
   const { toast } = useToast();
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/admin/all?date=${date}`, {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/admin/all?date=${date}&page=${page}&limit=10`, {
         headers: { 'x-auth-token': token }
       });
-      setAttendance(res.data);
+      setAttendance(res.data.data);
+      setPagination(res.data.pagination);
     } catch (err) {
       console.error(err);
       toast({
@@ -196,8 +194,12 @@ const AdminAttendance = () => {
   };
 
   useEffect(() => {
-    fetchAttendance();
+    fetchAttendance(1);
   }, [date]);
+
+  const handlePageChange = (page) => {
+    fetchAttendance(page);
+  };
 
 
   const handleEmergencySubmit = async (e) => {
@@ -213,7 +215,7 @@ const AdminAttendance = () => {
 
     setEmergencyLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/admin/emergency`, {
         ...emergencyData,
         date
@@ -384,6 +386,12 @@ const AdminAttendance = () => {
             </div>
           )}
         </CardContent>
+        <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+          <PaginationControl 
+            pagination={pagination} 
+            onPageChange={handlePageChange} 
+          />
+        </div>
       </Card>
       
       <div className="flex justify-center pt-6 opacity-30">
@@ -416,3 +424,4 @@ const AdminAttendance = () => {
 };
 
 export default AdminAttendance;
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ const PayrollSettings = () => {
 
   const fetchSettings = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/settings`, {
         headers: { 'x-auth-token': token }
       });
@@ -65,7 +65,7 @@ const PayrollSettings = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/settings`, settings, {
         headers: { 'x-auth-token': token }
       });
@@ -342,3 +342,4 @@ const PayrollSettings = () => {
 };
 
 export default PayrollSettings;
+

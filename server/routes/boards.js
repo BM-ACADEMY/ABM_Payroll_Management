@@ -4,11 +4,21 @@ const auth = require('../middleware/auth');
 const boardController = require('../controllers/boardController');
 
 // Board Routes
-router.post('/', auth, boardController.createBoard);
+// 1. Specific Resource-Specific Routes
+router.get('/shared', auth, boardController.getSharedBoards);
+router.get('/members/search', auth, boardController.searchMembers);
+router.get('/special/:type', auth, boardController.getSpecialBoard);
+router.get('/team/:teamId/destinations', auth, boardController.getBoardDestinations);
 router.get('/team/:teamId', auth, boardController.getBoardsByTeam);
+router.get('/', auth, boardController.getBoardsByTeam);
+
+// 2. Generic Parameter-based Board Routes (MUST BE LAST)
 router.get('/:id', auth, boardController.getBoardById);
 router.patch('/:id', auth, boardController.updateBoard);
+router.delete('/:id', auth, boardController.deleteBoard);
 router.post('/:id/members', auth, boardController.addMemberToBoard);
+router.delete('/:id/members/:userId', auth, boardController.removeMemberFromBoard);
+router.post('/', auth, boardController.createBoard);
 
 // List Routes
 router.post('/lists', auth, boardController.createList);
