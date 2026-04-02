@@ -17,7 +17,10 @@ const KanbanCard = ({ task, index, onClick }) => {
             <h4 className={`text-sm font-semibold text-zinc-900 group-hover:text-[#d30614] transition-all leading-snug ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}>
               {task.title}
             </h4>
-            {task.isCompleted && <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />}
+            <div className="flex items-center gap-1 shrink-0">
+               {task.originTaskId && <div className="text-[7px] font-black bg-zinc-100 text-zinc-400 px-1 py-0.5 rounded border border-zinc-200 uppercase tracking-tighter">Copied</div>}
+               {task.isCompleted && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            </div>
           </div>
           
 

@@ -63,7 +63,6 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
   const fetchBoards = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      // Use the teamId passed from boardData
       const effectiveTeamId = teamId || sessionStorage.getItem('teamId');
       
       if (!effectiveTeamId) {
@@ -75,11 +74,10 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
         headers: { 'x-auth-token': token }
       });
       setBoards(res.data);
-      // Default to current board if found
-      const currentBoardId = task.board?._id || task.board;
-      if (res.data.find(b => b._id === currentBoardId)) {
-        setSelectedBoardId(currentBoardId);
-        fetchLists(currentBoardId);
+      const currentId = task.board?._id || task.board;
+      if (res.data.find(b => b._id === currentId)) {
+        setSelectedBoardId(currentId);
+        fetchLists(currentId);
       }
     } catch(err) {}
   };
@@ -103,12 +101,8 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
     
     try {
       const token = sessionStorage.getItem('token');
-      
-      // Determine origin IDs
       const originTaskId = isChecklist ? null : task._id;
       const originChecklistItemId = isChecklist ? task._id : null;
-
-      // Map assignees correctly for both subtasks and checklist items
       const initialAssignees = isChecklist 
         ? (task.assignedTo ? [task.assignedTo._id || task.assignedTo] : [])
         : (task.assignees?.map(a => a._id || a) || []);
@@ -134,31 +128,79 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
         description: `Successfully converted "${task.title || task.text}" to a card.` 
       });
       
-      // Auto-refresh if on the same board
-      if (selectedBoardId === currentBoardId && onRefresh) {
-         onRefresh();
-      }
-      
+      if (selectedBoardId === currentBoardId && onRefresh) onRefresh();
       setIsConvertModalOpen(false);
-      // The status sync will handle updates across boards via sockets
     } catch (err) {
       console.error('Conversion error:', err);
       toast({ variant: "destructive", title: "Error", description: "Failed to convert to card" });
     }
   };
 
+  const handleQuickDailyConvert = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/daily`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const dailyBoard = res.data.board || res.data;
+      if (!dailyBoard) throw new Error('Could not find daily board');
+      
+      const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${dailyBoard._id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const today = days[new Date().getDay()];
+      const lists = listsRes.data.lists || [];
+      let listId = lists.find(l => l.title === today)?._id || lists[0]?._id;
+      
+      if (!listId) {
+        toast({ variant: "destructive", title: "Error", description: "Daily board has no columns" });
+        return;
+      }
+      
+      const originTaskId = isChecklist ? null : task._id;
+      const originChecklistItemId = isChecklist ? task._id : null;
+      const initialAssignees = isChecklist 
+        ? (task.assignedTo ? [task.assignedTo._id || task.assignedTo] : [])
+        : (task.assignees?.map(a => a._id || a) || []);
+
+      const payload = {
+        title: task.title || task.text,
+        description: task.description || (isChecklist ? `Converted from checklist item: ${task.text}` : `Converted from subtask: ${task.title}`),
+        listId: listId,
+        boardId: dailyBoard._id,
+        position: 0,
+        deadline: task.dueDate || task.deadline || new Date().toISOString(),
+        assignees: initialAssignees,
+        originTaskId,
+        originChecklistItemId
+      };
+      
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      toast({ title: "Success", description: `Sent to Daily Board (${today}).` });
+      if (onRefresh && dailyBoard._id === currentBoardId) onRefresh();
+      setIsConvertModalOpen(false);
+    } catch (err) {
+      console.error('Quick Convert Daily Error:', err);
+      toast({ variant: "destructive", title: "Error", description: "Failed to send to daily board" });
+    }
+  };
+
   const handleQuickWeeklyConvert = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      // 1. Get the Weekly Board (will auto-create if missing)
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/weekly`, {
         headers: { 'x-auth-token': token }
       });
       
-      const weeklyBoard = res.data;
+      const weeklyBoard = res.data.board || res.data;
       if (!weeklyBoard) throw new Error('Could not find weekly board');
       
-      // 2. Refresh the board/list IDs
       const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${weeklyBoard._id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -169,7 +211,6 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
         return;
       }
       
-      // 3. Perform conversion
       const originTaskId = isChecklist ? null : task._id;
       const originChecklistItemId = isChecklist ? task._id : null;
       const initialAssignees = isChecklist 
@@ -196,7 +237,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
       if (onRefresh && weeklyBoard._id === currentBoardId) onRefresh();
       setIsConvertModalOpen(false);
     } catch (err) {
-      console.error('Quick Convert Error:', err);
+      console.error('Quick Convert Weekly Error:', err);
       toast({ variant: "destructive", title: "Error", description: "Failed to send to weekly board" });
     }
   };
@@ -346,77 +387,104 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                  </div>
               )}
            </div>
+        </div>
 
-           {/* Conversion Modal */}
-           <Dialog open={isConvertModalOpen} onOpenChange={setIsConvertModalOpen}>
-              <DialogContent className="sm:max-w-[400px]">
-                 <DialogHeader>
-                    <DialogTitle>Convert to Card</DialogTitle>
-                    <DialogDescription>
+        {/* Conversion Modal */}
+        <Dialog open={isConvertModalOpen} onOpenChange={setIsConvertModalOpen}>
+           <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-white focus:outline-none">
+              <div className="p-8">
+                 <DialogHeader className="mb-2">
+                    <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Convert to Card</DialogTitle>
+                    <DialogDescription className="text-zinc-500 font-medium">
                        Choose the destination board and list for the new card.
                     </DialogDescription>
                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                     <div className="grid gap-2 text-left">
-                        <label className="text-sm font-bold text-zinc-500">Board</label>
-                        <Select 
-                           key={`board-select-${boards.length}`}
-                           value={selectedBoardId} 
-                           onValueChange={(val) => { setSelectedBoardId(val); fetchLists(val); }}
-                        >
-                           <SelectTrigger className="w-full h-12 rounded-xl border-zinc-200 bg-zinc-50">
-                              <SelectValue placeholder="Select a destination board" />
-                           </SelectTrigger>
-                           <SelectContent className="z-[200]">
-                              {Array.isArray(boards) && boards.map(b => (
-                                 <SelectItem key={b._id} value={b._id} className="cursor-pointer">
-                                    <span className="font-medium">{b.title}</span>
-                                 </SelectItem>
-                              ))}
-                           </SelectContent>
-                        </Select>
-                     </div>
-                     <div className="grid gap-2 text-left">
-                        <label className="text-sm font-bold text-zinc-500">List (Column)</label>
-                        <Select 
-                           key={`list-select-${targetLists.length}-${selectedBoardId}`}
-                           value={selectedListId} 
-                           onValueChange={setSelectedListId}
-                           disabled={!selectedBoardId}
-                        >
-                           <SelectTrigger className="w-full h-12 rounded-xl border-zinc-200 bg-zinc-50">
-                              <SelectValue placeholder="Select a column" />
-                           </SelectTrigger>
-                           <SelectContent className="z-[200]">
-                              {Array.isArray(targetLists) && targetLists.map(l => (
-                                 <SelectItem key={l._id} value={l._id} className="cursor-pointer">
-                                    <span className="font-medium">{l.title}</span>
-                                 </SelectItem>
-                              ))}
-                           </SelectContent>
-                        </Select>
-                     </div>
-                  </div>
-                   <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                      <Button variant="ghost" onClick={() => setIsConvertModalOpen(false)} className="font-bold sm:mr-auto">Cancel</Button>
-                      <Button 
-                        variant="outline"
-                        className="bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 font-bold"
-                        onClick={handleQuickWeeklyConvert}
-                      >
-                         Send to Weekly
-                      </Button>
-                      <Button 
-                        className="bg-[#fffe01] text-black hover:bg-yellow-400 font-bold"
-                        onClick={handleConvert} 
-                        disabled={!selectedBoardId || !selectedListId}
-                      >
-                         Convert
-                      </Button>
-                   </DialogFooter>
-              </DialogContent>
-           </Dialog>
-        </div>
+
+                 <div className="space-y-6 my-8">
+                    <div className="space-y-2 text-left">
+                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-1">Destination Board</label>
+                       <Select 
+                          key={`board-select-${boards.length}`}
+                          value={selectedBoardId} 
+                          onValueChange={(val) => { setSelectedBoardId(val); fetchLists(val); }}
+                       >
+                          <SelectTrigger className="w-full h-14 rounded-2xl border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 transition-all text-sm font-bold text-zinc-900 px-4 focus:ring-2 focus:ring-yellow-400">
+                             <SelectValue placeholder="Select a destination board" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[300] bg-white border-zinc-200 shadow-2xl rounded-2xl p-1">
+                             <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+                                {Array.isArray(boards) && boards.map(b => (
+                                   <SelectItem key={b._id} value={b._id} className="py-3 px-4 focus:bg-zinc-50 cursor-pointer rounded-xl font-bold text-zinc-700">
+                                      {b.title}
+                                   </SelectItem>
+                                ))}
+                             </div>
+                          </SelectContent>
+                       </Select>
+                    </div>
+
+                    <div className="space-y-2 text-left">
+                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest pl-1">Destination List (Column)</label>
+                       <Select 
+                          key={`list-select-${targetLists.length}-${selectedBoardId}`}
+                          value={selectedListId} 
+                          onValueChange={setSelectedListId}
+                          disabled={!selectedBoardId}
+                       >
+                          <SelectTrigger className={`w-full h-14 rounded-2xl border-zinc-200 transition-all text-sm font-bold text-zinc-900 px-4 focus:ring-2 focus:ring-yellow-400 ${!selectedBoardId ? 'bg-zinc-100 opacity-50' : 'bg-zinc-50/50 hover:bg-zinc-50'}`}>
+                             <SelectValue placeholder={selectedBoardId ? "Select a column" : "Select a board first"} />
+                          </SelectTrigger>
+                          <SelectContent className="z-[300] bg-white border-zinc-200 shadow-2xl rounded-2xl p-1">
+                             <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+                                {Array.isArray(targetLists) && targetLists.map(l => (
+                                   <SelectItem key={l._id} value={l._id} className="py-3 px-4 focus:bg-zinc-50 cursor-pointer rounded-xl font-bold text-zinc-700">
+                                      {l.title}
+                                   </SelectItem>
+                                ))}
+                             </div>
+                          </SelectContent>
+                       </Select>
+                    </div>
+                 </div>
+
+                 <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                       <Button 
+                          variant="outline"
+                          className="flex-1 h-12 rounded-xl bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100 font-bold transition-all shadow-sm"
+                          onClick={handleQuickDailyConvert}
+                       >
+                          Send to Daily
+                       </Button>
+                       <Button 
+                          variant="outline"
+                          className="flex-1 h-12 rounded-xl bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 font-bold transition-all shadow-sm"
+                          onClick={handleQuickWeeklyConvert}
+                       >
+                          Send to Weekly
+                       </Button>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 pt-4 border-t border-zinc-100 mt-2">
+                       <Button 
+                          variant="ghost" 
+                          onClick={() => setIsConvertModalOpen(false)} 
+                          className="flex-1 h-14 rounded-2xl font-black text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 tracking-wider text-[11px] uppercase transition-all"
+                       >
+                          Cancel
+                       </Button>
+                       <Button 
+                          className="flex-[2] h-14 rounded-2xl bg-[#fffe01] text-black hover:bg-yellow-400 font-black tracking-wider text-[11px] uppercase shadow-xl shadow-yellow-100 transition-all border-b-4 border-yellow-500 active:border-b-0 active:translate-y-1"
+                          onClick={handleConvert} 
+                          disabled={!selectedBoardId || !selectedListId}
+                       >
+                          Complete Conversion
+                       </Button>
+                    </div>
+                 </div>
+              </div>
+           </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -467,9 +535,9 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                       <div className="max-h-[160px] overflow-y-auto space-y-1 custom-scrollbar">
                          {Array.isArray(boardMembers) && boardMembers.map(m => (
                             <div 
-                              key={m._id} 
-                              onClick={() => { onUpdate(task._id, { assignees: [m._id] }); setIsAssignPickerOpen(false); }}
-                              className={`flex items-center gap-2 p-1.5 hover:bg-zinc-100 rounded cursor-pointer ${displayedAssignees.some(a=>a._id === m._id) ? 'bg-blue-50' : ''}`}
+                               key={m._id} 
+                               onClick={() => { onUpdate(task._id, { assignees: [m._id] }); setIsAssignPickerOpen(false); }}
+                               className={`flex items-center gap-2 p-1.5 hover:bg-zinc-100 rounded cursor-pointer ${displayedAssignees.some(a=>a._id === m._id) ? 'bg-blue-50' : ''}`}
                             >
                                <div className="w-6 h-6 rounded-full bg-zinc-800 text-[#fffe01] flex items-center justify-center text-[9px] font-bold">{m.name.split(' ').map(n=>n[0]).join('')}</div>
                                <span className="text-[12px] font-medium text-zinc-800">{m.name}</span>
@@ -537,12 +605,12 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
              <div className="space-y-1.5 text-left">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Assignee</span>
                 <select 
-                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none ring-0 focus:border-[#0052cc] transition-all"
-                  value={displayedAssignees[0]?._id || displayedAssignees[0] || ''}
-                  onChange={(e) => onUpdate(task._id, { assignees: [e.target.value] })}
+                   className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none ring-0 focus:border-[#0052cc] transition-all"
+                   value={displayedAssignees[0]?._id || displayedAssignees[0] || ''}
+                   onChange={(e) => onUpdate(task._id, { assignees: [e.target.value] })}
                 >
-                  <option value="">UNASSIGNED</option>
-                  {boardMembers?.map(m => <option key={m._id} value={m._id}>{m.name.toUpperCase()}</option>)}
+                   <option value="">UNASSIGNED</option>
+                   {boardMembers?.map(m => <option key={m._id} value={m._id}>{m.name.toUpperCase()}</option>)}
                 </select>
              </div>
              <div className="space-y-1.5 text-left">

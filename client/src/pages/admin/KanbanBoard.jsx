@@ -45,6 +45,8 @@ const KanbanBoard = () => {
   const [editBoardData, setEditBoardData] = useState({ title: '', description: '' });
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
   const [editingList, setEditingList] = useState(null);
+  const [teamsForAdmin, setTeamsForAdmin] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
 
   // Refs for socket listener to avoid closure issues
   const isDetailsOpenRef = useRef(isDetailsOpen);
@@ -61,7 +63,7 @@ const KanbanBoard = () => {
       const token = sessionStorage.getItem('token');
       // If type exists ('daily' or 'weekly'), fetch from the special endpoint
       const url = type 
-        ? `${import.meta.env.VITE_API_URL}/api/boards/special/${type}`
+        ? `${import.meta.env.VITE_API_URL}/api/boards/special/${type}${selectedTeamId ? `?teamId=${selectedTeamId}` : ''}`
         : `${import.meta.env.VITE_API_URL}/api/boards/${id}`;
         
       const res = await axios.get(url, {
@@ -81,7 +83,7 @@ const KanbanBoard = () => {
       toast({ variant: "destructive", title: "Error", description: "Failed to fetch board" });
       setLoading(false);
     }
-  }, [id, type, toast]);
+  }, [id, type, toast, selectedTeamId]);
 
   const fetchUsers = async () => {
     try {
@@ -101,7 +103,30 @@ const KanbanBoard = () => {
   useEffect(() => { 
     fetchData(); 
     fetchUsers(); // All authenticated users can now fetch directory info for boards
+    
+    if (isAdmin) {
+      const fetchTeams = async () => {
+        try {
+          const token = sessionStorage.getItem('token');
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
+            headers: { 'x-auth-token': token }
+          });
+          const teamsArray = res.data.teams || (Array.isArray(res.data) ? res.data : []);
+          setTeamsForAdmin(teamsArray);
+        } catch (err) {
+          console.error('Error fetching teams:', err);
+        }
+      };
+      fetchTeams();
+    }
   }, [fetchData]);
+
+  // Update selectedTeamId when boardData changes to ensure sync
+  useEffect(() => {
+    if (boardData?.team?._id && !selectedTeamId) {
+      setSelectedTeamId(boardData.team._id);
+    }
+  }, [boardData]);
 
   // Handle Board Socket Connections
   useEffect(() => {
@@ -318,7 +343,12 @@ const KanbanBoard = () => {
   const handleCreateList = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/lists`, { title: newListTitle, boardId: id, position: lists.length }, {
+      const activeBoardId = boardData?._id || id;
+      if (!activeBoardId) {
+        toast({ variant: "destructive", title: "Error", description: "Board ID not found" });
+        return;
+      }
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/lists`, { title: newListTitle, boardId: activeBoardId, position: lists.length }, {
         headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       setNewListTitle(''); setIsListModalOpen(false); fetchData();
@@ -328,10 +358,11 @@ const KanbanBoard = () => {
   const handleCreateTask = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { ...newTaskData, position: tasks.filter(t => t.list === newTaskData.listId).length }, {
+      const activeBoardId = boardData?._id || id;
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { ...newTaskData, boardId: activeBoardId, position: tasks.filter(t => t.list === newTaskData.listId).length }, {
         headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
-      setNewTaskData({ title: '', listId: '', boardId: id }); setIsTaskModalOpen(false); fetchData();
+      setNewTaskData({ title: '', listId: '', boardId: activeBoardId }); setIsTaskModalOpen(false); fetchData();
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to create task" }); }
   };
 
@@ -630,7 +661,22 @@ const KanbanBoard = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-zinc-900 tracking-tight">{boardData?.title}</h1>
-              <Badge variant="outline" className="text-[10px] uppercase font-medium bg-zinc-50">{boardData?.team?.name}</Badge>
+              {isAdmin && type ? (
+                <select 
+                  className="bg-zinc-50 border border-zinc-200 rounded-lg text-[10px] uppercase font-medium px-2 py-1 outline-none focus:ring-1 focus:ring-yellow-400"
+                  value={selectedTeamId || ''}
+                  onChange={(e) => {
+                    setSelectedTeamId(e.target.value);
+                    setLoading(true);
+                  }}
+                >
+                  {teamsForAdmin.map(team => (
+                    <option key={team._id} value={team._id}>{team.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <Badge variant="outline" className="text-[10px] uppercase font-medium bg-zinc-50">{boardData?.team?.name}</Badge>
+              )}
             </div>
             <p className="text-zinc-500 text-xs font-normal">{boardData?.description}</p>
           </div>

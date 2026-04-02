@@ -176,6 +176,65 @@ const TaskDetailsModal = ({
     setActiveInput(null);
   };
 
+  const handleCopyTask = async (targetType) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      // 1. Get the special board
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${targetType}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const targetBoard = res.data.board || res.data;
+      if (!targetBoard) throw new Error(`Could not find ${targetType} board`);
+      
+      // 2. Refresh the board/list IDs
+      const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${targetBoard._id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const targetLists = listsRes.data.lists || [];
+      let listId = targetLists[0]?._id;
+      let todayName = '';
+
+      if (targetType === 'daily') {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        todayName = days[new Date().getDay()];
+        listId = targetLists.find(l => l.title === todayName)?._id || listId;
+      }
+      
+      if (!listId) {
+        toast({ variant: "destructive", title: "Error", description: "Target board has no columns" });
+        return;
+      }
+      
+      // 3. Perform conversion (Copy)
+      const payload = {
+        title: task.title,
+        description: task.description || `Copied from ${boardData.title}`,
+        listId: listId,
+        boardId: targetBoard._id,
+        position: 0,
+        deadline: task.deadline,
+        assignees: task.assignees?.map(a => a._id || a) || [],
+        originTaskId: task._id
+      };
+      
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      toast({ 
+        title: "Success", 
+        description: `Copied to ${targetType === 'daily' ? `Daily Board (${todayName})` : 'Weekly Board'}.` 
+      });
+      setIsMoreMenuOpen(false);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Copy Error:', err);
+      toast({ variant: "destructive", title: "Error", description: "Failed to copy task" });
+    }
+  };
+
   const Toolbar = ({ targetText, setTargetText, onSave, onCancel, showActions = true, textareaRef }) => {
     const handleFormat = (openTag, closeTag, placeholder) => {
       if (!textareaRef?.current) {
@@ -327,6 +386,25 @@ const TaskDetailsModal = ({
                     >
                       <Link className="w-4 h-4" /> Share Card
                     </button>
+                    
+                    {boardData.type === 'regular' && (
+                      <button 
+                        onClick={() => handleCopyTask('weekly')}
+                        className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2"
+                      >
+                        <Calendar className="w-4 h-4" /> Copy to Weekly
+                      </button>
+                    )}
+
+                    {boardData.type === 'weekly' && (
+                      <button 
+                        onClick={() => handleCopyTask('daily')}
+                        className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                      >
+                        <Clock className="w-4 h-4" /> Copy to Daily
+                      </button>
+                    )}
+
                     <div className="h-px bg-zinc-100 my-1" />
                     <button 
                       onClick={() => handleDeleteTask(task._id)}
@@ -370,6 +448,15 @@ const TaskDetailsModal = ({
                       </DialogDescription>
                     </DialogHeader>
                   </div>
+                  
+                  {task.originTaskId && (
+                    <div className="flex items-center gap-2 pl-12">
+                       <Badge variant="outline" className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[10px] font-bold py-0 h-5">
+                          COPIED FROM PROJECT
+                       </Badge>
+                       <span className="text-[11px] text-zinc-400 font-medium italic">Track progress across boards</span>
+                    </div>
+                  )}
                  
                  <div className="flex items-center gap-2 pl-10">
                    <Button 

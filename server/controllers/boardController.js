@@ -5,29 +5,32 @@ const Comment = require('../models/Comment');
 const CardHistory = require('../models/CardHistory');
 const User = require('../models/User');
 const Team = require('../models/Team');
+const mongoose = require('mongoose');
 
 // --- Board Operations ---
 
 exports.getSpecialBoard = async (req, res) => {
   const { type } = req.params; // 'daily' or 'weekly'
   try {
-    const user = await User.findById(req.user.id);
-    const isAdmin = user.role?.name === 'admin' || user.role === 'admin';
-    let teamId;
+    const user = await User.findById(req.user.id).populate('role', 'name');
+    const isAdmin = user.role?.name === 'admin';
+    let teamId = req.query.teamId;
     
-    if (!user.teams || user.teams.length === 0) {
-      if (isAdmin) {
-        const Team = require('../models/Team');
-        const defaultTeam = await Team.findOne();
-        if (!defaultTeam) {
-            return res.status(400).json({ msg: 'No teams created yet' });
+    // If no teamId provided, use user's assigned team or fallback
+    if (!teamId) {
+      if (!user.teams || user.teams.length === 0) {
+        if (isAdmin) {
+          const defaultTeam = await Team.findOne();
+          if (!defaultTeam) {
+              return res.status(400).json({ msg: 'No teams created yet' });
+          }
+          teamId = defaultTeam._id;
+        } else {
+          return res.status(400).json({ msg: 'User is not assigned to any team' });
         }
-        teamId = defaultTeam._id;
       } else {
-        return res.status(400).json({ msg: 'User is not assigned to any team' });
-      }
-    } else {
         teamId = user.teams[0]; // Use first team
+      }
     }
     
     let board = await Board.findOne({ team: teamId, type });
@@ -46,7 +49,7 @@ exports.getSpecialBoard = async (req, res) => {
       
       // Auto-create lists for Daily Board
       if (type === 'daily') {
-        const defaultLists = ['To Do', 'In Process', 'Done'];
+        const defaultLists = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         for (let i = 0; i < defaultLists.length; i++) {
           const list = new List({
             title: defaultLists[i],
@@ -56,12 +59,15 @@ exports.getSpecialBoard = async (req, res) => {
           await list.save();
         }
       } else if (type === 'weekly') {
-        const list = new List({
-          title: 'Weekly Tasks',
-          board: board._id,
-          position: 0
-        });
-        await list.save();
+        const defaultLists = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+        for (let i = 0; i < defaultLists.length; i++) {
+          const list = new List({
+            title: defaultLists[i],
+            board: board._id,
+            position: i
+          });
+          await list.save();
+        }
       }
     }
     
@@ -160,6 +166,38 @@ exports.getBoardsByTeam = async (req, res) => {
     query.type = { $nin: ['daily', 'weekly'] };
     
     const boards = await Board.find(query).populate('team', 'name');
+    
+    // Auto-create "Upcoming Projects" if no regular boards exist
+    if (boards.length === 0) {
+      const teamId = req.params.teamId;
+      const team = await Team.findById(teamId);
+      if (team) {
+        const defaultBoard = new Board({
+          title: 'Upcoming Projects',
+          description: 'A place to list all upcoming team projects and tasks',
+          team: teamId,
+          type: 'regular',
+          admins: [req.user.id],
+          members: [req.user.id]
+        });
+        await defaultBoard.save();
+        
+        // Add default lists
+        const defaultLists = ['To Do', 'In Process', 'Done'];
+        for (let i = 0; i < defaultLists.length; i++) {
+          const list = new List({
+            title: defaultLists[i],
+            board: defaultBoard._id,
+            position: i
+          });
+          await list.save();
+        }
+        
+        const populatedBoard = await Board.findById(defaultBoard._id).populate('team', 'name');
+        return res.json([populatedBoard]);
+      }
+    }
+    
     res.json(boards);
   } catch (err) {
     console.error(err.message);
@@ -169,6 +207,10 @@ exports.getBoardsByTeam = async (req, res) => {
 
 exports.getBoardById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ msg: 'Invalid board ID format' });
+    }
+    
     const board = await Board.findById(req.params.id)
       .populate('team', 'name')
       .populate('members', 'name email employeeId')
@@ -273,11 +315,16 @@ exports.deleteBoard = async (req, res) => {
 
 exports.createList = async (req, res) => {
   const { title, boardId, position } = req.body;
+  
+  if (!boardId) {
+    return res.status(400).json({ msg: 'Board ID is required' });
+  }
+
   try {
     const list = new List({
       title,
       board: boardId,
-      position
+      position: position || 0
     });
     await list.save();
 
