@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -28,6 +28,7 @@ const TeamManagement = lazy(() => import('./pages/admin/TeamManagement'));
 const WeeklyScoring = lazy(() => import('./pages/admin/WeeklyScoring'));
 const KanbanBoards = lazy(() => import('./pages/admin/KanbanBoards'));
 const KanbanBoard = lazy(() => import('./pages/admin/KanbanBoard'));
+const Analytics = lazy(() => import('./pages/admin/Analytics'));
 const TimeHistory = lazy(() => import('./pages/TimeHistory'));
 import { Toaster } from './components/ui/toaster';
 
@@ -182,6 +183,10 @@ function App() {
                 <Route
                   path="/admin/weekly-credits"
                   element={user?.role?.name === 'admin' ? <WeeklyScoring /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/admin/analytics"
+                  element={user?.role?.name === 'admin' ? <Analytics /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/kanban"

@@ -46,6 +46,7 @@ app.use('/api/scores', require('./routes/score'));
 app.use('/api/boards', require('./routes/boards'));
 app.use('/api/time-logs', require('./routes/timeLogRoutes'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/analytics', require('./routes/analytics'));
 
 app.get('/', (req, res) => res.send('API Running'));
 

@@ -1,4 +1,4 @@
-import { LayoutGrid, Users2, CalendarCheck2, Banknote, Settings2, ShieldCheck, CalendarDays, MessageSquareWarning, Users, Trophy, Kanban, Timer } from "lucide-react";
+import { LayoutGrid, Users2, CalendarCheck2, Banknote, Settings2, ShieldCheck, CalendarDays, MessageSquareWarning, Users, Trophy, Kanban, Timer, BarChart3 } from "lucide-react";
 
 export const adminMenuItem = [
   { name: 'Overview', path: '/admin', icon: LayoutGrid },
@@ -10,6 +10,7 @@ export const adminMenuItem = [
   { name: 'Complaints', path: '/admin/complaints', icon: MessageSquareWarning },
   { name: 'Teams', path: '/admin/teams', icon: Users },
   { name: 'Weekly Credits', path: '/admin/weekly-credits', icon: Trophy },
+  { name: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
   { name: 'Daily Board', path: '/admin/kanban/special/daily', icon: LayoutGrid, end: true },
   { name: 'Weekly Board', path: '/admin/kanban/special/weekly', icon: CalendarDays, end: true },
   { name: 'Upcoming Projects', path: '/admin/kanban', icon: Kanban, end: true },
