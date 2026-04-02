@@ -4,6 +4,7 @@ const Task = require('../models/Task');
 const Comment = require('../models/Comment');
 const CardHistory = require('../models/CardHistory');
 const User = require('../models/User');
+const Team = require('../models/Team');
 
 // --- Board Operations ---
 
@@ -11,11 +12,23 @@ exports.getSpecialBoard = async (req, res) => {
   const { type } = req.params; // 'daily' or 'weekly'
   try {
     const user = await User.findById(req.user.id);
-    if (!user.teams || user.teams.length === 0) {
-      return res.status(400).json({ msg: 'User is not assigned to any team' });
-    }
+    const isAdmin = user.role?.name === 'admin' || user.role === 'admin';
+    let teamId;
     
-    const teamId = user.teams[0]; // Use first team
+    if (!user.teams || user.teams.length === 0) {
+      if (isAdmin) {
+        const Team = require('../models/Team');
+        const defaultTeam = await Team.findOne();
+        if (!defaultTeam) {
+            return res.status(400).json({ msg: 'No teams created yet' });
+        }
+        teamId = defaultTeam._id;
+      } else {
+        return res.status(400).json({ msg: 'User is not assigned to any team' });
+      }
+    } else {
+        teamId = user.teams[0]; // Use first team
+    }
     
     let board = await Board.findOne({ team: teamId, type });
     
@@ -92,12 +105,33 @@ exports.getSpecialBoard = async (req, res) => {
 exports.createBoard = async (req, res) => {
   const { title, description, teamId } = req.body;
   try {
+    const isAdmin = req.user.role?.name === 'admin' || req.user.role === 'admin' || 
+                    req.user.role?.name === 'subadmin' || req.user.role === 'subadmin';
+    const user = await User.findById(req.user.id);
+    
+    let targetTeamId = teamId;
+    if (!isAdmin) {
+      if (!user.teams || user.teams.length === 0) {
+        return res.status(400).json({ msg: 'You must be assigned to a team to create a board' });
+      }
+      targetTeamId = user.teams[0]; // Use employee's primary team
+    }
+
+    if (!targetTeamId) {
+      return res.status(400).json({ msg: 'Team selection is required' });
+    }
+
+    // Auto-populate members: All users currently assigned to this team
+    const teamMembers = await User.find({ teams: targetTeamId }).select('_id');
+    const memberIds = teamMembers.map(m => m._id);
+    
+    // Ensure the creator is also an admin of the board
     const board = new Board({
       title,
       description,
-      team: teamId,
+      team: targetTeamId,
       admins: [req.user.id],
-      members: [req.user.id]
+      members: Array.from(new Set([...memberIds, req.user.id])) // Unique IDs including creator
     });
     await board.save();
     res.json(board);
@@ -122,6 +156,9 @@ exports.getBoardsByTeam = async (req, res) => {
       ];
     }
 
+    // Filter out special tactical boards from the general project list
+    query.type = { $nin: ['daily', 'weekly'] };
+    
     const boards = await Board.find(query).populate('team', 'name');
     res.json(boards);
   } catch (err) {
@@ -175,7 +212,7 @@ exports.getBoardById = async (req, res) => {
       };
     });
 
-    res.json({ board: populatedBoard, lists, tasks: tasksWithCounts });
+    res.json({ board, lists, tasks: tasksWithCounts });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -743,13 +780,32 @@ exports.deleteChecklist = async (req, res) => {
 exports.addMemberToBoard = async (req, res) => {
   const { userId } = req.body;
   try {
-    const board = await Board.findByIdAndUpdate(req.params.id, { $addToSet: { members: userId } }, { new: true }).populate('members', 'name email');
+    const board = await Board.findById(req.params.id);
+    if (!board) return res.status(404).json({ msg: 'Board not found' });
+
+    const isAdmin = req.user.role?.name === 'admin' || req.user.role === 'admin' || 
+                    req.user.role?.name === 'subadmin' || req.user.role === 'subadmin';
+
+    // If not admin, verify the target user belongs to the same team as the board
+    if (!isAdmin) {
+      const targetUser = await User.findById(userId);
+      const isSameTeam = targetUser?.teams?.some(t => t.toString() === board.team.toString());
+      if (!targetUser || !isSameTeam) {
+        return res.status(403).json({ msg: 'You can only add members from your own team' });
+      }
+    }
+
+    const updatedBoard = await Board.findByIdAndUpdate(
+      req.params.id, 
+      { $addToSet: { members: userId } }, 
+      { new: true }
+    ).populate('members', 'name email');
     
     if (req.io) {
       req.io.to(req.params.id).emit('board_updated', { type: 'MEMBER_ADDED', boardId: req.params.id, userId });
     }
 
-    res.json(board);
+    res.json(updatedBoard);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -762,13 +818,12 @@ exports.removeMemberFromBoard = async (req, res) => {
     const board = await Board.findById(req.params.id);
     if (!board) return res.status(404).json({ msg: 'Board not found' });
 
-    // Access control: Only global admins/subadmins or board-level admins can remove members
+    // Access control: ONLY system global admins/subadmins can "restrict" (remove) members
     const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
                     req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
-    const isBoardAdmin = board.admins.some(a => a.toString() === req.user.id);
 
-    if (!isAdmin && !isBoardAdmin) {
-      return res.status(403).json({ msg: 'Not authorized to remove members' });
+    if (!isAdmin) {
+      return res.status(403).json({ msg: 'Only system administrators can remove members from a board' });
     }
 
     // Pull from both members and admins
@@ -785,5 +840,46 @@ exports.removeMemberFromBoard = async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
+  }
+};
+
+exports.searchMembers = async (req, res) => {
+  try {
+    const users = await User.find({}).select('name email teams').populate('teams', 'name');
+    res.json(users);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.getSharedBoards = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ msg: 'Unauthorized: No user ID in token' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found in database' });
+    }
+
+    const userTeamIds = user.teams ? user.teams.map(t => t.toString()) : [];
+    
+    // Find boards where:
+    // 1. User is an explicit member
+    // 2. Board's team is NOT in the user's primary teams
+    // 3. Board is not a tactical board (daily/weekly)
+    const query = {
+      members: req.user.id,
+      team: { $nin: userTeamIds },
+      type: { $nin: ['daily', 'weekly'] }
+    };
+
+    const boards = await Board.find(query).populate('team', 'name');
+    res.json(boards);
+  } catch (err) {
+    console.error('getSharedBoards Error:', err.message);
+    res.status(500).json({ error: err.message, stack: process.env.NODE_ENV === 'development' ? err.stack : undefined });
   }
 };

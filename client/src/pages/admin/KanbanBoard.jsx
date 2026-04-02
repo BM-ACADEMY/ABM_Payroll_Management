@@ -86,7 +86,7 @@ const KanbanBoard = () => {
   const fetchUsers = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/members/search`, {
         headers: { 'x-auth-token': token }
       });
       // Handle both { employees: [...] } and [...] formats
@@ -100,8 +100,8 @@ const KanbanBoard = () => {
 
   useEffect(() => { 
     fetchData(); 
-    if (isAdmin) fetchUsers();
-  }, [fetchData, isAdmin]);
+    fetchUsers(); // All authenticated users can now fetch directory info for boards
+  }, [fetchData]);
 
   // Handle Board Socket Connections
   useEffect(() => {
@@ -145,10 +145,13 @@ const KanbanBoard = () => {
     // Optimistic Update
     const userToAdd = allUsers.find(u => u._id === userId);
     if (userToAdd) {
-      setBoardData(prev => ({
-        ...prev,
-        members: [...prev.members, userToAdd]
-      }));
+      setBoardData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          members: [...(prev.members || []), userToAdd]
+        };
+      });
     }
 
     try {
@@ -168,11 +171,14 @@ const KanbanBoard = () => {
     if (!window.confirm("Are you sure you want to remove this member?")) return;
     
     // Optimistic Update
-    setBoardData(prev => ({
-      ...prev,
-      members: prev.members.filter(m => m._id !== userId),
-      admins: prev.admins.filter(a => a._id !== userId)
-    }));
+    setBoardData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        members: (prev.members || []).filter(m => m._id !== userId),
+        admins: (prev.admins || []).filter(a => a._id !== userId)
+      };
+    });
 
     try {
       const token = sessionStorage.getItem('token');
@@ -656,7 +662,7 @@ const KanbanBoard = () => {
                       const currentUserId = sessionStorage.getItem('userId');
                       const isBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(m._id));
                       const isCurrentUserBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(currentUserId));
-                      const canRemove = isAdmin || isCurrentUserBoardAdmin;
+                      const canRemove = isAdmin; // Only system administrators can remove members
 
                       return (
                         <div key={m._id} className="flex items-center gap-4 bg-zinc-50 p-4 rounded-3xl border border-zinc-100/50">
@@ -684,45 +690,58 @@ const KanbanBoard = () => {
                   </div>
                 </div>
                 
-                {isAdmin && (
-                  <div className="space-y-4 pt-8 border-t border-zinc-100">
-                    <h4 className="text-[10px] uppercase font-black tracking-widest text-zinc-400 ml-1">Add New Members</h4>
-                    <div className="space-y-4">
-                       <div className="relative group/search">
-                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within/search:text-black transition-colors" />
-                         <Input 
-                          placeholder="Search by name or email..." 
-                          value={userSearch} 
-                          onChange={e => setUserSearch(e.target.value)}
-                          className="rounded-[20px] h-12 pl-12 border-zinc-100 bg-zinc-50 focus:bg-white transition-all text-sm font-medium"
-                         />
-                       </div>
-                       <div className="space-y-2">
-                         {Array.isArray(allUsers) ? (
-                           allUsers
-                            .filter(u => (u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase())) && !boardData.members.some(m => m._id === u._id))
-                            .map(u => (
-                              <div key={u._id} className="flex items-center justify-between p-4 rounded-[24px] hover:bg-zinc-50 border border-transparent hover:border-zinc-200 transition-all group/user">
-                                 <div className="flex items-center gap-4">
-                                   <div className="w-10 h-10 rounded-2xl bg-white border border-zinc-100 flex items-center justify-center text-sm font-bold shadow-sm group-hover/user:bg-black group-hover/user:text-white transition-all">{u.name.charAt(0)}</div>
-                                   <div className="flex flex-col">
-                                     <span className="text-sm font-black text-zinc-900 leading-none mb-1">{u.name}</span>
-                                     <span className="text-[10px] text-zinc-400 font-medium">{u.email}</span>
-                                   </div>
+                <div className="space-y-4 pt-8 border-t border-zinc-100">
+                  <h4 className="text-[10px] uppercase font-black tracking-widest text-zinc-400 ml-1">Add New Members</h4>
+                  <div className="space-y-4">
+                     <div className="relative group/search">
+                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within/search:text-black transition-colors" />
+                       <Input 
+                        placeholder={isAdmin ? "Search all members..." : "Search team members..."} 
+                        value={userSearch} 
+                        onChange={e => setUserSearch(e.target.value)}
+                        className="rounded-[20px] h-12 pl-12 border-zinc-100 bg-zinc-50 focus:bg-white transition-all text-sm font-medium"
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       {Array.isArray(allUsers) ? (
+                         allUsers
+                          .filter(u => {
+                            const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase());
+                            const notInBoard = !boardData?.members?.some(m => m._id === u._id);
+                            
+                            if (isAdmin) return matchesSearch && notInBoard;
+                            
+                            // If employee: Must be in the same team as the board
+                            const isInSameTeam = u.teams?.some(t => String(t._id || t) === String(boardData?.team?._id || boardData?.team));
+                            return matchesSearch && notInBoard && isInSameTeam;
+                          })
+                          .map(u => (
+                            <div key={u._id} className="flex items-center justify-between p-4 rounded-[24px] hover:bg-zinc-50 border border-transparent hover:border-zinc-200 transition-all group/user">
+                               <div className="flex items-center gap-4">
+                                 <div className="w-10 h-10 rounded-2xl bg-white border border-zinc-100 flex items-center justify-center text-sm font-bold shadow-sm group-hover/user:bg-black group-hover/user:text-white transition-all">{u.name.charAt(0)}</div>
+                                 <div className="flex flex-col">
+                                   <span className="text-sm font-black text-zinc-900 leading-none mb-1">{u.name}</span>
+                                   <span className="text-[10px] text-zinc-400 font-medium">{u.email}</span>
                                  </div>
-                                 <Button size="sm" onClick={() => handleAddMember(u._id)} className="h-9 rounded-xl bg-black text-[#fffe01] hover:bg-zinc-800 px-6 font-black text-[10px] tracking-widest shadow-lg active:scale-95 transition-all">INVITE</Button>
-                              </div>
-                           ))
-                         ) : (
-                           <div className="text-center py-4 text-xs font-bold text-zinc-400">Loading employees...</div>
-                         )}
-                         {userSearch && Array.isArray(allUsers) && allUsers.filter(u => u.name.toLowerCase().includes(userSearch.toLowerCase()) && !boardData.members.some(m => m._id === u._id)).length === 0 && (
-                            <p className="text-center py-8 text-xs font-bold text-zinc-400 italic">No matching employees found...</p>
-                         )}
-                       </div>
-                    </div>
+                               </div>
+                               <Button size="sm" onClick={() => handleAddMember(u._id)} className="h-9 rounded-xl bg-black text-[#fffe01] hover:bg-zinc-800 px-6 font-black text-[10px] tracking-widest shadow-lg active:scale-95 transition-all">INVITE</Button>
+                            </div>
+                          ))
+                       ) : (
+                         <div className="text-center py-4 text-xs font-bold text-zinc-400">Loading members...</div>
+                       )}
+                       {userSearch && Array.isArray(allUsers) && allUsers.filter(u => {
+                          const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase());
+                          const notInBoard = !boardData?.members?.some(m => m._id === u._id);
+                          if (isAdmin) return matchesSearch && notInBoard;
+                          const isInSameTeam = u.teams?.some(t => String(t._id || t) === String(boardData?.team?._id || boardData?.team));
+                          return matchesSearch && notInBoard && isInSameTeam;
+                       }).length === 0 && (
+                          <p className="text-center py-8 text-xs font-bold text-zinc-400 italic">No matching members found...</p>
+                       )}
+                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </DialogContent>
           </Dialog>

@@ -11,6 +11,8 @@ router.get('/special/:type', auth, boardController.getSpecialBoard);
 router.get('/:id', auth, boardController.getBoardById);
 router.patch('/:id', auth, boardController.updateBoard);
 router.delete('/:id', auth, boardController.deleteBoard);
+router.get('/members/search', auth, boardController.searchMembers);
+router.get('/shared', auth, boardController.getSharedBoards);
 router.post('/:id/members', auth, boardController.addMemberToBoard);
 router.delete('/:id/members/:userId', auth, boardController.removeMemberFromBoard);
 

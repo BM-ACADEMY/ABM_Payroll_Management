@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -15,6 +16,7 @@ const KanbanBoards = () => {
   const [boardsByTeam, setBoardsByTeam] = useState({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sharedBoards, setSharedBoards] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [formData, setFormData] = useState({ title: '', description: '' });
   const { toast } = useToast();
@@ -45,6 +47,11 @@ const KanbanBoards = () => {
         boardsMap[team._id] = boardsResponses[index].data;
       });
       setBoardsByTeam(boardsMap);
+      const sharedRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/shared`, {
+        headers: { 'x-auth-token': token }
+      });
+      setSharedBoards(sharedRes.data);
+      
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -93,20 +100,20 @@ const KanbanBoards = () => {
           <p className="text-gray-500 max-w-2xl font-normal">Manage your daily tasks, weekly goals, and team project workspaces.</p>
         </div>
 
-        {isAdmin && (
-          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-black text-[#fffe01] hover:bg-zinc-800 rounded-2xl px-8 py-6 h-auto transition-all shadow-xl hover:shadow-zinc-200">
-                <Plus className="w-5 h-5 mr-2" />
-                New Project Board
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-3xl bg-white p-6">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-semibold">Create New Board</DialogTitle>
-                <DialogDescription className="font-normal text-zinc-500">Add a new dashboard for your team to start tracking tasks.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateBoard} className="space-y-6 pt-4">
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-black text-[#fffe01] hover:bg-zinc-800 rounded-2xl px-8 py-6 h-auto transition-all shadow-xl hover:shadow-zinc-200">
+              <Plus className="w-5 h-5 mr-2" />
+              New Project Board
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-3xl bg-white p-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold">Create New Board</DialogTitle>
+              <DialogDescription className="font-normal text-zinc-500">Add a new dashboard for your team to start tracking tasks.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateBoard} className="space-y-6 pt-4">
+              {isAdmin && (
                 <div className="space-y-2">
                   <Label className="text-zinc-700 font-medium">Select Team</Label>
                   <select 
@@ -121,6 +128,7 @@ const KanbanBoards = () => {
                     ))}
                   </select>
                 </div>
+              )}
                 <div className="space-y-2">
                   <Label className="text-zinc-700 font-medium">Board Title</Label>
                   <Input 
@@ -147,8 +155,7 @@ const KanbanBoards = () => {
                 </DialogFooter>
               </form>
             </DialogContent>
-          </Dialog>
-        )}
+        </Dialog>
       </header>
 
       {loading ? (
@@ -160,62 +167,6 @@ const KanbanBoards = () => {
         </div>
       ) : (
         <div className="space-y-16 pb-20">
-          {/* Tactical Boards Section */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-6 w-1 bg-black rounded-full"></div>
-              <h2 className="text-xl font-black uppercase tracking-widest text-zinc-900">Tactical Boards</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Daily Board Card */}
-              <Card 
-                className="relative overflow-hidden group cursor-pointer border-none bg-black text-white rounded-[40px] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban/special/daily`)}
-              >
-                <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-20 transition-opacity">
-                   <Layout className="w-40 h-40" />
-                </div>
-                <CardHeader className="p-10 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-[#fffe01] flex items-center justify-center mb-6 shadow-xl">
-                    <Layout className="w-6 h-6 text-black" />
-                  </div>
-                  <CardTitle className="text-3xl font-black tracking-tighter mb-2">Daily Board</CardTitle>
-                  <CardDescription className="text-zinc-400 font-medium text-base">Your immediate mission for today. Track task progress from To Do to Done.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-10 pt-0 relative z-10">
-                  <div className="flex items-center gap-2 text-[#fffe01] font-bold text-sm tracking-widest">
-                    OPEN DAILY VIEW <ArrowRight className="w-4 h-4" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Weekly Board Card */}
-              <Card 
-                className="relative overflow-hidden group cursor-pointer border-none bg-white text-zinc-900 rounded-[40px] shadow-xl border border-zinc-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban/special/weekly`)}
-              >
-                <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:opacity-10 transition-opacity">
-                   <Calendar className="w-40 h-40" />
-                </div>
-                <CardHeader className="p-10 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center mb-6 shadow-sm group-hover:bg-[#fffe01] transition-all">
-                    <Calendar className="w-6 h-6 text-zinc-600 group-hover:text-black" />
-                  </div>
-                  <CardTitle className="text-3xl font-black tracking-tighter mb-2">Weekly Board</CardTitle>
-                  <CardDescription className="text-zinc-500 font-medium text-base">Focus on the week's strategic goals and major milestones.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-10 pt-0 relative z-10">
-                  <div className="flex items-center gap-2 text-zinc-900 font-bold text-sm tracking-widest group-hover:text-[#d30614] transition-colors">
-                    OPEN WEEKLY VIEW <ArrowRight className="w-4 h-4" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-
-          <div className="h-px bg-zinc-100 w-full"></div>
-
           {/* Regular workspaces */}
           <section className="space-y-12">
             <div className="flex items-center gap-3 mb-2">
@@ -311,6 +262,47 @@ const KanbanBoards = () => {
               ))
             )}
           </section>
+          
+          {/* Shared Workspaces */}
+          {sharedBoards.length > 0 && (
+            <section className="space-y-12">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-6 w-1 bg-[#fffe01] rounded-full"></div>
+                <h2 className="text-xl font-black uppercase tracking-widest text-zinc-400">Shared with Me</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {sharedBoards.map(board => (
+                  <div key={board._id} className="relative group">
+                    <Card 
+                      className="h-full border-none shadow-sm hover:shadow-xl transition-all cursor-pointer rounded-3xl bg-white overflow-hidden"
+                      onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban/${board._id}`)}
+                    >
+                      <div className="h-2 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between mb-2">
+                           <Badge variant="outline" className="text-[8px] font-black tracking-widest text-blue-500 border-blue-100 bg-blue-50/50">{board.team?.name || 'Shared'}</Badge>
+                        </div>
+                        <CardTitle className="text-xl font-semibold hover:text-blue-500 transition-colors">{board.title}</CardTitle>
+                        <CardDescription className="line-clamp-2 min-h-[40px] font-normal text-zinc-500">{board.description || 'No description'}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between text-zinc-400 text-xs font-normal">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Created {new Date(board.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="bg-zinc-50 p-2 rounded-full hover:bg-blue-50 hover:text-blue-500 transition-all">
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>

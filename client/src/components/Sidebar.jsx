@@ -49,7 +49,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
             <NavLink
               key={i}
               to={link.path}
-              end={link.path === '/admin' || link.path === '/dashboard'}
+              end={link.end || link.path === '/admin' || link.path === '/dashboard'}
               className={({ isActive }) => `
               flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
               ${isActive
