@@ -7,11 +7,13 @@ exports.getSettings = async (req, res) => {
     let settings = await Settings.findOne();
     
     // If no settings exist, create default ones
+    console.log(`[SETTINGS] Fetching settings for user: ${req.user.id}`);
     if (!settings) {
+      console.log(`[SETTINGS] No settings found, creating default.`);
       settings = new Settings();
       await settings.save();
     }
-    
+    console.log(`[SETTINGS] Returning: ${JSON.stringify(settings)}`);
     res.json(settings);
   } catch (err) {
     console.error(err.message);
@@ -36,6 +38,7 @@ exports.updateSettings = async (req, res) => {
       // Update existing settings
       settings.monthlyPermissionHours = monthlyPermissionHours ?? settings.monthlyPermissionHours;
       settings.casualLeaveLimit = casualLeaveLimit ?? settings.casualLeaveLimit;
+      settings.monthlyWorkingDays = req.body.monthlyWorkingDays ?? settings.monthlyWorkingDays;
       settings.halfDaySalaryRateLimit = halfDaySalaryRateLimit ?? settings.halfDaySalaryRateLimit;
       settings.fullDaySalaryRateLimit = fullDaySalaryRateLimit ?? settings.fullDaySalaryRateLimit;
       settings.saturdayRule = req.body.saturdayRule ?? settings.saturdayRule;
@@ -51,6 +54,7 @@ exports.updateSettings = async (req, res) => {
       settings = new Settings({
         monthlyPermissionHours,
         casualLeaveLimit,
+        monthlyWorkingDays: req.body.monthlyWorkingDays,
         halfDaySalaryRateLimit,
         fullDaySalaryRateLimit,
         saturdayRule: req.body.saturdayRule,
@@ -62,6 +66,7 @@ exports.updateSettings = async (req, res) => {
       await settings.save();
     }
 
+    console.log(`[SETTINGS] Settings updated successfully: ${JSON.stringify(settings)}`);
     res.json(settings);
   } catch (err) {
     console.error(err.message);

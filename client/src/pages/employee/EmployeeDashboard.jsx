@@ -136,6 +136,7 @@ const EmployeeDashboard = () => {
     // A. General permissions (Deduct if Approved OR Rejected)
     const generalPermissionMinutes = myRequests.filter(req => {
       const reqDate = parseISO(req.date || req.fromDateTime);
+      // Ensure we are comparing with the SAME month and year
       return reqDate.getMonth() === currentMonth && 
              reqDate.getFullYear() === currentYear && 
              req.type === 'permission' && 
@@ -166,16 +167,20 @@ const EmployeeDashboard = () => {
     const usedPermissionMinutes = generalPermissionMinutes + attendancePermissionMinutes;
     const usedPermissionHours = usedPermissionMinutes / 60;
 
+    // Default to model defaults if settings fields are missing or 0
+    const casualLimit = settings?.casualLeaveLimit ?? 1;
+    const permissionLimit = settings?.monthlyPermissionHours ?? 3;
+
     return {
       leave: {
-        total: settings.casualLeaveLimit,
+        total: casualLimit,
         used: usedLeaves,
-        remaining: Math.max(0, settings.casualLeaveLimit - usedLeaves)
+        remaining: Math.max(0, casualLimit - usedLeaves)
       },
       permission: {
-        total: settings.monthlyPermissionHours,
+        total: permissionLimit,
         used: parseFloat(usedPermissionHours.toFixed(2)),
-        remaining: Math.max(0, settings.monthlyPermissionHours - usedPermissionHours).toFixed(2)
+        remaining: Math.max(0, permissionLimit - usedPermissionHours).toFixed(2)
       }
     };
   }, [settings, myRequests, attendanceLogs]);
@@ -590,7 +595,7 @@ const EmployeeDashboard = () => {
                     <h4 className="font-medium">Casual Leaves</h4>
                  </div>
                  <p className="text-sm text-zinc-400 leading-relaxed">
-                    You are entitled to <strong>{settings?.casualLeaveLimit || 0}</strong> casual leave(s) per month. Unused leaves do not carry forward. Any leave taken beyond this limit is considered a Loss of Pay (LOP) day.
+                    You are entitled to <strong>{settings?.casualLeaveLimit ?? 1}</strong> casual leave(s) per month. Unused leaves do not carry forward. Any leave taken beyond this limit is considered a Loss of Pay (LOP) day.
                  </p>
               </div>
               
@@ -600,7 +605,7 @@ const EmployeeDashboard = () => {
                     <h4 className="font-medium">Monthly Permissions</h4>
                  </div>
                  <p className="text-sm text-zinc-400 leading-relaxed">
-                    A total of <strong>{settings?.monthlyPermissionHours || 0} hours</strong> of special permissions are granted monthly. Exceeding specific tiers ({settings?.permissionTier1Limit}h or {settings?.permissionTier2Limit}h) will trigger automatic LOP deductions as per protocol.
+                    A total of <strong>{settings?.monthlyPermissionHours ?? 3} hours</strong> of special permissions are granted monthly. Exceeding specific tiers ({settings?.permissionTier1Limit ?? 3}h or {settings?.permissionTier2Limit ?? 5}h) will trigger automatic LOP deductions as per protocol.
                  </p>
               </div>
 
@@ -610,7 +615,7 @@ const EmployeeDashboard = () => {
                     <h4 className="font-medium">Sandwich Policy</h4>
                  </div>
                  <p className="text-sm text-zinc-400 leading-relaxed">
-                    Absences or leaves taken on <strong>Mondays</strong> or <strong>Saturdays</strong> are subject to double LOP deductions if not properly authorized via protocol secondary validation.
+                    Absences or leaves taken on <strong>Mondays</strong> or <strong>Saturdays</strong> are subject to <strong>double LOP deductions</strong> (2 days) even if you have remaining casual leave.
                  </p>
               </div>
            </div>

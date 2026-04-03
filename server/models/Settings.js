@@ -9,6 +9,10 @@ const SettingsSchema = new mongoose.Schema({
     type: Number, 
     default: 1 
   },
+  monthlyWorkingDays: {
+    type: Number,
+    default: 30
+  },
   halfDaySalaryRateLimit: { 
     type: Number, 
     default: 0.5 

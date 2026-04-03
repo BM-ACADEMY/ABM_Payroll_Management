@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import {
   Save, 
   Clock, 
   Calendar, 
+  Briefcase,
   TrendingDown, 
   TrendingUp,
   Loader2,
@@ -25,6 +26,7 @@ const PayrollSettings = () => {
   const [settings, setSettings] = useState({
     monthlyPermissionHours: 3,
     casualLeaveLimit: 1,
+    monthlyWorkingDays: 30,
     halfDaySalaryRateLimit: 0.5,
     fullDaySalaryRateLimit: 1.0,
     saturdayRule: 'full-day'
@@ -179,6 +181,24 @@ const PayrollSettings = () => {
                       />
                     </div>
                     <p className="text-[10px] text-slate-400 font-medium ml-1">Number of casual leaves granted per month.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
+                      Monthly Working Days
+                    </Label>
+                    <div className="relative group">
+                      <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
+                      <Input
+                        type="number"
+                        name="monthlyWorkingDays"
+                        value={settings.monthlyWorkingDays}
+                        onChange={handleChange}
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">Fixed days used for per-day salary calculation (e.g., 30).</p>
                   </div>
                 </div>
               </CardContent>
