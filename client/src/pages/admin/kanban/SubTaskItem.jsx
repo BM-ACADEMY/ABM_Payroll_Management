@@ -330,16 +330,31 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                           onValueChange={setSelectedDestinationId}
                        >
                           <SelectTrigger className="w-full h-14 rounded-2xl border-zinc-200 bg-zinc-50/50 hover:bg-zinc-50 transition-all text-sm font-black text-zinc-900 px-4 focus:ring-2 focus:ring-yellow-400 shadow-sm">
-                             <SelectValue placeholder="Select destination..." />
+                             <SelectValue>
+                                {allDestinations.find(d => d.id === selectedDestinationId) ? (
+                                   <div className="flex flex-col items-start leading-tight">
+                                      <span className="text-[10px] text-zinc-400 uppercase tracking-tighter">{allDestinations.find(d => d.id === selectedDestinationId).boardTitle}</span>
+                                      <span className="text-[14px]">{allDestinations.find(d => d.id === selectedDestinationId).listTitle}</span>
+                                   </div>
+                                ) : (
+                                   <span className="text-zinc-400">Select destination...</span>
+                                )}
+                             </SelectValue>
                           </SelectTrigger>
-                          <SelectContent className="z-[300] bg-white border-zinc-200 shadow-2xl rounded-2xl p-1 max-h-[300px]">
+                          <SelectContent className="z-[300] bg-white border-zinc-200 shadow-2xl rounded-2xl p-1 max-h-[400px]">
                              {allDestinations
                                .filter(d => 
+                                 d.id === selectedDestinationId || 
                                  d.boardTitle.toLowerCase().includes(destSearch.toLowerCase()) || 
                                  d.listTitle.toLowerCase().includes(destSearch.toLowerCase())
                                )
                                .map(dest => (
-                                  <SelectItem key={dest.id} value={dest.id} className="py-2 px-3 focus:bg-zinc-50 cursor-pointer rounded-xl font-bold text-zinc-700">
+                                  <SelectItem 
+                                    key={dest.id} 
+                                    value={dest.id} 
+                                    textValue={`${dest.boardTitle} - ${dest.listTitle}`}
+                                    className="py-2 px-3 focus:bg-zinc-50 cursor-pointer rounded-xl font-bold text-zinc-700"
+                                  >
                                      <div className="flex flex-col gap-0.5">
                                         <span className="text-[10px] text-zinc-400 uppercase tracking-tighter">{dest.boardTitle}</span>
                                         <span className="text-[14px]">{dest.listTitle}</span>
