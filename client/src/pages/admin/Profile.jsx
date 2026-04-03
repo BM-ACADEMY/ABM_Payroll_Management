@@ -45,7 +45,7 @@ const Profile = ({ setUser }) => {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth`, {
         headers: { 'x-auth-token': token }
       });
@@ -55,7 +55,7 @@ const Profile = ({ setUser }) => {
         phoneNumber: res.data.phoneNumber || ''
       });
       // Sync names just in case
-      localStorage.setItem('userName', res.data.name);
+      sessionStorage.setItem('userName', res.data.name);
     } catch (err) {
       console.error("Error fetching profile:", err);
       setMessage({ type: 'error', text: 'Failed to load profile data.' });
@@ -106,7 +106,7 @@ const Profile = ({ setUser }) => {
     setMessage({ type: '', text: '' });
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
         ...userData,
         email: normalizedEmail
@@ -115,8 +115,8 @@ const Profile = ({ setUser }) => {
       });
       
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
-      // Update localStorage to reflect new name/email
-      localStorage.setItem('userName', res.data.name);
+      // Update sessionStorage to reflect new name/email
+      sessionStorage.setItem('userName', res.data.name);
       
       // Update App state for instant sync
       if (setUser) {
@@ -145,7 +145,7 @@ const Profile = ({ setUser }) => {
     setMessage({ type: '', text: '' });
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.put(`${import.meta.env.VITE_API_URL}/api/auth/change-password`, {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
@@ -172,7 +172,7 @@ const Profile = ({ setUser }) => {
     );
   }
 
-  const userRole = localStorage.getItem('userRole') || 'admin';
+  const userRole = sessionStorage.getItem('userRole') || 'admin';
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-700 pb-20">

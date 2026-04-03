@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";import { useAuth } from '@/context/AuthContext';
 
 
-const Login = ({ setUser }) => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,6 +30,8 @@ const Login = ({ setUser }) => {
     }
   }, [location, navigate, toast]);
 
+  const { login } = useAuth();
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -40,16 +42,24 @@ const Login = ({ setUser }) => {
         password
       });
 
-      localStorage.setItem('token', res.data.token);
-      const authenticatedUser = res.data.user;
-      setUser(authenticatedUser);
+      const authenticatedUser = {
+        ...res.data.user,
+        token: res.data.token
+      };
       
-      const redirectUrl = localStorage.getItem('redirectUrl');
+      login(authenticatedUser);
+      
+      const redirectUrl = sessionStorage.getItem('redirectUrl');
       if (redirectUrl) {
-         localStorage.removeItem('redirectUrl');
+         sessionStorage.removeItem('redirectUrl');
          navigate(redirectUrl);
       } else {
-         navigate(authenticatedUser.role.name === 'admin' ? '/admin' : '/dashboard');
+         // Subadmin also gets the admin overview as home if they are management
+         // Or keep /dashboard if they are primarily employees. 
+         // Given "default panel like employees", let's use /dashboard but 
+         // if they have 'admin' in their role name they usually want the overview.
+         const isManagement = ['admin', 'subadmin'].includes(authenticatedUser.role.name);
+         navigate(isManagement ? '/admin' : '/dashboard');
       }
     } catch (err) {
       if (err.response?.data?.emailNotVerified) {

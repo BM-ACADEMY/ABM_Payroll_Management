@@ -6,11 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { 
   Users2, 
-  UserPlus, 
   UserCheck2, 
   CalendarClock, 
   PieChart as PieChartIcon, 
-  MoreHorizontal,
+  MoreHorizontal, 
   ShieldAlert,
   TrendingUp
 } from "lucide-react";
@@ -32,7 +31,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const config = { headers: { 'x-auth-token': token } };
 
       const [statsRes, employeesRes] = await Promise.all([
@@ -76,15 +75,11 @@ const AdminDashboard = () => {
           </div>
           <p className="text-gray-500 text-lg font-normal">Comprehensive <span className="text-gray-900 font-medium">organizational overview</span> and real-time operational metrics.</p>
         </div>
-        <Button className="bg-[#d30614] hover:bg-red-700 text-white flex items-center gap-2 py-7 px-8 rounded-2xl font-medium shadow-lg shadow-red-600/10 hover:scale-[1.02] transition-all">
-          <UserPlus className="w-5 h-5" />
-          Add New Employee
-        </Button>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat, i) => {
-          const Icon = IconMap[stat.icon] || Users;
+          const Icon = IconMap[stat.icon] || Users2;
           return (
             <Card key={i} className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
               <CardContent className="pt-6">
@@ -172,4 +167,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-

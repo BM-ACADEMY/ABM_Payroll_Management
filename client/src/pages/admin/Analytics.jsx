@@ -41,7 +41,7 @@ const Analytics = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const [perfRes, sourcesRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/api/analytics/performance`, { headers: { 'x-auth-token': token } }),
         axios.get(`${import.meta.env.VITE_API_URL}/api/analytics/sources`, { headers: { 'x-auth-token': token } })
@@ -58,7 +58,7 @@ const Analytics = () => {
   const handleAddSource = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/analytics/sources`, newSource, {
         headers: { 'x-auth-token': token }
       });
@@ -73,7 +73,7 @@ const Analytics = () => {
 
   const handleDeleteSource = async (id) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/analytics/sources/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -92,7 +92,7 @@ const Analytics = () => {
     setSourceLoading(true);
     setActiveSourceId(id);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/analytics/data/${id}`, {
         headers: { 'x-auth-token': token }
       });

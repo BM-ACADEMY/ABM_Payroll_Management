@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSunday, isSaturday, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +26,7 @@ const CalendarView = () => {
   const fetchCalendarData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const month = format(currentDate, 'M');
       const year = format(currentDate, 'yyyy');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/calendar?month=${month}&year=${year}`, {

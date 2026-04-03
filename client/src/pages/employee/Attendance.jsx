@@ -72,7 +72,7 @@ const Attendance = () => {
   const fetchAttendanceLogs = async () => {
     setLogsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/logs`, {
         headers: { 'x-auth-token': token }
       });
@@ -87,7 +87,7 @@ const Attendance = () => {
 
   const fetchEstimatedEarnings = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/payroll/my-summary`, {
         headers: { 'x-auth-token': token }
       });
@@ -99,7 +99,7 @@ const Attendance = () => {
 
   const fetchUserTimings = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth`, {
         headers: { 'x-auth-token': token }
       });
@@ -111,7 +111,7 @@ const Attendance = () => {
 
   const fetchCurrentStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/today`, {
         headers: { 'x-auth-token': token }
       });
@@ -140,7 +140,7 @@ const Attendance = () => {
   const handleAction = async (action) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const config = { headers: { 'x-auth-token': token } };
       let res;
 
@@ -228,7 +228,7 @@ const Attendance = () => {
 
   const StatusConfig = getStatusConfig(attendanceState);
   const StatusIcon = StatusConfig.icon;
-  // const user = localStorage.getItem('user'); // removed due to encryption crash
+  // const user = sessionStorage.getItem('user'); // removed due to encryption crash
 
   const filteredLogs = attendanceLogs.filter(log => {
      if (filterPeriod === 'weekly') {

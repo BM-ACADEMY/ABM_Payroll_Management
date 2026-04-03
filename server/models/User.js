@@ -26,6 +26,7 @@ const UserSchema = new mongoose.Schema({
   otp: { type: String },
   otpExpires: { type: Date },
   teams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
+  permissions: [{ type: String }], // For granular subadmin permissions
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
