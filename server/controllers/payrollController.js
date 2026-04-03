@@ -92,24 +92,22 @@ exports.getMonthlyReport = async (req, res) => {
           totalAcceptedMinutes += (attendance.checkIn.permissionMinutes || 0);
         } else {
           const leaveReq = approvedLeaves.find(l => l.date === dateStr);
-          if (leaveReq) {
-            if (isMon || isSat) {
-              totalLOPDays += 2;
-            } else {
-              if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
-                usedCasualLeaves++;
-                isPaid = true;
-              } else {
-                totalLOPDays += 1;
-              }
-            }
-          } else if (dateStr < todayStr) {
-            absentDays++;
-            if (isMon || isSat) {
-              totalLOPDays += 2;
+          
+          // SANDWICH RULE: Monday and Saturday are Double LOP (2 days) even with Casual Leave
+          if (isMon || isSat) {
+            totalLOPDays += 2;
+          } else if (leaveReq) {
+            // Regular weekday with approved leave
+            if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
+              usedCasualLeaves++;
+              isPaid = true;
             } else {
               totalLOPDays += 1;
             }
+          } else if (dateStr < todayStr) {
+            // Unexcused absence
+            absentDays++;
+            totalLOPDays += 1;
           }
         }
 
@@ -152,8 +150,15 @@ exports.getMonthlyReport = async (req, res) => {
       
       totalLOPDays += permissionLopDays;
 
-      const dailyRate = (employee.baseSalary || 0) / daysInMonthCount;
-      const netSalary = dailyRate * Math.max(0, (paidDays - permissionLopDays));
+      const calcBaseDays = globalSettings.monthlyWorkingDays || daysInMonthCount;
+      const dailyRate = (employee.baseSalary || 0) / calcBaseDays;
+      const netSalary = dailyRate * Math.max(0, (paidDays - (totalLOPDays - absentDays) - permissionLopDays));
+      // Explanation: paidDays already subtracted the day of absence. 
+      // totalLOPDays includes the extra penalty day for sandwich rule.
+      // So we subtract (totalLOPDays - absentDays) from paidDays.
+      // Wait, let's simplify:
+      const actualDeductedDays = totalLOPDays + permissionLopDays;
+      const finalNetSalary = dailyRate * Math.max(0, (calcBaseDays - actualDeductedDays));
 
       return {
         _id: employee._id,
@@ -163,7 +168,7 @@ exports.getMonthlyReport = async (req, res) => {
         presentDays: paidDays,
         absentDays,
         totalLOPDays,
-        netSalary: Math.round(netSalary * 100) / 100
+        netSalary: Math.round(finalNetSalary * 100) / 100
       };
     }));
 
@@ -230,6 +235,8 @@ exports.getMySummary = async (req, res) => {
       const attendance = attendanceRecords.find(a => a.date === dateStr);
       const isCoLeave = companyLeaves.find(cl => cl.date === dateStr);
       const isSun = isSunday(day);
+      const isMon = isMonday(day);
+      const isSat = isSaturday(day);
 
       let isPaid = false;
 
@@ -240,24 +247,20 @@ exports.getMySummary = async (req, res) => {
         totalAcceptedMinutes += (attendance.checkIn.permissionMinutes || 0);
       } else {
         const leaveReq = approvedLeaves.find(l => l.date === dateStr);
-        if (leaveReq) {
-          if (isMonday(day) || isSaturday(day)) {
-            totalLOPDays += 2;
-          } else {
-            if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
-              usedCasualLeaves++;
-              isPaid = true;
-            } else {
-              totalLOPDays += 1;
-            }
-          }
-        } else if (dateStr < todayStr) {
-          // Unexcused absence strictly in the past
-          if (isMonday(day) || isSaturday(day)) {
-            totalLOPDays += 2;
+        
+        // SANDWICH RULE: Monday and Saturday are Double LOP (2 days) even with Casual Leave
+        if (isMon || isSat) {
+          totalLOPDays += 2;
+        } else if (leaveReq) {
+          if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
+            usedCasualLeaves++;
+            isPaid = true;
           } else {
             totalLOPDays += 1;
           }
+        } else if (dateStr < todayStr) {
+          // Unexcused absence strictly in the past
+          totalLOPDays += 1;
         }
       }
 
@@ -301,18 +304,17 @@ exports.getMySummary = async (req, res) => {
       }
     }
     
-    totalLOPDays += permissionLopDays;
-
-    const dailyRate = employee.baseSalary / daysInMonthCount;
-    const netSalary = dailyRate * Math.max(0, (paidDays - permissionLopDays));
-
+    const actualDeductedDays = totalLOPDays + permissionLopDays;
+    const calcBaseDays = globalSettings.monthlyWorkingDays || daysInMonthCount;
+    const dailyRate = employee.baseSalary / calcBaseDays;
+    const finalNetSalary = dailyRate * Math.max(0, (calcBaseDays - actualDeductedDays));
 
     res.json({
       baseSalary: employee.baseSalary,
       presentDays: paidDays,
-      totalPermissionHours: totalPermissionHours.toFixed(2),
+      totalPermissionHours: totalAcceptedHours.toFixed(2), // Fixed variable name from totalPermissionHours to totalAcceptedHours
       totalLOPDays,
-      estimatedNetSalary: Math.round(netSalary * 100) / 100
+      estimatedNetSalary: Math.round(finalNetSalary * 100) / 100
     });
   } catch (err) {
     console.error(err.message);
@@ -394,6 +396,8 @@ exports.generateIndividualSalary = async (req, res) => {
       const attendance = attendanceRecords.find(a => a.date === dateStr);
       const isCoLeave = companyLeaves.find(cl => cl.date === dateStr);
       const isSun = isSunday(day);
+      const isMon = isMonday(day);
+      const isSat = isSaturday(day);
 
       let isPaid = false;
 
@@ -404,7 +408,12 @@ exports.generateIndividualSalary = async (req, res) => {
         totalAcceptedMinutes += (attendance.checkIn.permissionMinutes || 0);
       } else {
         const leaveReq = approvedLeaves.find(l => l.date === dateStr);
-        if (leaveReq) {
+        
+        // SANDWICH RULE: Monday and Saturday are Double LOP (2 days) even with Casual Leave
+        if (isMon || isSat) {
+          totalLOPDays += 2;
+          singleLopDays += 2; // Penalty count
+        } else if (leaveReq) {
           if (usedCasualLeaves < globalSettings.casualLeaveLimit) {
             usedCasualLeaves++;
             casualLeaveTaken++;
@@ -416,11 +425,7 @@ exports.generateIndividualSalary = async (req, res) => {
         } else {
           if (dateStr < todayStr) {
              absentDays++;
-             if (isMonday(day) || isSaturday(day)) {
-               totalLOPDays += 2;
-             } else {
-               totalLOPDays += 1;
-             }
+             totalLOPDays += 1;
              singleLopDays++;
           }
         }
@@ -466,9 +471,10 @@ exports.generateIndividualSalary = async (req, res) => {
       }
     }
     
-    totalLOPDays += permissionLopDays;
-
-    const netSalary = dailyRate * Math.max(0, (paidDays - permissionLopDays));
+    const actualDeductedDays = totalLOPDays + permissionLopDays;
+    const calcBaseDays = globalSettings.monthlyWorkingDays || daysInMonthCount;
+    const currentDailyRate = (employee.baseSalary || 0) / calcBaseDays;
+    const finalNetSalary = currentDailyRate * Math.max(0, (calcBaseDays - actualDeductedDays));
 
 
 
@@ -488,11 +494,11 @@ exports.generateIndividualSalary = async (req, res) => {
         singleLopDays,
         casualLeaveTaken,
         totalAbsentDays: absentDays,
-        totalPermissionHours: totalPermissionHours.toFixed(2),
+        totalPermissionHours: totalAcceptedHours.toFixed(2), // Fixed variable name
         baseSalary: employee.baseSalary || 0,
-        perDaySalary: Math.round(dailyRate * 100) / 100,
+        perDaySalary: Math.round(currentDailyRate * 100) / 100,
         totalLopDaysGenerated: totalLOPDays,
-        netSalary: Math.round(netSalary * 100) / 100
+        netSalary: Math.round(finalNetSalary * 100) / 100
       }
     });
 

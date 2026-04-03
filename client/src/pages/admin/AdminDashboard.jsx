@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,6 +20,7 @@ import axios from 'axios';
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [stats, setStats] = useState([]);
   const [chartData, setChartData] = useState([]);
@@ -123,9 +125,15 @@ const AdminDashboard = () => {
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className="text-xl text-gray-900">Employee Directory</CardTitle>
-              <CardDescription className="text-gray-500">Total {employees.length} active members</CardDescription>
+              <CardDescription className="text-gray-500">Showing recent active members</CardDescription>
             </div>
-            <Button variant="outline" className="border-gray-200 text-gray-500 hover:text-black hover:bg-gray-50 w-full sm:w-auto">Filter</Button>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/admin/employees')}
+              className="border-gray-200 text-gray-500 hover:text-black hover:bg-gray-50 w-full sm:w-auto"
+            >
+              View All
+            </Button>
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
             <div className="overflow-x-auto">
@@ -136,7 +144,7 @@ const AdminDashboard = () => {
                     <TableHead className="text-gray-500 font-medium whitespace-nowrap">Name</TableHead>
                     <TableHead className="text-gray-500 font-medium whitespace-nowrap">Role</TableHead>
                     <TableHead className="text-gray-500 font-medium whitespace-nowrap">Base Salary</TableHead>
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap text-right">Actions</TableHead>
+                    {/* <TableHead className="text-gray-500 font-medium whitespace-nowrap text-right">Actions</TableHead> */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -146,11 +154,11 @@ const AdminDashboard = () => {
                       <TableCell className="font-normal text-gray-900 whitespace-nowrap">{emp.name}</TableCell>
                       <TableCell className="text-gray-500 capitalize">{emp.role?.name || 'Employee'}</TableCell>
                       <TableCell className="font-medium text-emerald-600 whitespace-nowrap">₹{emp.baseSalary?.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
+                      {/* <TableCell className="text-right">
                         <Button variant="ghost" size="icon" className="text-gray-400 hover:text-[#d30614] hover:bg-red-50">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
-                      </TableCell>
+                      </TableCell> */}
                     </TableRow>
                   ))}
                 </TableBody>
