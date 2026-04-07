@@ -13,6 +13,7 @@ const {
   isMonday,
   getDaysInMonth
 } = require('date-fns');
+const { getISTDate, getISTTime, getISTFullDate } = require('../utils/dateUtils');
 
 // @desc    Get monthly payroll report for all employees (Admin)
 // @route   GET /api/payroll/report
@@ -20,9 +21,8 @@ exports.getMonthlyReport = async (req, res) => {
   const { startDate, endDate, page = 1, limit = 5 } = req.query; // e.g. 2026-03-01
   
   try {
-    const actualStart = new Date(startDate);
-    const actualEnd = new Date(endDate || startDate);
-    actualEnd.setHours(23, 59, 59, 999);
+    const actualStart = new Date(`${startDate}T00:00:00+05:30`);
+    const actualEnd = new Date(`${endDate || startDate}T23:59:59+05:30`);
 
     const daysInMonthCount = getDaysInMonth(actualStart);
     
@@ -44,7 +44,7 @@ exports.getMonthlyReport = async (req, res) => {
       date: { $gte: format(actualStart, 'yyyy-MM-dd'), $lte: format(actualEnd, 'yyyy-MM-dd') }
     });
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayStr = getISTDate();
 
     const report = await Promise.all(employees.map(async (employee) => {
       const attendanceRecords = await Attendance.find({
@@ -74,8 +74,8 @@ exports.getMonthlyReport = async (req, res) => {
       const days = eachDayOfInterval({ start: actualStart, end: actualEnd });
       
       days.forEach(day => {
-        const dateStr = format(day, 'yyyy-MM-dd');
-        if (dateStr > todayStr && actualEnd > new Date()) return;
+        const dateStr = getISTDate(day);
+        if (dateStr > todayStr && actualEnd > getISTFullDate()) return;
 
         const attendance = attendanceRecords.find(a => a.date === dateStr);
         const isCoLeave = companyLeaves.find(cl => cl.date === dateStr);
@@ -189,11 +189,12 @@ exports.getMonthlyReport = async (req, res) => {
 // @desc    Get current user's payroll summary
 // @route   GET /api/payroll/my-summary
 exports.getMySummary = async (req, res) => {
-  const month = new Date().getMonth() + 1;
-  const year = new Date().getFullYear();
+  const now = getISTFullDate();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
   
   try {
-    const startDate = startOfMonth(new Date(year, month - 1));
+    const startDate = startOfMonth(getISTFullDate(new Date(year, month - 1)));
     const endDate = endOfMonth(startDate);
     const daysInMonthCount = getDaysInMonth(startDate);
     
@@ -225,11 +226,13 @@ exports.getMySummary = async (req, res) => {
     let totalAcceptedMinutes = 0;
     let totalRejectedMinutes = 0;
     let paidDays = 0;
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    let totalLOPDays = 0;
+    let usedCasualLeaves = 0;
+    const todayStr = getISTDate();
 
     const days = eachDayOfInterval({ start: startDate, end: endDate });
     days.forEach(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
+      const dateStr = getISTDate(day);
       if (dateStr > todayStr) return; // Only count up to today
 
       const attendance = attendanceRecords.find(a => a.date === dateStr);
@@ -333,9 +336,8 @@ exports.generateIndividualSalary = async (req, res) => {
   }
 
   try {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    const start = new Date(`${startDate}T00:00:00+05:30`);
+    const end = new Date(`${endDate}T23:59:59+05:30`);
 
     if (start > end) {
        return res.status(400).json({ msg: 'Start date cannot be after end date' });
@@ -385,13 +387,17 @@ exports.generateIndividualSalary = async (req, res) => {
     let totalRejectedMinutes = 0;
     let paidDays = 0;
     let absentDays = 0;
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    let totalLOPDays = 0;
+    let singleLopDays = 0;
+    let usedCasualLeaves = 0;
+    let casualLeaveTaken = 0;
+    const todayStr = getISTDate();
 
     const days = eachDayOfInterval({ start, end });
     
     days.forEach(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
-      if (dateStr > todayStr && end > new Date()) return;
+      const dateStr = getISTDate(day);
+      if (dateStr > todayStr && end > getISTFullDate()) return;
       
       const attendance = attendanceRecords.find(a => a.date === dateStr);
       const isCoLeave = companyLeaves.find(cl => cl.date === dateStr);

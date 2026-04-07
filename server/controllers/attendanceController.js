@@ -5,13 +5,14 @@ const CompanyLeave = require('../models/CompanyLeave');
 const Settings = require('../models/Settings');
 const Schedule = require('../models/Schedule');
 const { format, parse, startOfDay, addMinutes, startOfMonth, endOfMonth, eachDayOfInterval, isSunday, isSaturday, isSameDay } = require('date-fns');
+const { getISTDate, getISTTime, getISTFullDate } = require('../utils/dateUtils');
 
 // @desc    Mark attendance (WFH/WFO)
 // @route   POST /api/attendance/checkin
 exports.checkIn = async (req, res) => {
   const { mode, lateReason } = req.body;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = format(new Date(), 'HH:mm');
+  const today = getISTDate();
+  const now = getISTTime();
 
   try {
     const user = await User.findById(req.user.id);
@@ -37,10 +38,10 @@ exports.checkIn = async (req, res) => {
     // Use schedule snapshot for calculations
     const loginTimeStr = schedule.loginTime;
     const loginTimeParts = loginTimeStr.split(':');
-    const expectedLoginDate = startOfDay(new Date());
+    const expectedLoginDate = startOfDay(getISTFullDate());
     expectedLoginDate.setHours(parseInt(loginTimeParts[0]), parseInt(loginTimeParts[1]), 0);
 
-    const currentTime = new Date();
+    const currentTime = getISTFullDate();
     const graceTimeLimit = addMinutes(expectedLoginDate, schedule.graceTime);
 
     let permissionMinutes = 0;
@@ -99,8 +100,8 @@ exports.checkIn = async (req, res) => {
 };
 // @desc    Mark Lunch Out
 exports.lunchOut = async (req, res) => {
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = format(new Date(), 'HH:mm');
+  const today = getISTDate();
+  const now = getISTTime();
 
   try {
     let attendance = await Attendance.findOne({ user: req.user.id, date: today });
@@ -119,8 +120,8 @@ exports.lunchOut = async (req, res) => {
 // @desc    Mark Lunch In
 exports.lunchIn = async (req, res) => {
   const { delayReason } = req.body;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = format(new Date(), 'HH:mm');
+  const today = getISTDate();
+  const now = getISTTime();
 
   try {
     const user = await User.findById(req.user.id);
@@ -130,8 +131,8 @@ exports.lunchIn = async (req, res) => {
     if (attendance.lunch.in) return res.status(400).json({ msg: 'Lunch in already marked' });
 
     // Calculate lunch duration
-    const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', new Date());
-    const lunchInTime = parse(now, 'HH:mm', new Date());
+    const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', getISTFullDate());
+    const lunchInTime = parse(now, 'HH:mm', getISTFullDate());
     const duration = (lunchInTime - lunchOutTime) / (1000 * 60);
 
     // Get schedule snapshot
@@ -139,8 +140,8 @@ exports.lunchIn = async (req, res) => {
     const maxDuration = schedule ? schedule.lunchDuration : (user.timingSettings.lunchDuration || 45);
 
     // Special Lunch Rule: Logout > 14:00 AND Login > 14:30 requires reason
-    const lunchLimitOut = parse('14:00', 'HH:mm', new Date());
-    const lunchLimitIn = parse('14:30', 'HH:mm', new Date());
+    const lunchLimitOut = parse('14:00', 'HH:mm', getISTFullDate());
+    const lunchLimitIn = parse('14:30', 'HH:mm', getISTFullDate());
     const isSpecialReasonRequired = lunchOutTime > lunchLimitOut && lunchInTime > lunchLimitIn;
 
     if (isSpecialReasonRequired && !delayReason) {
@@ -184,8 +185,8 @@ exports.lunchIn = async (req, res) => {
 // @desc    Mark Check Out
 exports.checkOut = async (req, res) => {
   const { reason } = req.body;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = format(new Date(), 'HH:mm');
+  const today = getISTDate();
+  const now = getISTTime();
 
   try {
     const user = await User.findById(req.user.id);
@@ -199,10 +200,10 @@ exports.checkOut = async (req, res) => {
     const schedule = await Schedule.findOne({ user: req.user.id, date: today });
     const lunchStartTimeStr = schedule ? schedule.lunchStart : (user.timingSettings.lunchStart || '13:30');
     const lunchStartParts = lunchStartTimeStr.split(':');
-    const scheduledLunchStart = startOfDay(new Date());
+    const scheduledLunchStart = startOfDay(getISTFullDate());
     scheduledLunchStart.setHours(parseInt(lunchStartParts[0]), parseInt(lunchStartParts[1]), 0);
 
-    const currentTime = new Date();
+    const currentTime = getISTFullDate();
 
     if (currentTime < scheduledLunchStart) {
       // Logout before lunch: Permission (now to lunchStart) + Half-day leave
@@ -238,14 +239,14 @@ exports.checkOut = async (req, res) => {
     }
 
     // Calculate working minutes
-    const checkInTime = parse(attendance.checkIn.time, 'HH:mm', new Date());
-    const checkOutTime = parse(now, 'HH:mm', new Date());
+    const checkInTime = parse(attendance.checkIn.time, 'HH:mm', getISTFullDate());
+    const checkOutTime = parse(now, 'HH:mm', getISTFullDate());
     let totalMinutes = (checkOutTime - checkInTime) / (1000 * 60);
 
     // Subtract lunch time if applicable
     if (attendance.lunch.out && attendance.lunch.in) {
-      const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', new Date());
-      const lunchInTime = parse(attendance.lunch.in, 'HH:mm', new Date());
+      const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', getISTFullDate());
+      const lunchInTime = parse(attendance.lunch.in, 'HH:mm', getISTFullDate());
       const lunchMinutes = (lunchInTime - lunchOutTime) / (1000 * 60);
       totalMinutes -= lunchMinutes;
     }
@@ -261,7 +262,7 @@ exports.checkOut = async (req, res) => {
 
 // @desc    Get today's attendance status
 exports.getTodayAttendance = async (req, res) => {
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = getISTDate();
 
   try {
     const attendance = await Attendance.findOne({ user: req.user.id, date: today });
@@ -291,7 +292,7 @@ exports.getTodayAttendance = async (req, res) => {
       holidayReason = companyLeave.reason;
     } else {
       // Need also to check Sunday/Saturday rules if required, but personal leaves + explicit holidays are most common.
-      const dayDate = new Date();
+      const dayDate = getISTFullDate();
       if (isSunday(dayDate)) {
         isHoliday = true;
         holidayReason = 'Sunday';
@@ -383,11 +384,11 @@ exports.emergencyAttendance = async (req, res) => {
     if (checkInTime) {
       const loginTimeStr = schedule.loginTime || '09:30';
       const loginTimeParts = loginTimeStr.split(':');
-      const expectedLoginDate = new Date(date); // Just parse the date part
+      const expectedLoginDate = getISTFullDate(new Date(date)); // Just parse the date part
       expectedLoginDate.setHours(parseInt(loginTimeParts[0]), parseInt(loginTimeParts[1]), 0);
       
       const graceMinutes = schedule.graceTime || 15;
-      const actualCheckIn = parse(`${date} ${checkInTime}`, 'yyyy-MM-dd HH:mm', new Date());
+      const actualCheckIn = parse(`${date} ${checkInTime}`, 'yyyy-MM-dd HH:mm', getISTFullDate());
 
       if (actualCheckIn > addMinutes(expectedLoginDate, graceMinutes)) {
         calculatedStatus = 'late';
@@ -422,13 +423,13 @@ exports.emergencyAttendance = async (req, res) => {
       attendance.checkOut.time = checkOutTime;
 
       // Calculate working minutes
-      const checkInDate = parse(attendance.checkIn.time, 'HH:mm', new Date());
-      const checkOutDate = parse(checkOutTime, 'HH:mm', new Date());
+      const checkInDate = parse(attendance.checkIn.time, 'HH:mm', getISTFullDate());
+      const checkOutDate = parse(checkOutTime, 'HH:mm', getISTFullDate());
       let totalMinutes = (checkOutDate - checkInDate) / (1000 * 60);
 
       if (attendance.lunch && attendance.lunch.out && attendance.lunch.in) {
-        const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', new Date());
-        const lunchInTime = parse(attendance.lunch.in, 'HH:mm', new Date());
+        const lunchOutTime = parse(attendance.lunch.out, 'HH:mm', getISTFullDate());
+        const lunchInTime = parse(attendance.lunch.in, 'HH:mm', getISTFullDate());
         const lunchMinutes = (lunchInTime - lunchOutTime) / (1000 * 60);
         totalMinutes -= lunchMinutes;
       }
@@ -450,7 +451,7 @@ exports.getMonthlyCalendar = async (req, res) => {
   const { month, year } = req.query; // e.g. 3, 2026
   
   try {
-    const startDate = startOfMonth(new Date(year, month - 1));
+    const startDate = startOfMonth(getISTFullDate(new Date(year, month - 1)));
     const endDate = endOfMonth(startDate);
     
     // Get all days in month
