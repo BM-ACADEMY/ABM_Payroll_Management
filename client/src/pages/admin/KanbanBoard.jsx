@@ -562,7 +562,8 @@ const KanbanBoard = () => {
     
     try {
       const token = sessionStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${id}`, {
+      const boardIdToDelete = boardData?._id || id;
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${boardIdToDelete}`, {
         headers: { 'x-auth-token': token }
       });
       toast({ title: "Board Deleted", description: "The board has been permanently removed." });
@@ -867,7 +868,7 @@ const KanbanBoard = () => {
                 </div>
                 <div className="flex flex-col gap-3 pt-4">
                   <Button type="submit" className="w-full bg-black text-[#fffe01] rounded-2xl h-14 font-black text-sm tracking-widest shadow-xl active:scale-95 transition-all">SAVE CHANGES</Button>
-                  {(isAdmin || boardData?.admins?.some(a => String(a._id || a) === String(sessionStorage.getItem('userId')))) && (
+                  {boardData?.type === 'regular' && (isAdmin || boardData?.admins?.some(a => String(a._id || a) === String(sessionStorage.getItem('userId')))) && (
                     <Button 
                       type="button" 
                       onClick={handleDeleteBoard}

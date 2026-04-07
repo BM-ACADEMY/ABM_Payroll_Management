@@ -23,7 +23,7 @@ const KanbanBoards = () => {
   const navigate = useNavigate();
   
   const userRole = sessionStorage.getItem('userRole');
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'admin' || userRole === 'subadmin';
 
   const fetchData = async () => {
     try {

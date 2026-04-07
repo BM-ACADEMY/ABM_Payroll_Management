@@ -167,36 +167,8 @@ exports.getBoardsByTeam = async (req, res) => {
     
     const boards = await Board.find(query).populate('team', 'name');
     
-    // Auto-create "Upcoming Projects" if no regular boards exist
-    if (boards.length === 0) {
-      const teamId = req.params.teamId;
-      const team = await Team.findById(teamId);
-      if (team) {
-        const defaultBoard = new Board({
-          title: 'Upcoming Projects',
-          description: 'A place to list all upcoming team projects and tasks',
-          team: teamId,
-          type: 'regular',
-          admins: [req.user.id],
-          members: [req.user.id]
-        });
-        await defaultBoard.save();
-        
-        // Add default lists
-        const defaultLists = ['To Do', 'In Process', 'Done'];
-        for (let i = 0; i < defaultLists.length; i++) {
-          const list = new List({
-            title: defaultLists[i],
-            board: defaultBoard._id,
-            position: i
-          });
-          await list.save();
-        }
-        
-        const populatedBoard = await Board.findById(defaultBoard._id).populate('team', 'name');
-        return res.json([populatedBoard]);
-      }
-    }
+    // Auto-create "Upcoming Projects" if no regular boards exist - REMOVED for manual control
+
     
     res.json(boards);
   } catch (err) {
