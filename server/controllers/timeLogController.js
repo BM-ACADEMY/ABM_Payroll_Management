@@ -285,8 +285,8 @@ exports.getTimeLogs = async (req, res) => {
 
     if (startDate && endDate) {
       query.startTime = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $gte: new Date(`${startDate}T00:00:00+05:30`),
+        $lte: new Date(`${endDate}T23:59:59+05:30`)
       };
     }
 
@@ -337,8 +337,8 @@ exports.getAllTimeLogs = async (req, res) => {
 
     if (startDate && endDate) {
       query.startTime = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $gte: new Date(`${startDate}T00:00:00+05:30`),
+        $lte: new Date(`${endDate}T23:59:59+05:30`)
       };
     }
 
