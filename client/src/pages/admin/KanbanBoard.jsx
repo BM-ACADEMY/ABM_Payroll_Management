@@ -58,12 +58,12 @@ const KanbanBoard = () => {
   useEffect(() => { isDetailsOpenRef.current = isDetailsOpen; }, [isDetailsOpen]);
   useEffect(() => { taskDetailsRef.current = taskDetails; }, [taskDetails]);
 
-  const userRole = localStorage.getItem('userRole');
+  const userRole = sessionStorage.getItem('userRole');
   const isAdmin = userRole === 'admin' || userRole === 'subadmin';
 
   const fetchData = React.useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       // If type exists ('daily' or 'weekly'), fetch from the special endpoint
       const url = type 
         ? `${import.meta.env.VITE_API_URL}/api/boards/special/${type}${selectedTeamId ? `?teamId=${selectedTeamId}` : ''}`
@@ -94,7 +94,7 @@ const KanbanBoard = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/members/search`, {
         headers: { 'x-auth-token': token }
       });
@@ -114,7 +114,7 @@ const KanbanBoard = () => {
     if (isAdmin) {
       const fetchTeams = async () => {
         try {
-          const token = localStorage.getItem('token');
+          const token = sessionStorage.getItem('token');
           const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
             headers: { 'x-auth-token': token }
           });
@@ -155,7 +155,7 @@ const KanbanBoard = () => {
     });
 
     socket.on('notification', (data) => {
-      if (data.userId === localStorage.getItem('userId')) {
+      if (data.userId === sessionStorage.getItem('userId')) {
          toast({
            title: "New Mention",
            description: data.message,
@@ -187,7 +187,7 @@ const KanbanBoard = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/${id}/members`, { userId }, {
         headers: { 'x-auth-token': token }
       });
@@ -213,7 +213,7 @@ const KanbanBoard = () => {
     });
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${id}/members/${userId}`, {
         headers: { 'x-auth-token': token }
       });
@@ -297,7 +297,7 @@ const KanbanBoard = () => {
 
   const fetchTaskDetails = React.useCallback(async (taskId) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, {
         headers: { 'x-auth-token': token }
       });
@@ -342,7 +342,7 @@ const KanbanBoard = () => {
       setLists(newLists);
       try {
         await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/lists/${draggableId}`, { position: destination.index }, {
-          headers: { 'x-auth-token': localStorage.getItem('token') }
+          headers: { 'x-auth-token': sessionStorage.getItem('token') }
         });
       } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to move list" }); }
       return;
@@ -356,7 +356,7 @@ const KanbanBoard = () => {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${draggableId}`, {
         list: destination.droppableId,
         position: destination.index
-      }, { headers: { 'x-auth-token': localStorage.getItem('token') } });
+      }, { headers: { 'x-auth-token': sessionStorage.getItem('token') } });
     } catch (err) { fetchData(); }
   };
 
@@ -369,7 +369,7 @@ const KanbanBoard = () => {
         return;
       }
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/lists`, { title: newListTitle, boardId: activeBoardId, position: lists.length }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       setNewListTitle(''); setIsListModalOpen(false); fetchData();
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to create list" }); }
@@ -380,7 +380,7 @@ const KanbanBoard = () => {
     try {
       const activeBoardId = boardData?._id || id;
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { ...newTaskData, boardId: activeBoardId, position: tasks.filter(t => t.list === newTaskData.listId).length }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       setNewTaskData({ title: '', listId: '', boardId: activeBoardId }); setIsTaskModalOpen(false); fetchData();
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to create task" }); }
@@ -389,7 +389,7 @@ const KanbanBoard = () => {
   const handleAddComment = async (taskId, text) => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/comments`, { taskId, text }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskId);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to add comment" }); }
@@ -398,7 +398,7 @@ const KanbanBoard = () => {
   const handleUpdateComment = async (commentId, text) => {
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/comments/${commentId}`, { text }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update comment" }); }
@@ -407,7 +407,7 @@ const KanbanBoard = () => {
   const handleDeleteComment = async (commentId) => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/comments/${commentId}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to delete comment" }); }
@@ -417,7 +417,7 @@ const KanbanBoard = () => {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       setIsDetailsOpen(false);
       setTaskDetails(null);
@@ -457,13 +457,13 @@ const KanbanBoard = () => {
     try {
       if (updates.delete) {
         await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/checklists/${checklistId}/items/${itemId}`, {
-           headers: { 'x-auth-token': localStorage.getItem('token') }
+           headers: { 'x-auth-token': sessionStorage.getItem('token') }
         });
         toast({ title: "Item Deleted" });
       } else {
         await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/checklists/update`, {
           checklistId, itemId, ...updates
-        }, { headers: { 'x-auth-token': localStorage.getItem('token') } });
+        }, { headers: { 'x-auth-token': sessionStorage.getItem('token') } });
       }
       // Re-fetch only after a slight delay or if critical, 
       // but with optimistic update, the UI is already correct.
@@ -481,7 +481,7 @@ const KanbanBoard = () => {
   const handleAddSubTask = async (parentTaskId, title) => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { title, listId: taskDetails.task.list, boardId: id, parentTaskId }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(parentTaskId);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to add subtask" }); }
@@ -490,7 +490,7 @@ const KanbanBoard = () => {
   const toggleTaskCompletion = async (taskId, current) => {
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, { isCompleted: !current }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskId);
       fetchData();
@@ -529,7 +529,7 @@ const KanbanBoard = () => {
 
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, payload, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       // Re-fetch to ensure sync, but optimistic update makes it feel instant
       fetchTaskDetails(taskDetails?.task?._id || taskId);
@@ -545,7 +545,7 @@ const KanbanBoard = () => {
   const handleUpdateBoard = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/${id}`, editBoardData, {
         headers: { 'x-auth-token': token }
       });
@@ -561,7 +561,7 @@ const KanbanBoard = () => {
     if (!window.confirm("ARE YOU SURE? This will permanently delete the board and all its tasks, comments, and history. This action cannot be undone.")) return;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -576,7 +576,7 @@ const KanbanBoard = () => {
     e.preventDefault();
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/lists/${editingList._id}`, { title: editingList.title }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       toast({ title: "Updated", description: "List name changed" });
       setIsEditListModalOpen(false);
@@ -588,7 +588,7 @@ const KanbanBoard = () => {
     if (!window.confirm("Delete this list and all its tasks?")) return;
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/lists/${listId}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       toast({ title: "Deleted", description: "List removed" });
       setIsEditListModalOpen(false);
@@ -599,7 +599,7 @@ const KanbanBoard = () => {
   const handleAddChecklist = async (taskId, name = "Checklist") => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/checklists`, { name }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskId);
       toast({ title: "Success", description: "Checklist added" });
@@ -614,7 +614,7 @@ const KanbanBoard = () => {
         assignedTo,
         dueDate
       }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to add item" }); }
@@ -623,7 +623,7 @@ const KanbanBoard = () => {
   const handleToggleChecklistItem = async (checklistId, itemId, isCompleted) => {
     try {
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskDetails.task._id}/checklists/toggle`, { checklistId, itemId, isCompleted }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update item" }); }
@@ -636,7 +636,7 @@ const KanbanBoard = () => {
       const newLabels = exists ? currentLabels.filter(l => l.text !== label.text) : [...currentLabels, label];
       
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskDetails.task._id}/labels`, { labels: newLabels }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update labels" }); }
@@ -645,7 +645,7 @@ const KanbanBoard = () => {
   const handleRemoveChecklist = async (checklistId) => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskDetails.task._id}/checklists/${checklistId}`, {
-         headers: { 'x-auth-token': localStorage.getItem('token') }
+         headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
       toast({ title: "Checklist Deleted", description: "The checklist has been removed." });
@@ -747,7 +747,7 @@ const KanbanBoard = () => {
                   <h4 className="text-[10px] uppercase font-black tracking-widest text-zinc-400 ml-1">Current Access</h4>
                   <div className="space-y-3">
                     {boardData?.members?.map(m => {
-                      const currentUserId = localStorage.getItem('userId');
+                      const currentUserId = sessionStorage.getItem('userId');
                       const isBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(m._id));
                       const isCurrentUserBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(currentUserId));
                       const canRemove = isAdmin; // Only system administrators can remove members
@@ -867,7 +867,7 @@ const KanbanBoard = () => {
                 </div>
                 <div className="flex flex-col gap-3 pt-4">
                   <Button type="submit" className="w-full bg-black text-[#fffe01] rounded-2xl h-14 font-black text-sm tracking-widest shadow-xl active:scale-95 transition-all">SAVE CHANGES</Button>
-                  {(isAdmin || boardData?.admins?.some(a => String(a._id || a) === String(localStorage.getItem('userId')))) && (
+                  {(isAdmin || boardData?.admins?.some(a => String(a._id || a) === String(sessionStorage.getItem('userId')))) && (
                     <Button 
                       type="button" 
                       onClick={handleDeleteBoard}

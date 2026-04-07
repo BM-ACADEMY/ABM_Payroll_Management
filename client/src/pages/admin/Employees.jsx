@@ -7,11 +7,36 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Users, UserPlus, Phone, Edit, Trash2, Search, Check } from "lucide-react";
+import { Users, UserPlus, Phone, Edit, Trash2, Search, Check, Shield, ShieldCheck, Lock, Unlock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
+import { hasPermission } from '@/utils/permissionUtils';
+import { useAuth } from '@/context/AuthContext';
+
+const MODULES = [
+  { id: 'employees', label: 'Employees' },
+  { id: 'attendance', label: 'Attendance' },
+  { id: 'permissions', label: 'Permissions' },
+  { id: 'leaves', label: 'Leaves' },
+  { id: 'payroll', label: 'Payroll' },
+  { id: 'complaints', label: 'Complaints' },
+  { id: 'teams', label: 'Teams' },
+  { id: 'credits', label: 'Weekly Credits' },
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'kanban', label: 'Kanban Boards' },
+  { id: 'settings', label: 'Settings' },
+  { id: 'time_history', label: 'Time History' }
+];
+
+const ACTIONS = [
+  { id: 'read', label: 'View' },
+  { id: 'create', label: 'Add' },
+  { id: 'update', label: 'Edit' },
+  { id: 'delete', label: 'Delete' }
+];
 
 const Employees = () => {
+  const { user: currentUser } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +54,9 @@ const Employees = () => {
     password: '',
     baseSalary: '',
     timingSettings: { loginTime: '09:30', logoutTime: '18:30', graceTime: 15, lunchStart: '13:30', lunchEnd: '14:30', fromDate: '', toDate: '' },
-    teams: []
+    teams: [],
+    role: 'employee',
+    permissions: []
   });
   const [formLoading, setFormLoading] = useState(false);
 
@@ -38,7 +65,9 @@ const Employees = () => {
   const [editFormData, setEditFormData] = useState({
     id: '', employeeId: '', name: '', email: '', phoneNumber: '', password: '', baseSalary: '',
     timingSettings: { loginTime: '', logoutTime: '', graceTime: '', lunchStart: '', lunchEnd: '', fromDate: '', toDate: '' },
-    teams: []
+    teams: [],
+    role: '',
+    permissions: []
   });
   const [editLoading, setEditLoading] = useState(false);
 
@@ -49,7 +78,7 @@ const Employees = () => {
 
   const fetchEmployees = async (page = 1) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?page=${page}&limit=10&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
@@ -73,7 +102,7 @@ const Employees = () => {
 
   const fetchTeams = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
         headers: { 'x-auth-token': token }
       });
@@ -115,12 +144,27 @@ const Employees = () => {
     }
   };
 
+  const togglePermission = (moduleId, actionId, isEdit = false) => {
+    const permString = `${moduleId}:${actionId}`;
+    if (isEdit) {
+      const newPerms = editFormData.permissions.includes(permString)
+        ? editFormData.permissions.filter(p => p !== permString)
+        : [...editFormData.permissions, permString];
+      setEditFormData({ ...editFormData, permissions: newPerms });
+    } else {
+      const newPerms = formData.permissions.includes(permString)
+        ? formData.permissions.filter(p => p !== permString)
+        : [...formData.permissions, permString];
+      setFormData({ ...formData, permissions: newPerms });
+    }
+  };
+
   const handleAddEmployee = async (e) => {
     e.preventDefault();
     setFormLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/employees`, formData, {
         headers: { 'x-auth-token': token }
       });
@@ -135,7 +179,9 @@ const Employees = () => {
       setFormData({ 
         employeeId: '', name: '', email: '', phoneNumber: '', password: '', baseSalary: '',
         timingSettings: { loginTime: '09:30', logoutTime: '18:30', graceTime: 15, lunchStart: '13:30', lunchEnd: '14:30', fromDate: '', toDate: '' },
-        teams: []
+        teams: [],
+        role: 'employee',
+        permissions: []
       });
     } catch (err) {
       toast({
@@ -166,7 +212,9 @@ const Employees = () => {
         fromDate: emp.timingSettings?.fromDate ? new Date(emp.timingSettings.fromDate).toISOString().split('T')[0] : '',
         toDate: emp.timingSettings?.toDate ? new Date(emp.timingSettings.toDate).toISOString().split('T')[0] : ''
       },
-      teams: emp.teams?.map(t => typeof t === 'object' ? t._id : t) || []
+      teams: emp.teams?.map(t => typeof t === 'object' ? t._id : t) || [],
+      role: emp.role?.name || 'employee',
+      permissions: emp.permissions || []
     });
     setEditOpen(true);
   };
@@ -187,7 +235,7 @@ const Employees = () => {
     setEditLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const payload = { ...editFormData };
       if (!payload.password) delete payload.password;
 
@@ -222,7 +270,7 @@ const Employees = () => {
     setDeleteLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/employees/${employeeToDelete._id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -262,122 +310,178 @@ const Employees = () => {
           <p className="text-gray-500 text-sm md:text-base font-normal">Manage all registered staff members in your organization</p>
         </div>
         
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#d30614] hover:bg-red-700 text-white flex items-center justify-center gap-2 py-7 px-8 rounded-2xl font-medium shadow-lg shadow-red-600/10 w-full md:w-auto hover:scale-[1.02] transition-all">
-              <UserPlus className="w-5 h-5" />
-              Add New Employee
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[90vh] overflow-y-auto bg-white border-gray-200 p-4 sm:p-6">
-            <DialogHeader>
-              <DialogTitle className="text-gray-900">Add New Employee</DialogTitle>
-              <DialogDescription className="text-gray-500">
-                Register a new staff member. They will be automatically verified and assigned the employee role.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAddEmployee} className="space-y-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employeeId" className="text-gray-700">Employee ID</Label>
-                  <Input id="employeeId" name="employeeId" value={formData.employeeId} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" placeholder="e.g. EMP1001" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700">Full Name</Label>
-                  <Input id="name" name="name" value={formData.name} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">Email Address</Label>
-                <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber" className="text-gray-700">Phone Number</Label>
-                <Input id="phoneNumber" name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-gray-700">Assign Teams</Label>
-                <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                  {teams.map(team => (
-                    <Badge
-                      key={team._id}
-                      variant={formData.teams.includes(team._id) ? "default" : "outline"}
-                      className={`cursor-pointer transition-all ${formData.teams.includes(team._id) ? 'bg-black text-white hover:bg-zinc-800' : 'hover:bg-gray-100 text-gray-600'}`}
-                      onClick={() => toggleTeam(team._id)}
-                    >
-                      {formData.teams.includes(team._id) && <Check className="w-3 h-3 mr-1" />}
-                      {team.name}
-                    </Badge>
-                  ))}
-                  {teams.length === 0 && <p className="text-xs text-gray-400">No teams found. Create teams in Team Management first.</p>}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-gray-700">Initial Password</Label>
-                  <Input id="password" name="password" type="password" value={formData.password} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="baseSalary" className="text-gray-700">Base Salary (₹)</Label>
-                  <Input id="baseSalary" name="baseSalary" type="number" min="0" value={formData.baseSalary} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                </div>
-              </div>
-
-              <div className="pt-4 pb-2 border-t border-gray-100">
-                <h3 className="text-md font-medium text-gray-900">Timing Configurations</h3>
-                <p className="text-xs text-gray-500 mb-4">Set specific access and roster times for this employee</p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fromDate" className="text-gray-700">From Date</Label>
-                    <Input id="fromDate" name="fromDate" type="date" value={formData.timingSettings.fromDate} onChange={handleTimingChange} className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="toDate" className="text-gray-700">To Date</Label>
-                    <Input id="toDate" name="toDate" type="date" value={formData.timingSettings.toDate} onChange={handleTimingChange} className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="loginTime" className="text-gray-700">Login Time</Label>
-                    <Input id="loginTime" name="loginTime" type="time" value={formData.timingSettings.loginTime} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="logoutTime" className="text-gray-700">Logout Time</Label>
-                    <Input id="logoutTime" name="logoutTime" type="time" value={formData.timingSettings.logoutTime} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="graceTime" className="text-gray-700">Grace (mins)</Label>
-                    <Input id="graceTime" name="graceTime" type="number" min="0" value={formData.timingSettings.graceTime} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
-                  </div>
-                </div>
-
+        {hasPermission(currentUser, 'employees:create') && (
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#d30614] hover:bg-red-700 text-white flex items-center justify-center gap-2 py-7 px-8 rounded-2xl font-medium shadow-lg shadow-red-600/10 w-full md:w-auto hover:scale-[1.02] transition-all">
+                <UserPlus className="w-5 h-5" />
+                Add New Employee
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[90vh] overflow-y-auto bg-white border-gray-200 p-4 sm:p-6">
+              <DialogHeader>
+                <DialogTitle className="text-gray-900">Add New Employee</DialogTitle>
+                <DialogDescription className="text-gray-500">
+                  Register a new staff member. They will be automatically verified and assigned the employee role.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAddEmployee} className="space-y-4 py-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="lunchStart" className="text-gray-700">Lunch In Time</Label>
-                    <Input id="lunchStart" name="lunchStart" type="time" value={formData.timingSettings.lunchStart} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    <Label htmlFor="employeeId" className="text-gray-700">Employee ID</Label>
+                    <Input id="employeeId" name="employeeId" value={formData.employeeId} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" placeholder="e.g. EMP1001" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lunchEnd" className="text-gray-700">Lunch Out Time</Label>
-                    <Input id="lunchEnd" name="lunchEnd" type="time" value={formData.timingSettings.lunchEnd} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    <Label htmlFor="name" className="text-gray-700">Full Name</Label>
+                    <Input id="name" name="name" value={formData.name} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
                   </div>
                 </div>
-              </div>
-
-              <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2">
-                <DialogClose asChild>
-                  <Button type="button" variant="outline" className="border-gray-200 text-gray-500 hover:text-black hover:bg-gray-50 w-full sm:w-auto">Cancel</Button>
-                </DialogClose>
-                <Button type="submit" disabled={formLoading} className="bg-[#d30614] hover:bg-red-700 text-white w-full sm:w-auto font-medium">
-                  {formLoading ? 'Creating...' : 'Create Employee'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-gray-700">Email Address</Label>
+                  <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber" className="text-gray-700">Phone Number</Label>
+                  <Input id="phoneNumber" name="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                </div>
+  
+                <div className="space-y-2">
+                  <Label className="text-gray-700">Assign Teams</Label>
+                  <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                    {teams.map(team => (
+                      <Badge
+                        key={team._id}
+                        variant={formData.teams.includes(team._id) ? "default" : "outline"}
+                        className={`cursor-pointer transition-all ${formData.teams.includes(team._id) ? 'bg-black text-white hover:bg-zinc-800' : 'hover:bg-gray-100 text-gray-600'}`}
+                        onClick={() => toggleTeam(team._id)}
+                      >
+                        {formData.teams.includes(team._id) && <Check className="w-3 h-3 mr-1" />}
+                        {team.name}
+                      </Badge>
+                    ))}
+                    {teams.length === 0 && <p className="text-xs text-gray-400">No teams found. Create teams in Team Management first.</p>}
+                  </div>
+                </div>
+  
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-gray-700">Account Role</Label>
+                    <select 
+                      name="role" 
+                      value={formData.role} 
+                      onChange={handleChange}
+                      className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg p-2 focus:ring-2 focus:ring-[#d30614] outline-none"
+                    >
+                      <option value="employee">Employee (Regular Access)</option>
+                      <option value="subadmin">Sub-Admin (Management Access)</option>
+                    </select>
+                  </div>
+                </div>
+  
+                {formData.role === 'subadmin' && (
+                  <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ShieldCheck className="w-5 h-5 text-[#d30614]" />
+                      <h3 className="font-medium text-gray-900">Sub-Admin Permissions</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr>
+                            <th className="pb-2 font-medium text-gray-500">Module</th>
+                            {ACTIONS.map(a => (
+                              <th key={a.id} className="pb-2 font-medium text-gray-500 text-center">{a.label}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {MODULES.map(m => (
+                            <tr key={m.id}>
+                              <td className="py-2 text-gray-700 font-medium">{m.label}</td>
+                              {ACTIONS.map(a => (
+                                <td key={a.id} className="py-2 text-center">
+                                  <input 
+                                    type="checkbox"
+                                    checked={formData.permissions.includes(`${m.id}:${a.id}`)}
+                                    onChange={() => togglePermission(m.id, a.id)}
+                                    className="w-4 h-4 rounded border-gray-300 text-[#d30614] focus:ring-[#d30614]"
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[10px] text-gray-400">Note: Red checkboxes indicate granted permissions.</p>
+                  </div>
+                )}
+  
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password" title="password required" className="text-gray-700">Initial Password</Label>
+                    <Input id="password" name="password" type="password" value={formData.password} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baseSalary" className="text-gray-700">Base Salary (₹)</Label>
+                    <Input id="baseSalary" name="baseSalary" type="number" min="0" value={formData.baseSalary} onChange={handleChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                  </div>
+                </div>
+  
+                <div className="pt-4 pb-2 border-t border-gray-100">
+                  <h3 className="text-md font-medium text-gray-900">Timing Configurations</h3>
+                  <p className="text-xs text-gray-500 mb-4">Set specific access and roster times for this employee</p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fromDate" className="text-gray-700">From Date</Label>
+                      <Input id="fromDate" name="fromDate" type="date" value={formData.timingSettings.fromDate} onChange={handleTimingChange} className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="toDate" className="text-gray-700">To Date</Label>
+                      <Input id="toDate" name="toDate" type="date" value={formData.timingSettings.toDate} onChange={handleTimingChange} className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    </div>
+                  </div>
+  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="loginTime" className="text-gray-700">Login Time</Label>
+                      <Input id="loginTime" name="loginTime" type="time" value={formData.timingSettings.loginTime} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="logoutTime" className="text-gray-700">Logout Time</Label>
+                      <Input id="logoutTime" name="logoutTime" type="time" value={formData.timingSettings.logoutTime} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="graceTime" className="text-gray-700">Grace (mins)</Label>
+                      <Input id="graceTime" name="graceTime" type="number" min="0" value={formData.timingSettings.graceTime} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    </div>
+                  </div>
+  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="lunchStart" className="text-gray-700">Lunch In Time</Label>
+                      <Input id="lunchStart" name="lunchStart" type="time" value={formData.timingSettings.lunchStart} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lunchEnd" className="text-gray-700">Lunch Out Time</Label>
+                      <Input id="lunchEnd" name="lunchEnd" type="time" value={formData.timingSettings.lunchEnd} onChange={handleTimingChange} required className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" />
+                    </div>
+                  </div>
+                </div>
+  
+                <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2">
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline" className="border-gray-200 text-gray-500 hover:text-black hover:bg-gray-50 w-full sm:w-auto">Cancel</Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={formLoading} className="bg-[#d30614] hover:bg-red-700 text-white w-full sm:w-auto font-medium">
+                    {formLoading ? 'Creating...' : 'Create Employee'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </header>
 
       <Card className="bg-white border-gray-200 shadow-sm overflow-hidden">
@@ -458,12 +562,16 @@ const Employees = () => {
                       </TableCell>
                       <TableCell className="text-right px-6">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openEditModal(emp)} className="text-gray-400 hover:text-black hover:bg-gray-100 transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openDeleteModal(emp)} className="text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {hasPermission(currentUser, 'employees:update') && (
+                            <Button variant="ghost" size="icon" onClick={() => openEditModal(emp)} className="text-gray-400 hover:text-black hover:bg-gray-100 transition-colors">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {hasPermission(currentUser, 'employees:delete') && (
+                            <Button variant="ghost" size="icon" onClick={() => openDeleteModal(emp)} className="text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -529,7 +637,60 @@ const Employees = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="editPassword" className="text-gray-700">New Password</Label>
+                  <Label className="text-gray-700">Account Role</Label>
+                  <select 
+                    name="role" 
+                    value={editFormData.role} 
+                    onChange={handleEditChange}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg p-2 focus:ring-2 focus:ring-[#d30614] outline-none"
+                  >
+                    <option value="employee">Employee</option>
+                    <option value="subadmin">Sub-Admin</option>
+                  </select>
+                </div>
+              </div>
+
+              {editFormData.role === 'subadmin' && (
+                <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldCheck className="w-5 h-5 text-[#d30614]" />
+                    <h3 className="font-medium text-gray-900">Sub-Admin Permissions</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr>
+                          <th className="pb-2 font-medium text-gray-500">Module</th>
+                          {ACTIONS.map(a => (
+                            <th key={a.id} className="pb-2 font-medium text-gray-500 text-center">{a.label}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {MODULES.map(m => (
+                          <tr key={m.id}>
+                            <td className="py-2 text-gray-700 font-medium">{m.label}</td>
+                            {ACTIONS.map(a => (
+                              <td key={a.id} className="py-2 text-center">
+                                <input 
+                                  type="checkbox"
+                                  checked={editFormData.permissions.includes(`${m.id}:${a.id}`)}
+                                  onChange={() => togglePermission(m.id, a.id, true)}
+                                  className="w-4 h-4 rounded border-gray-300 text-[#d30614] focus:ring-[#d30614]"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editPassword" title="password optional" className="text-gray-700">New Password</Label>
                   <Input id="editPassword" name="password" type="password" value={editFormData.password} onChange={handleEditChange} className="bg-gray-50 border-gray-200 text-gray-900 focus-visible:ring-[#d30614]" placeholder="Leave blank to keep current" />
                 </div>
                 <div className="space-y-2">

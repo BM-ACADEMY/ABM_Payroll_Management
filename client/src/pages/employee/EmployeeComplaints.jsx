@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   MessageSquare, 
@@ -48,7 +48,7 @@ const EmployeeComplaints = () => {
   const fetchMyComplaints = async (page = 1) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/complaints/my?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
@@ -64,7 +64,7 @@ const EmployeeComplaints = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/complaints`, 
         { subject, description },
         { headers: { 'x-auth-token': token } }

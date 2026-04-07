@@ -30,11 +30,11 @@ const KanbanBoards = lazy(() => import('./pages/admin/KanbanBoards'));
 const KanbanBoard = lazy(() => import('./pages/admin/KanbanBoard'));
 const Analytics = lazy(() => import('./pages/admin/Analytics'));
 const TimeHistory = lazy(() => import('./pages/TimeHistory'));
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from './components/ui/toaster';
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+function AppContent() {
+  const { user, setUser, loading } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
@@ -49,35 +49,19 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const savedRole = localStorage.getItem('userRole'); 
-    const savedName = localStorage.getItem('userName');
-    const savedId = localStorage.getItem('userId');
-    
-    // Save deep link if accessing protected route without being logged in
-    const currentPath = window.location.pathname;
-    const isPublicPage = currentPath === '/login' || currentPath === '/signup' || currentPath === '/';
-    if (!token && !isPublicPage) {
-      localStorage.setItem('redirectUrl', window.location.pathname + window.location.search);
-    }
-
-    if (token && savedRole) {
-      setUser({ id: savedId, role: { name: savedRole }, name: savedName || 'User' });
-    }
-    setLoading(false);
-  }, []);
-
   const handleSetUser = (u) => {
     setUser(u);
     if (u) {
-      localStorage.setItem('userRole', u.role.name);
-      localStorage.setItem('userName', u.name);
-      localStorage.setItem('userId', u.id);
+      sessionStorage.setItem('userRole', u.role.name);
+      sessionStorage.setItem('userName', u.name);
+      sessionStorage.setItem('userId', u.id);
+      sessionStorage.setItem('userPermissions', JSON.stringify(u.permissions || []));
     } else {
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userId');
+      sessionStorage.removeItem('userRole');
+      sessionStorage.removeItem('userName');
+      sessionStorage.removeItem('userId');
+      sessionStorage.removeItem('userPermissions');
+      sessionStorage.removeItem('token');
     }
   };
 
@@ -139,74 +123,74 @@ function App() {
               </div>
             }>
               <Routes>
-                <Route path="/login" element={!user ? <Login setUser={handleSetUser} /> : <Navigate to={user.role?.name === 'admin' ? '/admin' : '/dashboard'} />} />
-                <Route path="/signup" element={!user ? <Signup /> : <Navigate to={user.role?.name === 'admin' ? '/admin' : '/dashboard'} />} />
-                <Route path="/otp" element={!user ? <Otp /> : <Navigate to={user.role?.name === 'admin' ? '/admin' : '/dashboard'} />} />
-                <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to={user.role?.name === 'admin' ? '/admin' : '/dashboard'} />} />
-                <Route path="/reset-password" element={!user ? <ResetPassword /> : <Navigate to={user.role?.name === 'admin' ? '/admin' : '/dashboard'} />} />
+                <Route path="/login" element={!user ? <Login setUser={handleSetUser} /> : <Navigate to={(['admin', 'subadmin'].includes(user?.role?.name)) ? '/admin' : '/dashboard'} />} />
+                <Route path="/signup" element={!user ? <Signup /> : <Navigate to={(['admin', 'subadmin'].includes(user?.role?.name)) ? '/admin' : '/dashboard'} />} />
+                <Route path="/otp" element={!user ? <Otp /> : <Navigate to={(['admin', 'subadmin'].includes(user?.role?.name)) ? '/admin' : '/dashboard'} />} />
+                <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to={(['admin', 'subadmin'].includes(user?.role?.name)) ? '/admin' : '/dashboard'} />} />
+                <Route path="/reset-password" element={!user ? <ResetPassword /> : <Navigate to={(['admin', 'subadmin'].includes(user?.role?.name)) ? '/admin' : '/dashboard'} />} />
                 <Route
                   path="/admin"
-                  element={user?.role?.name === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <AdminDashboard /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/employees"
-                  element={user?.role?.name === 'admin' ? <Employees /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <Employees /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/permissions"
-                  element={user?.role?.name === 'admin' ? <PermissionReview /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <PermissionReview /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/leave-calendar"
-                  element={user?.role?.name === 'admin' ? <LeaveCalendar /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <LeaveCalendar /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/attendance"
-                  element={user?.role?.name === 'admin' ? <AdminAttendance /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <AdminAttendance /> : <Navigate to="/login" />}
                 />
                 <Route
-                  path={user?.role?.name === 'admin' ? "/admin/settings" : "/dashboard/settings"}
-                  element={user?.role?.name === 'admin' ? <PayrollSettings /> : <Navigate to="/login" />}
+                  path={(['admin', 'subadmin'].includes(user?.role?.name)) ? "/admin/settings" : "/dashboard/settings"}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <PayrollSettings /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/payroll"
-                  element={user?.role?.name === 'admin' ? <AdminPayrollReport /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <AdminPayrollReport /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/complaints"
-                  element={user?.role?.name === 'admin' ? <AdminComplaints /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <AdminComplaints /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/teams"
-                  element={user?.role?.name === 'admin' ? <TeamManagement /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <TeamManagement /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/weekly-credits"
-                  element={user?.role?.name === 'admin' ? <WeeklyScoring /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <WeeklyScoring /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/analytics"
-                  element={user?.role?.name === 'admin' ? <Analytics /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <Analytics /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/kanban"
-                  element={user?.role?.name === 'admin' ? <KanbanBoards /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <KanbanBoards /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/kanban/:id"
-                  element={user?.role?.name === 'admin' ? <KanbanBoard /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <KanbanBoard /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/kanban/special/:type"
-                  element={user?.role?.name === 'admin' ? <KanbanBoard /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <KanbanBoard /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/time-history"
-                  element={user?.role?.name === 'admin' ? <TimeHistory /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <TimeHistory /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/admin/profile"
-                  element={user?.role?.name === 'admin' ? <Profile setUser={handleSetUser} /> : <Navigate to="/login" />}
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <Profile setUser={handleSetUser} /> : <Navigate to="/login" />}
                 />
                 <Route
                   path="/dashboard"
@@ -244,7 +228,7 @@ function App() {
                   path="/dashboard/time-history"
                   element={user ? <TimeHistory /> : <Navigate to="/login" />}
                 />
-                <Route path="/" element={<Navigate to={user ? (user.role?.name === 'admin' ? '/admin' : '/dashboard') : '/login'} />} />
+                <Route path="/" element={<Navigate to={user ? (['admin', 'subadmin'].includes(user.role?.name) ? '/admin' : '/dashboard') : '/login'} />} />
               </Routes>
             </Suspense>
           </main>
@@ -253,6 +237,10 @@ function App() {
       <Toaster />
     </Router>
   );
+}
+
+function App() {
+  return <AppContent />;
 }
 
 export default App;

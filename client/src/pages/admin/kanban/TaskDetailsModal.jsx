@@ -1,7 +1,8 @@
 import { 
-  X, ChevronDown, Image, Activity, MoreHorizontal, Plus, Tag, CheckSquare, 
-  Paperclip, Layout, Bold, Italic, ListOrdered, Link, Type, MessageSquare,
-  Check, Trash2, Edit2, Send, List, Bell, Calendar
+  X, ChevronDown, MoreHorizontal, Plus, Tag, CheckSquare, 
+  Paperclip, Layout, Bold, Italic, Link, MessageSquare,
+  Check, Trash2, Edit2, Send, List, Bell, Calendar, Clock,
+  TrendingUp
 } from 'lucide-react';
 import { memo, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
@@ -138,9 +139,9 @@ const TaskDetailsModal = ({
   };
 
   const currentUser = { 
-    _id: localStorage.getItem('userId'), 
-    name: localStorage.getItem('userName'), 
-    role: localStorage.getItem('userRole') 
+    _id: sessionStorage.getItem('userId'), 
+    name: sessionStorage.getItem('userName'), 
+    role: sessionStorage.getItem('userRole') 
   };
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -197,7 +198,7 @@ const TaskDetailsModal = ({
 
   const handleCopyTask = async (targetType) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       // 1. Get the special board
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${targetType}`, {
         headers: { 'x-auth-token': token }
@@ -553,7 +554,7 @@ const TaskDetailsModal = ({
                              const formData = new FormData();
                              formData.append('file', file);
                              
-                             const token = localStorage.getItem('token');
+                             const token = sessionStorage.getItem('token');
                              const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/upload`, formData, {
                                headers: { 
                                  'Content-Type': 'multipart/form-data',

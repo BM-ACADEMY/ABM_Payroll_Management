@@ -7,13 +7,15 @@ const { format } = require('date-fns');
 class AdminService {
   async getDashboardStats() {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const employeeRole = await Role.findOne({ name: 'employee' });
-    if (!employeeRole) throw new Error('Employee role not found');
+    const staffRoles = await Role.find({ name: { $in: ['employee', 'subadmin'] } });
+    const staffRoleIds = staffRoles.map(r => r._id);
+
+    if (staffRoleIds.length === 0) throw new Error('Staff roles (employee/subadmin) not found');
 
     const [totalEmployees, presentToday, pendingLeaves, pendingPermissions, onLeaveToday] = await Promise.all([
-      User.countDocuments({ role: employeeRole._id }),
+      User.countDocuments({ role: { $in: staffRoleIds } }),
       Attendance.countDocuments({ 
-        date: todayStr, 
+        date: todayStr,
         "checkIn.time": { $exists: true, $ne: '' } 
       }),
       Request.countDocuments({ 

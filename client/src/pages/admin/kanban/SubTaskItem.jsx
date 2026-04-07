@@ -55,7 +55,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
   const fetchDetails = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${task._id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -67,8 +67,8 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
 
   const fetchAllDestinations = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const effectiveTeamId = teamId || localStorage.getItem('teamId');
+      const token = sessionStorage.getItem('token');
+      const effectiveTeamId = teamId || sessionStorage.getItem('teamId');
       
       if (!effectiveTeamId) return;
 
@@ -100,7 +100,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
     }
     
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const originTaskId = isChecklist ? null : task._id;
       const originChecklistItemId = isChecklist ? task._id : null;
       const initialAssignees = isChecklist 

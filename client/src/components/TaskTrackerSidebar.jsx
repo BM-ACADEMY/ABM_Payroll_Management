@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Play, Pause, Square, X, Clock, AlertCircle, History, Plus, MessageSquare, Send, User as UserIcon, Pencil, Trash2, Check } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -241,7 +241,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const fetchActiveTasks = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/time-logs/active`, {
         headers: { 'x-auth-token': token }
       });
@@ -253,7 +253,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const fetchSettings = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/time-logs/settings`, {
         headers: { 'x-auth-token': token }
       });
@@ -306,7 +306,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
     }
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/start`, { taskName }, {
         headers: { 'x-auth-token': token }
       });
@@ -322,7 +322,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const handlePause = async (id, label) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/pause/${id}`, { label }, {
         headers: { 'x-auth-token': token }
       });
@@ -334,7 +334,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const handleResume = async (id) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
         headers: { 'x-auth-token': token }
       });
@@ -346,7 +346,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const handleStop = async (id, label) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/stop/${id}`, { label }, {
         headers: { 'x-auth-token': token }
       });
@@ -360,7 +360,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const handleAddComment = async (id, text) => {
     if (!text.trim()) return;
     try {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}`, { text }, {
           headers: { 'x-auth-token': token }
         });
@@ -373,7 +373,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const handleUpdateComment = async (id, commentId, text) => {
     try {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}/${commentId}`, { text }, {
           headers: { 'x-auth-token': token }
         });
@@ -387,7 +387,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const handleDeleteComment = async (id, commentId) => {
     if (!window.confirm("Delete this comment?")) return;
     try {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         const res = await axios.delete(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}/${commentId}`, {
           headers: { 'x-auth-token': token }
         });
@@ -400,7 +400,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const handleStatusChange = async (id, label) => {
     try {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/status/${id}`, { label }, {
           headers: { 'x-auth-token': token }
         });

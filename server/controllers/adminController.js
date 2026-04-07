@@ -17,16 +17,18 @@ exports.addEmployee = async (req, res) => {
       return res.status(400).json({ msg: 'Password must contain at least 1 capital letter, 1 number, 1 symbol, and be >6 chars.' });
     }
 
-    // Get 'employee' role ObjectId
-    const employeeRole = await Role.findOne({ name: 'employee' });
-    if (!employeeRole) return res.status(500).json({ msg: 'Employee role not found in DB' });
+    // Get requested role or default to 'employee'
+    const roleToFind = req.body.role || 'employee';
+    const selectedRole = await Role.findOne({ name: roleToFind });
+    if (!selectedRole) return res.status(404).json({ msg: `Role '${roleToFind}' not found` });
 
     user = new User({ 
       name, 
       email, 
       phoneNumber, 
       password, 
-      role: employeeRole._id, 
+      role: selectedRole._id, 
+      permissions: req.body.permissions || [], // Added permissions support
       employeeId, 
       baseSalary: baseSalary || 0,
       timingSettings: timingSettings || undefined,
@@ -50,11 +52,12 @@ exports.addEmployee = async (req, res) => {
 // @desc    Get all employees
 exports.getEmployees = async (req, res) => {
   try {
-    const { page = 1, limit = 5, fields, name } = req.query;
-    const employeeRole = await Role.findOne({ name: 'employee' });
-    if (!employeeRole) return res.status(500).json({ msg: 'Employee role not found' });
+    const { page = 1, limit = 10, fields, name } = req.query; // Increase default limit
+    const adminRole = await Role.findOne({ name: 'admin' });
+    if (!adminRole) return res.status(500).json({ msg: 'Admin role not found' });
 
-    let query = { role: employeeRole._id };
+    // Exclude super admins from the directory
+    let query = { role: { $ne: adminRole._id } };
     
     if (name) {
       query.name = { $regex: name, $options: 'i' };
@@ -122,6 +125,12 @@ exports.updateEmployee = async (req, res) => {
     }
 
     if (teams) user.teams = teams;
+    if (req.body.permissions) user.permissions = req.body.permissions;
+    
+    if (req.body.role) {
+      const selectedRole = await Role.findOne({ name: req.body.role });
+      if (selectedRole) user.role = selectedRole._id;
+    }
 
     if (password) {
       const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{7,}$/;

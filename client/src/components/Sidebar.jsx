@@ -6,7 +6,34 @@ import { employeeMenuItem } from '../pages/utils/employeeMenuItem';
 import logo from '../assets/logo.png';
 
 const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
-  const links = user?.role?.name === 'admin' ? adminMenuItem : employeeMenuItem;
+  const getLinks = () => {
+    if (user?.role?.name === 'admin') return adminMenuItem;
+    if (user?.role?.name === 'subadmin') {
+      // Subadmin should have default panel like employees
+      // Plus any admin modules they have 'read' permission for
+      const employeeLinks = employeeMenuItem;
+      const permittedAdminLinks = adminMenuItem.filter(item => {
+        // Overview is always visible for subadmin if they are in admin panel
+        if (item.moduleId === 'overview') return true;
+        
+        const perms = user.permissions || user.role?.permissions || [];
+        return perms.includes(`${item.moduleId}:read`);
+      });
+
+      // Avoid duplicates if any (though usually paths are different)
+      const combinedLinks = [...employeeLinks];
+      permittedAdminLinks.forEach(adminLink => {
+        if (!combinedLinks.some(empLink => empLink.path === adminLink.path)) {
+          combinedLinks.push(adminLink);
+        }
+      });
+      
+      return combinedLinks;
+    }
+    return employeeMenuItem;
+  };
+
+  const links = getLinks();
 
   return (
     <>

@@ -214,7 +214,7 @@ exports.login = async (req, res) => {
     const payload = { user: { id: user.id, role: user.role } };
     jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 360000 }, (err, token) => {
       if (err) throw err;
-      res.json({ token, user: { id: user.id, name: user.name, role: user.role } });
+      res.json({ token, user: { id: user.id, name: user.name, role: user.role, permissions: user.permissions || [] } });
     });
   } catch (err) {
     console.error(err.message);
@@ -226,7 +226,15 @@ exports.login = async (req, res) => {
 exports.getUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password').populate('role', 'name permissions');
-    res.json(user);
+    res.json({ 
+      id: user.id, 
+      name: user.name, 
+      email: user.email, 
+      role: user.role, 
+      permissions: user.permissions || [],
+      phoneNumber: user.phoneNumber,
+      isEmailVerified: user.isEmailVerified
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

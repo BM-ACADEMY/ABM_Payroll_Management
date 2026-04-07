@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,8 +18,8 @@ const TimeHistory = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [adminNameSearch, setAdminNameSearch] = useState('');
-  const [userRole, setUserRole] = useState(localStorage.getItem('userRole'));
-  const [userName, setUserName] = useState(localStorage.getItem('userName'));
+  const [userRole, setUserRole] = useState(sessionStorage.getItem('userRole'));
+  const [userName, setUserName] = useState(sessionStorage.getItem('userName'));
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -30,7 +30,7 @@ const TimeHistory = () => {
   const fetchLogs = async (page = 1) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const url = userRole === 'admin'
         ? `${import.meta.env.VITE_API_URL}/api/time-logs/all?startDate=${startDate}&endDate=${endDate}&userName=${adminNameSearch}&taskName=${searchTerm}&page=${page}&limit=5`
         : `${import.meta.env.VITE_API_URL}/api/time-logs/user?startDate=${startDate}&endDate=${endDate}&taskName=${searchTerm}&page=${page}&limit=5`;
@@ -119,7 +119,7 @@ const TimeHistory = () => {
 
   const handleUpdateComment = async (id, commentId, text) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}/${commentId}`, { text }, {
         headers: { 'x-auth-token': token }
       });
@@ -134,7 +134,7 @@ const TimeHistory = () => {
   const handleDeleteComment = async (id, commentId) => {
     if (!window.confirm("Delete this comment?")) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.delete(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}/${commentId}`, {
         headers: { 'x-auth-token': token }
       });
@@ -148,7 +148,7 @@ const TimeHistory = () => {
   const handleAddComment = async (id, text) => {
     if (!text?.trim()) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}`, { text }, {
         headers: { 'x-auth-token': token }
       });
