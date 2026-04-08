@@ -15,10 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import Loader from "@/components/ui/Loader";
 
 // Modularized components
 import KanbanCard from './kanban/KanbanCard';
 const TaskDetailsModal = lazy(() => import('./kanban/TaskDetailsModal'));
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 
 
@@ -50,6 +52,7 @@ const KanbanBoard = () => {
   const [editingList, setEditingList] = useState(null);
   const [teamsForAdmin, setTeamsForAdmin] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: '', data: null });
 
   // Refs for socket listener to avoid closure issues
   const isDetailsOpenRef = useRef(isDetailsOpen);
@@ -85,12 +88,15 @@ const KanbanBoard = () => {
     } catch (err) {
       if (err.response && (err.response.status === 403 || err.response.status === 401)) {
         setAuthError(true);
+      } else if (err.response && err.response.status === 404) {
+        toast({ variant: "destructive", title: "Board Not Found", description: "This board does not exist or has been deleted." });
+        navigate(isAdmin ? '/admin/kanban' : '/dashboard/kanban', { replace: true });
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to fetch board" });
+        toast({ variant: "destructive", title: "Error", description: err.response?.data?.msg || "Failed to fetch board" });
       }
       setLoading(false);
     }
-  }, [id, type, toast, selectedTeamId]);
+  }, [id, type, toast, selectedTeamId, navigate, isAdmin]);
 
   const fetchUsers = async () => {
     try {
@@ -137,12 +143,16 @@ const KanbanBoard = () => {
 
   // Handle Board Socket Connections
   useEffect(() => {
-    if (!id) return;
+    const currentBoardId = boardData?._id || id;
+    if (!currentBoardId) return;
     
-    socket.on('connect', () => {
-      console.log('Joined board room:', id);
-      socket.emit('join_board', id);
-    });
+    const joinBoard = () => {
+      console.log('Joined board room:', currentBoardId);
+      socket.emit('join_board', currentBoardId);
+    };
+
+    if (socket.connected) joinBoard();
+    socket.on('connect', joinBoard);
 
     socket.on('board_updated', (data) => {
       console.log('Board update received:', data);
@@ -167,11 +177,12 @@ const KanbanBoard = () => {
     });
 
     return () => {
-      socket.emit('leave_board', id);
+      socket.emit('leave_board', currentBoardId);
+      socket.off('connect', joinBoard);
       socket.off('board_updated');
       socket.off('notification');
     };
-  }, [id, fetchData]);
+  }, [boardData?._id, id, fetchData, toast]);
 
   const handleAddMember = async (userId) => {
     // Optimistic Update
@@ -188,7 +199,8 @@ const KanbanBoard = () => {
 
     try {
       const token = sessionStorage.getItem('token');
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/${id}/members`, { userId }, {
+      const currentBoardId = boardData?._id || id;
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/${currentBoardId}/members`, { userId }, {
         headers: { 'x-auth-token': token }
       });
       toast({ title: "Success", description: "Member added to board" });
@@ -200,8 +212,16 @@ const KanbanBoard = () => {
   };
 
   const handleRemoveMember = async (userId) => {
-    if (!window.confirm("Are you sure you want to remove this member?")) return;
-    
+    setConfirmDialog({ 
+      isOpen: true, 
+      type: 'REMOVE_MEMBER', 
+      data: userId,
+      title: "Remove Member",
+      description: "Are you sure you want to remove this member from the board?"
+    });
+  };
+
+  const confirmRemoveMember = async (userId) => {
     // Optimistic Update
     setBoardData(prev => {
       if (!prev) return prev;
@@ -214,7 +234,8 @@ const KanbanBoard = () => {
 
     try {
       const token = sessionStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${id}/members/${userId}`, {
+      const currentBoardId = boardData?._id || id;
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${currentBoardId}/members/${userId}`, {
         headers: { 'x-auth-token': token }
       });
       toast({ title: "Success", description: "Member removed from board" });
@@ -414,7 +435,16 @@ const KanbanBoard = () => {
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
+    setConfirmDialog({ 
+      isOpen: true, 
+      type: 'DELETE_TASK', 
+      data: taskId,
+      title: "Delete Task",
+      description: "Are you sure you want to delete this task? This action cannot be undone."
+    });
+  };
+
+  const confirmDeleteTask = async (taskId) => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, {
         headers: { 'x-auth-token': sessionStorage.getItem('token') }
@@ -546,7 +576,8 @@ const KanbanBoard = () => {
     e.preventDefault();
     try {
       const token = sessionStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/${id}`, editBoardData, {
+      const currentBoardId = boardData?._id || id;
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/${currentBoardId}`, editBoardData, {
         headers: { 'x-auth-token': token }
       });
       toast({ title: "Success", description: "Board updated successfully" });
@@ -558,7 +589,16 @@ const KanbanBoard = () => {
   };
 
   const handleDeleteBoard = async () => {
-    if (!window.confirm("ARE YOU SURE? This will permanently delete the board and all its tasks, comments, and history. This action cannot be undone.")) return;
+    setConfirmDialog({ 
+      isOpen: true, 
+      type: 'DELETE_BOARD', 
+      data: boardData?._id || id,
+      title: "Delete Board",
+      description: "ARE YOU SURE? This will permanently delete the board and all its tasks, comments, and history. This action cannot be undone."
+    });
+  };
+
+  const confirmDeleteBoard = async (boardId) => {
     
     try {
       const token = sessionStorage.getItem('token');
@@ -586,7 +626,16 @@ const KanbanBoard = () => {
   };
 
   const handleDeleteList = async (listId) => {
-    if (!window.confirm("Delete this list and all its tasks?")) return;
+    setConfirmDialog({ 
+      isOpen: true, 
+      type: 'DELETE_LIST', 
+      data: listId,
+      title: "Delete List",
+      description: "Delete this list and all its tasks?"
+    });
+  };
+
+  const confirmDeleteList = async (listId) => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/lists/${listId}`, {
         headers: { 'x-auth-token': sessionStorage.getItem('token') }
@@ -670,7 +719,7 @@ const KanbanBoard = () => {
     return map;
   }, [tasks, lists]);
 
-  if (loading) return <div className="h-full flex items-center justify-center bg-zinc-50"><div className="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-yellow-400"></div></div>;
+  if (loading) return <div className="h-full flex items-center justify-center bg-zinc-50"><Loader size="lg" color="red" /></div>;
 
   if (authError) {
      return (
@@ -751,7 +800,7 @@ const KanbanBoard = () => {
                       const currentUserId = sessionStorage.getItem('userId');
                       const isBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(m._id));
                       const isCurrentUserBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(currentUserId));
-                      const canRemove = isAdmin; // Only system administrators can remove members
+                      const canRemove = true; // All members can manage participants as requested
 
                       return (
                         <div key={m._id} className="flex items-center gap-4 bg-zinc-50 p-4 rounded-3xl border border-zinc-100/50">
@@ -868,7 +917,7 @@ const KanbanBoard = () => {
                 </div>
                 <div className="flex flex-col gap-3 pt-4">
                   <Button type="submit" className="w-full bg-black text-[#fffe01] rounded-2xl h-14 font-black text-sm tracking-widest shadow-xl active:scale-95 transition-all">SAVE CHANGES</Button>
-                  {boardData?.type === 'regular' && (isAdmin || boardData?.admins?.some(a => String(a._id || a) === String(sessionStorage.getItem('userId')))) && (
+                  {boardData?.type === 'regular' && (
                     <Button 
                       type="button" 
                       onClick={handleDeleteBoard}
@@ -981,7 +1030,7 @@ const KanbanBoard = () => {
 
       {/* Task Details Dialog */}
       {isDetailsOpen && taskDetails && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-yellow-400"></div></div>}>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center"><Loader size="lg" color="red" /></div>}>
           <TaskDetailsModal 
             isOpen={isDetailsOpen}
             onClose={() => { setIsDetailsOpen(false); setTaskDetails(null); }}
@@ -1007,6 +1056,19 @@ const KanbanBoard = () => {
           />
         </Suspense>
       )}
+      
+      <ConfirmDialog 
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={() => {
+          if (confirmDialog.type === 'REMOVE_MEMBER') confirmRemoveMember(confirmDialog.data);
+          if (confirmDialog.type === 'DELETE_TASK') confirmDeleteTask(confirmDialog.data);
+          if (confirmDialog.type === 'DELETE_BOARD') confirmDeleteBoard(confirmDialog.data);
+          if (confirmDialog.type === 'DELETE_LIST') confirmDeleteList(confirmDialog.data);
+        }}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+      />
     </div>
   );
 };

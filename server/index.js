@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const compression = require('compression');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -26,6 +27,12 @@ app.use(express.json());
 app.use(cors());
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Pass io to request object for use in controllers
 app.use((req, res, next) => {

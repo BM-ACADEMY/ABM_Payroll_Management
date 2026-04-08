@@ -4,6 +4,8 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import TaskTrackerSidebar from './components/TaskTrackerSidebar';
 import { Timer } from 'lucide-react';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Loader from "@/components/ui/Loader";
 
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -38,6 +40,7 @@ function AppContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, type: '', data: null, title: '', description: '' });
 
   useEffect(() => {
     const handleResize = () => {
@@ -67,8 +70,8 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader size="lg" color="red" />
       </div>
     );
   }
@@ -118,8 +121,8 @@ function AppContent() {
           )}
           <main className="flex-1">
             <Suspense fallback={
-              <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+              <div className="flex-1 flex items-center justify-center bg-white min-h-[400px]">
+                <Loader size="lg" color="red" />
               </div>
             }>
               <Routes>

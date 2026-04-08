@@ -45,6 +45,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { memo, useMemo, lazy, Suspense } from 'react';
 import PaginationControl from '@/components/ui/PaginationControl';
+import Loader from "@/components/ui/Loader";
 
 const EmergencyModalContent = lazy(() => import('./EmergencyModalContent'));
 
@@ -350,7 +351,7 @@ const AdminAttendance = () => {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex flex-col justify-center items-center py-32 gap-4">
-               <div className="w-16 h-16 rounded-full border-4 border-gray-200 border-t-black animate-spin"></div>
+               <Loader size="lg" color="red" />
                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.4em]">Loading Logs...</span>
             </div>
           ) : attendance.length === 0 ? (

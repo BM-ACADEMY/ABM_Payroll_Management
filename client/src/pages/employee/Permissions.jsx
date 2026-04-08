@@ -16,6 +16,7 @@ import {
   Timer
 } from "lucide-react";
 import axios from 'axios';
+import Loader from "@/components/ui/Loader";
 import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
@@ -214,7 +215,7 @@ const Permissions = () => {
                 className="w-full py-7 bg-black hover:bg-gray-900 text-[#fffe01] font-medium text-sm uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-[0.98]"
               >
                 {formLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader size="sm" color="white" />
                 ) : (
                   <>SUBMIT REQUEST</>
                 )}
@@ -235,7 +236,7 @@ const Permissions = () => {
           <CardContent className="p-0">
             {loading ? (
               <div className="p-12 flex justify-center">
-                <Loader2 className="w-8 h-8 text-black animate-spin" />
+                <Loader size="md" color="red" />
               </div>
             ) : requests.length === 0 ? (
               <div className="p-12 text-center space-y-3">

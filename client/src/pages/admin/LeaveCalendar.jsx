@@ -4,16 +4,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Loader from "@/components/ui/Loader";
 
 
 const LeaveCalendar = () => {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [selectedLeaveToDelete, setSelectedLeaveToDelete] = useState(null);
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -69,11 +72,11 @@ const LeaveCalendar = () => {
     }
   };
 
-  const handleDeleteLeave = async (id) => {
-    if (!window.confirm('Are you sure you want to remove this company leave? Attendance records will be reverted.')) return;
+  const confirmRemoveLeave = async () => {
+    if (!selectedLeaveToDelete) return;
     try {
       const token = sessionStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/company-leaves/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/company-leaves/${selectedLeaveToDelete}`, {
         headers: { 'x-auth-token': token }
       });
       toast({
@@ -81,6 +84,7 @@ const LeaveCalendar = () => {
         description: "Company leave removed",
       });
       fetchLeaves();
+      setSelectedLeaveToDelete(null);
     } catch (err) {
       toast({
         variant: "destructive",
@@ -143,7 +147,7 @@ const LeaveCalendar = () => {
                 disabled={adding}
                 className="w-full bg-[#fffe01] hover:bg-yellow-400 text-black font-medium py-7 rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
-                {adding ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CalendarIcon className="w-5 h-5 mr-2" />}
+                {adding ? <Loader size="sm" color="black" /> : <CalendarIcon className="w-5 h-5 mr-2" />}
                 ADD TO CALENDAR
               </Button>
             </form>
@@ -159,7 +163,7 @@ const LeaveCalendar = () => {
           <CardContent className="p-0">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-80 text-gray-400">
-                <Loader2 className="w-10 h-10 animate-spin mb-4 text-black" />
+                <Loader size="lg" color="red" />
                 <p className="font-normal uppercase tracking-[0.2em] text-xs">Fetching records...</p>
               </div>
             ) : leaves.length === 0 ? (
@@ -196,7 +200,7 @@ const LeaveCalendar = () => {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => handleDeleteLeave(leave._id)}
+                            onClick={() => setSelectedLeaveToDelete(leave._id)}
                             className="text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-full h-12 w-12 transition-all group-hover:scale-110 active:scale-95"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -211,9 +215,16 @@ const LeaveCalendar = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog 
+        isOpen={!!selectedLeaveToDelete}
+        onClose={() => setSelectedLeaveToDelete(null)}
+        onConfirm={confirmRemoveLeave}
+        title="Remove Leave"
+        description="Are you sure you want to remove this company leave? Attendance records for this day will be reverted to normal."
+      />
     </div>
   );
 };
 
 export default LeaveCalendar;
-

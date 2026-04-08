@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import Loader from "@/components/ui/Loader";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -107,7 +108,7 @@ const Analytics = () => {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+        <Loader size="lg" color="red" />
       </div>
     );
   }
@@ -313,7 +314,7 @@ const Analytics = () => {
                         onClick={() => fetchSourceData(activeSourceId)}
                         className="h-8 font-black text-xs gap-2 rounded-lg"
                       >
-                        {sourceLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                        {sourceLoading ? <Loader size="sm" color="red" /> : <RefreshCw className="w-3.5 h-3.5" />}
                         Refresh
                       </Button>
                     </div>
@@ -322,7 +323,7 @@ const Analytics = () => {
                     {sourceLoading ? (
                       <div className="h-[400px] flex items-center justify-center">
                         <div className="text-center space-y-4">
-                          <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto" />
+                          <Loader size="lg" color="red" />
                           <p className="text-sm font-bold text-zinc-400">Gleaning insights from the spreadsheet...</p>
                         </div>
                       </div>

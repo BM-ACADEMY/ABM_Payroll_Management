@@ -12,7 +12,6 @@ import {
   Loader2,
   Search,
   AlertCircle,
-  Timer,
   MessageSquare
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -22,9 +21,11 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, CheckSquare, Square } from "lucide-react";
+import { Trash2, CheckSquare } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import PaginationControl from '@/components/ui/PaginationControl';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Loader from "@/components/ui/Loader";
 
 const PermissionReview = () => {
   const [requests, setRequests] = useState([]);
@@ -33,6 +34,7 @@ const PermissionReview = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, type: '', data: null, title: '', description: '' });
   const { toast } = useToast();
   
   const [isRejectOpen, setIsRejectOpen] = useState(false);
@@ -42,7 +44,6 @@ const PermissionReview = () => {
   useEffect(() => {
     fetchRequests(1);
 
-    // Socket handled via shared service
     socket.on('new_request', (data) => {
       fetchRequests(true);
     });
@@ -111,8 +112,17 @@ const PermissionReview = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this record?")) return;
+  const handleDeleteRecord = async (id) => {
+    setDeleteDialog({ 
+      isOpen: true, 
+      type: 'SINGLE', 
+      data: id,
+      title: "Delete Record",
+      description: "Are you sure you want to delete this permission record?"
+    });
+  };
+
+  const confirmDelete = async (id) => {
     setActionLoading(true);
     try {
       const token = sessionStorage.getItem('token');
@@ -120,6 +130,7 @@ const PermissionReview = () => {
         headers: { 'x-auth-token': token }
       });
       setRequests(prev => prev.filter(req => req._id !== id));
+      setDeleteDialog({ ...deleteDialog, isOpen: false });
       toast({
         title: "Success",
         description: "Request deleted successfully",
@@ -136,7 +147,16 @@ const PermissionReview = () => {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedIds.length} records?`)) return;
+    setDeleteDialog({ 
+      isOpen: true, 
+      type: 'BULK', 
+      data: selectedIds,
+      title: "Delete Records",
+      description: `Are you sure you want to delete ${selectedIds.length} selected records?`
+    });
+  };
+
+  const confirmBulkDelete = async () => {
     setActionLoading(true);
     try {
       const token = sessionStorage.getItem('token');
@@ -146,7 +166,7 @@ const PermissionReview = () => {
         headers: { 'x-auth-token': token }
       });
       setSelectedIds([]);
-      setSelectedIds([]);
+      setDeleteDialog({ ...deleteDialog, isOpen: false });
       toast({
         title: "Success",
         description: "Bulk deletion successful",
@@ -282,6 +302,16 @@ const PermissionReview = () => {
             </div>
           </div>
         </div>
+        <ConfirmDialog 
+          isOpen={deleteDialog.isOpen}
+          onClose={() => setDeleteDialog({ ...deleteDialog, isOpen: false })}
+          onConfirm={() => {
+            if (deleteDialog.type === 'SINGLE') confirmDelete(deleteDialog.data);
+            if (deleteDialog.type === 'BULK') confirmBulkDelete();
+          }}
+          title={deleteDialog.title}
+          description={deleteDialog.description}
+        />
       </header>
 
       <Card className="border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden">
@@ -308,9 +338,13 @@ const PermissionReview = () => {
           )}
         </CardHeader>
         <CardContent className="p-0">
-          {loading && requests.length === 0 ? (
-            <div className="p-12 flex justify-center">
-              <Loader2 className="w-8 h-8 text-black animate-spin" />
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader size="md" color="red" />
+            </div>
+          ) : actionLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader size="md" color="red" />
             </div>
           ) : filteredRequests.length === 0 ? (
             <div className="p-12 text-center space-y-3">
@@ -393,7 +427,7 @@ const PermissionReview = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(req._id)}
+                        onClick={() => handleDeleteRecord(req._id)}
                         disabled={actionLoading}
                         className="text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-12 w-12 transition-all"
                         title="Delete record"
@@ -438,7 +472,7 @@ const PermissionReview = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(req._id)}
+                          onClick={() => handleDeleteRecord(req._id)}
                           disabled={actionLoading}
                           className="text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-12 w-12 transition-all self-center shrink-0 hidden md:flex"
                           title="Delete record"

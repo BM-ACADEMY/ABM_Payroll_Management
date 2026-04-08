@@ -19,6 +19,7 @@ import {
   X
 } from "lucide-react";
 import axios from 'axios';
+import Loader from "@/components/ui/Loader";
 
 const PayrollSettings = () => {
   const [loading, setLoading] = useState(true);
@@ -87,7 +88,7 @@ const PayrollSettings = () => {
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 text-black animate-spin" />
+        <Loader size="md" color="red" />
       </div>
     );
   }
@@ -315,7 +316,7 @@ const PayrollSettings = () => {
                 className="w-full h-16 bg-black hover:bg-zinc-900 text-[#fffe01] rounded-[1.5rem] font-medium text-lg shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] animate-in slide-in-from-bottom-4 duration-500"
               >
                 {saveLoading ? (
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  <Loader size="md" color="black" />
                 ) : (
                   <Save className="w-6 h-6 mr-2" />
                 )}

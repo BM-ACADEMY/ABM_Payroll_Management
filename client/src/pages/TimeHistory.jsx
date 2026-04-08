@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, isSameDay } from 'date-fns';
 import socket from '@/services/socket';
 import PaginationControl from '@/components/ui/PaginationControl';
+import Loader from "@/components/ui/Loader";
 
 const TimeHistory = () => {
   const [logs, setLogs] = useState([]);
@@ -258,7 +259,7 @@ const TimeHistory = () => {
 
         {loading ? (
           <div className="flex justify-center items-center py-24">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#fffe01]"></div>
+            <Loader size="lg" color="red" />
           </div>
         ) : groupedLogs.length === 0 ? (
           <div className="text-center py-24 bg-white border border-gray-100 rounded-3xl text-gray-400 font-medium">

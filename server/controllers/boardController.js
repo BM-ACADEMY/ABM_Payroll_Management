@@ -6,6 +6,7 @@ const CardHistory = require('../models/CardHistory');
 const User = require('../models/User');
 const Team = require('../models/Team');
 const mongoose = require('mongoose');
+const Role = require('../models/Role');
 
 // --- Board Operations ---
 
@@ -36,14 +37,19 @@ exports.getSpecialBoard = async (req, res) => {
     let board = await Board.findOne({ team: teamId, type });
     
     if (!board) {
+      // Find system admins to set as board admins
+      const adminRole = await Role.findOne({ name: 'admin' });
+      const systemAdmins = await User.find({ role: adminRole?._id }).select('_id');
+      const adminIds = systemAdmins.map(a => a._id);
+
       // Auto-create
       board = new Board({
         title: type === 'daily' ? 'Daily Board' : 'Weekly Board',
         description: type === 'daily' ? 'Daily tasks and progress' : 'Weekly focus and goals',
         team: teamId,
         type,
-        admins: [req.user.id],
-        members: [req.user.id]
+        admins: adminIds.length > 0 ? adminIds : [req.user.id], // Fallback to creator if no admin role found
+        members: Array.from(new Set([...adminIds, req.user.id])) // Creator must be a member
       });
       await board.save();
       
@@ -127,17 +133,24 @@ exports.createBoard = async (req, res) => {
       return res.status(400).json({ msg: 'Team selection is required' });
     }
 
+    // Find system admins to set as board admins
+    const adminRole = await Role.findOne({ name: 'admin' });
+    const systemAdmins = await User.find({ role: adminRole?._id }).select('_id');
+    const adminIds = systemAdmins.map(a => a._id);
+
     // Auto-populate members: All users currently assigned to this team
     const teamMembers = await User.find({ teams: targetTeamId }).select('_id');
     const memberIds = teamMembers.map(m => m._id);
     
-    // Ensure the creator is also an admin of the board
+    // Ensure the creator is also an admin of the board ONLY if they are a system admin
+    const isSystemAdmin = String(req.user.role?._id || req.user.role) === String(adminRole?._id);
+
     const board = new Board({
       title,
       description,
       team: targetTeamId,
-      admins: [req.user.id],
-      members: Array.from(new Set([...memberIds, req.user.id])) // Unique IDs including creator
+      admins: adminIds.length > 0 ? adminIds : [req.user.id], // Fallback to creator if no admin role found
+      members: Array.from(new Set([...memberIds, ...adminIds, req.user.id])) // Unique IDs including creator and admins
     });
     await board.save();
     res.json(board);
@@ -253,12 +266,12 @@ exports.deleteBoard = async (req, res) => {
     const board = await Board.findById(req.params.id);
     if (!board) return res.status(404).json({ msg: 'Board not found' });
 
-    // Access control: Only global admins/subadmins or board-level admins can delete boards
+    // Access control: Allow any member of the board to delete it (as requested)
+    const isMember = board.members.some(m => m.toString() === req.user.id);
     const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
                     req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
-    const isBoardAdmin = board.admins.some(a => a.toString() === req.user.id);
 
-    if (!isAdmin && !isBoardAdmin) {
+    if (!isAdmin && !isMember) {
       return res.status(403).json({ msg: 'Not authorized to delete this board' });
     }
 
@@ -827,12 +840,13 @@ exports.removeMemberFromBoard = async (req, res) => {
     const board = await Board.findById(req.params.id);
     if (!board) return res.status(404).json({ msg: 'Board not found' });
 
-    // Access control: ONLY system global admins/subadmins can "restrict" (remove) members
+    // Access control: Allow all members to manage participants (as requested)
+    const isMember = board.members.some(m => m.toString() === req.user.id);
     const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
                     req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
 
-    if (!isAdmin) {
-      return res.status(403).json({ msg: 'Only system administrators can remove members from a board' });
+    if (!isAdmin && !isMember) {
+      return res.status(403).json({ msg: 'Not authorized to modify members on this board' });
     }
 
     // Pull from both members and admins

@@ -23,6 +23,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import axios from 'axios';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import Loader from "@/components/ui/Loader";
 
 const COLORS = ['#fffe01', '#000000', '#f3f4f6']; // Early, Late, Future
 
@@ -210,7 +211,7 @@ const EmployeeDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <div className="w-12 h-12 border-4 border-gray-100 border-t-[#fffe01] rounded-full animate-spin"></div>
+        <Loader size="lg" color="red" />
         <p className="text-sm font-medium text-gray-400 uppercase tracking-widest">Synchronizing Dashboard...</p>
       </div>
     );

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import Loader from "@/components/ui/Loader";
 
 
 const ForgotPassword = () => {
@@ -62,7 +63,7 @@ const ForgotPassword = () => {
               disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all duration-200 ease-in-out"
             >
-              {loading ? 'Sending OTP...' : 'Send Reset OTP'}
+              {loading ? <Loader size="sm" color="white" /> : 'Send Reset OTP'}
             </Button>
             <div className="text-center text-sm text-gray-500">
               Remember your password? {' '}

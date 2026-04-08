@@ -778,9 +778,10 @@ const TaskDetailsModal = ({
                              <div 
                                key={idx} 
                                onClick={() => {
-                                 const fullUrl = file.url.startsWith('blob:') 
+                                 const baseUrl = import.meta.env.VITE_API_URL || '';
+                                 const fullUrl = (file.url.startsWith('blob:') || file.url.startsWith('http')) 
                                    ? file.url 
-                                   : `${import.meta.env.VITE_API_URL}${file.url}`;
+                                   : `${baseUrl.replace(/\/$/, '')}/${file.url.replace(/^\//, '')}`;
                                  window.open(fullUrl, '_blank');
                                }}
                                className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl hover:bg-white transition-all cursor-pointer group/file"

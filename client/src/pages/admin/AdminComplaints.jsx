@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
 import PaginationControl from '@/components/ui/PaginationControl';
+import Loader from "@/components/ui/Loader";
 
 const AdminComplaints = () => {
   const [loading, setLoading] = useState(false);
@@ -243,9 +244,7 @@ const AdminComplaints = () => {
       </Dialog>
 
       {loading && (
-        <div className="fixed inset-0 bg-white/50 backdrop-blur-md z-[100] flex items-center justify-center">
-          <div className="w-16 h-16 rounded-full border-4 border-gray-100 border-t-black animate-spin"></div>
-        </div>
+        <Loader fullPage size="lg" color="red" />
       )}
     </div>
   );

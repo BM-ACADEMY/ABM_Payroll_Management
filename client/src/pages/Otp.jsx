@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import Loader from "@/components/ui/Loader";
 
 
 const Otp = () => {
@@ -94,7 +95,7 @@ const Otp = () => {
               disabled={loading || otp.length !== 6}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Verifying...' : 'Verify Email'}
+              {loading ? <Loader size="sm" color="white" /> : 'Verify Email'}
             </Button>
             <div className="text-center text-sm text-gray-500">
               Didn't receive the code? {' '}
@@ -104,7 +105,7 @@ const Otp = () => {
                 disabled={resendLoading}
                 className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {resendLoading ? 'Sending...' : 'Click to resend'}
+                {resendLoading ? <Loader size="sm" color="indigo" /> : 'Click to resend'}
               </button>
             </div>
           </CardFooter>

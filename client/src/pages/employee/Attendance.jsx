@@ -4,37 +4,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { 
-  Clock, 
-  Briefcase, 
-  Loader2, 
-  Home, 
-  Building2, 
-  Coffee, 
-  LogOut, 
+  CalendarDays,
   Zap,
+  Clock,
+  Coffee,
   CheckCircle2,
   Calendar,
   Timer,
-  AlertCircle,
   TrendingUp,
+  Home,
+  Building2,
+  LogOut,
   List,
-  LayoutGrid,
-  CalendarDays
+  LayoutGrid
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { parse, format } from 'date-fns';
 import axios from 'axios';
 import { useToast } from "@/hooks/use-toast";
+import Loader from "@/components/ui/Loader";
 import CalendarView from '@/components/CalendarView';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 const Attendance = () => {
@@ -204,11 +200,6 @@ const Attendance = () => {
         title: "Error",
         description: err.response?.data?.msg || "Something went wrong",
       });
-      toast({
-        variant: "destructive",
-        title: "Submission Failed",
-        description: err.response?.data?.msg || "Could not apply for leave"
-      });
     } finally {
       setLoading(false);
     }
@@ -228,7 +219,6 @@ const Attendance = () => {
 
   const StatusConfig = getStatusConfig(attendanceState);
   const StatusIcon = StatusConfig.icon;
-  // const user = sessionStorage.getItem('user'); // removed due to encryption crash
 
   const filteredLogs = attendanceLogs.filter(log => {
      if (filterPeriod === 'weekly') {
@@ -351,7 +341,7 @@ const Attendance = () => {
               {loading && (
                 <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-md transition-all">
                   <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 rounded-full border-4 border-gray-200 border-t-black animate-spin shadow-inner"></div>
+                    <Loader size="lg" color="red" />
                     <span className="text-black font-medium text-xs tracking-[0.3em] uppercase animate-pulse">Synchronizing Session...</span>
                   </div>
                 </div>
@@ -620,7 +610,7 @@ const Attendance = () => {
             <CardContent className="p-0 flex-1 overflow-auto">
                {logsLoading ? (
                  <div className="flex flex-col items-center justify-center py-40 gap-4">
-                    <Loader2 className="w-12 h-12 text-black animate-spin" />
+                    <Loader size="lg" color="red" />
                     <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Retrieving Logs...</span>
                  </div>
                ) : (
@@ -742,7 +732,7 @@ const Attendance = () => {
                   onClick={() => handleAction('lunch-in')}
                   className="flex-1 h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-medium uppercase text-[10px] tracking-widest shadow-lg shadow-amber-500/10"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm & Resume'}
+                  {loading ? <Loader size="sm" color="white" /> : 'Confirm & Resume'}
                 </Button>
              </div>
           </div>

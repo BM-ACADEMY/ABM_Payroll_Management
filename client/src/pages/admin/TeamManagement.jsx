@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Users, Plus, Trash2, Edit, PlusCircle, AlertCircle, CheckCircle2, UserPlus, Search, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Loader from "@/components/ui/Loader";
 
 const TeamManagement = () => {
   const [teams, setTeams] = useState([]);
@@ -21,6 +23,7 @@ const TeamManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentTeamId, setCurrentTeamId] = useState(null);
+  const [teamToDelete, setTeamToDelete] = useState(null);
   
   // Manage Members State
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
@@ -208,20 +211,21 @@ const TeamManagement = () => {
   };
 
   const handleDeleteTeam = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this team?")) return;
+    setTeamToDelete(id);
+  };
+
+  const confirmDeleteTeam = async () => {
+    if (!teamToDelete) return;
     try {
       const token = sessionStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/teams/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/teams/${teamToDelete}`, {
         headers: { 'x-auth-token': token }
       });
+      setTeams(teams.filter(t => t._id !== teamToDelete));
       toast({ title: "Success", description: "Team deleted successfully" });
-      fetchTeams();
+      setTeamToDelete(null);
     } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete team",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete team" });
     }
   };
 
@@ -312,7 +316,7 @@ const TeamManagement = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black"></div>
+            <Loader size="md" color="red" />
           </div>
         ) : teams.length === 0 ? (
           <div className="col-span-full p-12 text-center bg-gray-50 rounded-3xl border-2 border-dashed">
@@ -397,7 +401,7 @@ const TeamManagement = () => {
           <div className="flex-1 overflow-y-auto px-6 py-2 space-y-2 min-h-[300px]">
             {membersLoading ? (
               <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black"></div>
+                <Loader size="md" color="red" />
               </div>
             ) : allEmployees.filter(emp => emp.name.toLowerCase().includes(memberSearchTerm.toLowerCase())).length === 0 ? (
               <p className="text-center py-12 text-gray-500">No employees found</p>
@@ -438,6 +442,14 @@ const TeamManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog 
+        isOpen={!!teamToDelete}
+        onClose={() => setTeamToDelete(null)}
+        onConfirm={confirmDeleteTeam}
+        title="Delete Team"
+        description="Are you sure you want to delete this team? This action will remove all team associations."
+      />
     </div>
   );
 };
