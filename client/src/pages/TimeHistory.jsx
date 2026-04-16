@@ -11,6 +11,7 @@ import { format, isSameDay } from 'date-fns';
 import socket from '@/services/socket';
 import PaginationControl from '@/components/ui/PaginationControl';
 import Loader from "@/components/ui/Loader";
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 
 const TimeHistory = () => {
   const [logs, setLogs] = useState([]);
@@ -92,24 +93,7 @@ const TimeHistory = () => {
     return format(new Date(dateString), 'hh:mm a');
   };
 
-  const renderTextWithLinks = (text) => {
-    if (!text) return null;
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    return parts.map((part, index) =>
-      urlRegex.test(part) ? (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-blue-600 hover:text-blue-800 break-all transition-colors"
-        >
-          {part}
-        </a>
-      ) : part
-    );
-  };
+
 
   const toggleRow = (id) => {
     const newExpanded = new Set(expandedRows);
@@ -430,7 +414,7 @@ const TimeHistory = () => {
                                                 </Button>
                                               </div>
                                             ) : (
-                                              <p className="text-xs text-gray-700 leading-normal">{renderTextWithLinks(comment.text)}</p>
+                                              <div className="text-xs text-gray-700 leading-normal"><MarkdownRenderer content={comment.text} /></div>
                                             )}
                                           </div>
                                         ))

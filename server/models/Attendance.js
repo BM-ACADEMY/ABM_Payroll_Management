@@ -7,10 +7,18 @@ const AttendanceSchema = new mongoose.Schema({
     time: { type: String },
     mode: { type: String, enum: ['WFH', 'WFO'] },
     status: { type: String, enum: ['on-time', 'late', 'absent'] },
-    permissionMinutes: { type: Number, default: 0 }
+    permissionMinutes: { type: Number, default: 0 },
+    location: {
+      lat: { type: Number },
+      lng: { type: Number }
+    }
   },
   checkOut: {
-    time: { type: String }
+    time: { type: String },
+    location: {
+      lat: { type: Number },
+      lng: { type: Number }
+    }
   },
   lunch: {
     out: { type: String },

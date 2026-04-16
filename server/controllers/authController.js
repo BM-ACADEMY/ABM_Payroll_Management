@@ -5,6 +5,7 @@ const Role = require('../models/Role');
 const { sendOTPEmail } = require('../services/emailService');
 const CompanyLeave = require('../models/CompanyLeave');
 const Attendance = require('../models/Attendance');
+const AuditLog = require('../models/AuditLog');
 
 
 // Helper function to generate OTP
@@ -212,8 +213,22 @@ exports.login = async (req, res) => {
     await user.populate('role', 'name permissions');
 
     const payload = { user: { id: user.id, role: user.role } };
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 360000 }, (err, token) => {
+    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 360000 }, async (err, token) => {
       if (err) throw err;
+      
+      // Log login event with location
+      try {
+        const { location } = req.body;
+        const newAuditLog = new AuditLog({
+          user: user.id,
+          action: 'LOGIN',
+          location: location || null
+        });
+        await newAuditLog.save();
+      } catch (logErr) {
+        console.error('Error creating login audit log:', logErr.message);
+      }
+
       res.json({ token, user: { id: user.id, name: user.name, role: user.role, permissions: user.permissions || [] } });
     });
   } catch (err) {
@@ -302,6 +317,23 @@ exports.updateProfile = async (req, res) => {
     // Return updated user (without password)
     const updatedUser = await User.findById(req.user.id).select('-password').populate('role', 'name permissions');
     res.json(updatedUser);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
+// @desc    Logout user & log location
+exports.logout = async (req, res) => {
+  try {
+    const { location } = req.body;
+    const newAuditLog = new AuditLog({
+      user: req.user.id,
+      action: 'LOGOUT',
+      location: location || null
+    });
+    await newAuditLog.save();
+    res.status(200).json({ msg: 'Logged out successfully' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

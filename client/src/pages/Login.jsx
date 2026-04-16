@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";import { useAuth } from '@/context/AuthContext';
 import Loader from "@/components/ui/Loader";
+import { getCurrentLocation } from '@/utils/location';
 
 
 const Login = () => {
@@ -37,10 +38,13 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
+    const locationData = await getCurrentLocation();
+    
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth`, {
         email,
-        password
+        password,
+        location: locationData
       });
 
       const authenticatedUser = {

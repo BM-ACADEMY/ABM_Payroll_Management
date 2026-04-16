@@ -40,7 +40,8 @@ import {
   Edit,
   XCircle,
   Home,
-  Building2
+  Building2,
+  MapPin
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { memo, useMemo, lazy, Suspense } from 'react';
@@ -86,9 +87,20 @@ const AttendanceRow = memo(({ item, onEdit }) => {
                   Sch: {item.schedule.loginTime}
                 </span>
               )}
-              <span className={`px-4 py-1.5 rounded-full font-medium text-xs tracking-tighter w-20 text-center ${item.checkIn?.time ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-gray-50 text-gray-300 border border-gray-200'}`}>
+              <div className={`px-4 py-1.5 rounded-full font-medium text-xs tracking-tighter w-24 text-center flex items-center justify-center gap-1.5 ${item.checkIn?.time ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-gray-50 text-gray-300 border border-gray-200'}`}>
                 {item.checkIn?.time || '--:--'}
-              </span>
+                {item.checkIn?.location && (
+                  <a 
+                    href={`https://www.google.com/maps?q=${item.checkIn.location.lat},${item.checkIn.location.lng}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:scale-110 transition-transform text-emerald-600"
+                    title="View Check-in Location"
+                  >
+                    <MapPin className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
               {item.checkIn?.permissionMinutes > 0 && (
                 <span className="text-[9px] font-medium text-rose-500 uppercase tracking-tighter">Late By {Math.ceil(item.checkIn.permissionMinutes)} Min</span>
               )}
@@ -100,9 +112,20 @@ const AttendanceRow = memo(({ item, onEdit }) => {
                   Sch: {item.schedule.logoutTime}
                 </span>
               )}
-              <span className={`px-4 py-1.5 rounded-full font-medium text-xs tracking-tighter w-20 text-center ${item.checkOut?.time ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-gray-50 text-gray-300 border border-gray-200'}`}>
+              <div className={`px-4 py-1.5 rounded-full font-medium text-xs tracking-tighter w-24 text-center flex items-center justify-center gap-1.5 ${item.checkOut?.time ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-gray-50 text-gray-300 border border-gray-200'}`}>
                 {item.checkOut?.time || '--:--'}
-              </span>
+                {item.checkOut?.location && (
+                  <a 
+                    href={`https://www.google.com/maps?q=${item.checkOut.location.lat},${item.checkOut.location.lng}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:scale-110 transition-transform text-rose-600"
+                    title="View Check-out Location"
+                  >
+                    <MapPin className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         )}

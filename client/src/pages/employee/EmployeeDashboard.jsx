@@ -18,7 +18,8 @@ import {
   Wallet,
   Clock,
   Trophy,
-  MessageSquare
+  MessageSquare,
+  MapPin
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import axios from 'axios';
@@ -528,9 +529,22 @@ const EmployeeDashboard = () => {
                               Sch: {log.schedule.loginTime}
                             </span>
                           )}
-                          <span className={`px-3 py-1.5 rounded-lg text-sm font-medium w-fit ${log.checkIn?.status === 'late' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                              {log.checkIn?.time || '--:--'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                             <span className={`px-3 py-1.5 rounded-lg text-sm font-medium w-fit ${log.checkIn?.status === 'late' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                 {log.checkIn?.time || '--:--'}
+                             </span>
+                             {log.checkIn?.location && (
+                               <a 
+                                 href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
+                                 target="_blank" 
+                                 rel="noopener noreferrer"
+                                 className="text-emerald-600 hover:scale-110 transition-transform"
+                                 title="View Location"
+                               >
+                                 <MapPin className="w-3.5 h-3.5" />
+                               </a>
+                             )}
+                          </div>
                        </div>
                     </TableCell>
                     <TableCell>
@@ -540,9 +554,22 @@ const EmployeeDashboard = () => {
                               Sch: {log.schedule.logoutTime}
                             </span>
                           )}
-                          <span className="bg-zinc-900 text-[#fffe01] px-3 py-1.5 rounded-lg text-sm font-medium w-fit">
-                             {log.checkOut?.time || '--:--'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                             <span className="bg-zinc-900 text-[#fffe01] px-3 py-1.5 rounded-lg text-sm font-medium w-fit">
+                                {log.checkOut?.time || '--:--'}
+                             </span>
+                             {log.checkOut?.location && (
+                               <a 
+                                 href={`https://www.google.com/maps?q=${log.checkOut.location.lat},${log.checkOut.location.lng}`} 
+                                 target="_blank" 
+                                 rel="noopener noreferrer"
+                                 className="text-[#fffe01] hover:scale-110 transition-transform"
+                                 title="View Location"
+                               >
+                                 <MapPin className="w-3.5 h-3.5" />
+                               </a>
+                             )}
+                          </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-center">

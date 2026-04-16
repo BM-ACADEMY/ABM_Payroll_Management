@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import Loader from "@/components/ui/Loader";
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 
 // Modularized components
 import KanbanCard from './kanban/KanbanCard';
@@ -247,62 +248,7 @@ const KanbanBoard = () => {
   };
 
 
-  const renderMarkdown = (text) => {
-    if (!text) return '';
-    
-    // Escape HTML to prevent XSS before we add our own tags
-    let rendered = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
 
-    // 1. Handle user mentions @name@email.com -> <span class="mention">@Name</span>
-    rendered = rendered.replace(/@(\S+?)@(\S+?\.\S+)/g, (match, name, email) => {
-       return `<span class="px-1.5 py-0.5 bg-blue-100 text-[#0052cc] rounded font-bold text-[13px] border border-blue-200 cursor-default hover:bg-blue-200 transition-colors">@${name}</span>`;
-    });
-
-    // 2. Handle Markdown bold/italic
-    rendered = rendered
-      .replace(/\*\*\*(.*?)\*\*\*/g, '<strong class="font-bold italic text-zinc-900">$1</strong>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-zinc-900">$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em class="italic font-semibold text-zinc-800">$1</em>')
-      .replace(/__(.*?)__/g, '<strong class="font-bold text-zinc-900">$1</strong>')
-      .replace(/_(.*?)_/g, '<em class="italic font-semibold text-zinc-800">$1</em>');
-    
-    // 3. Handle Lists (starting with - or *)
-    rendered = rendered.split('\n').map(line => {
-       const listMatch = line.match(/^(\s*)([-*])\s+(.*)/);
-       if (listMatch) {
-          return `${listMatch[1]}<li class="ml-4 list-disc text-[14px] leading-relaxed mb-1 font-medium">${listMatch[3]}</li>`;
-       }
-       return line;
-    }).join('\n');
-
-    // 4. Handle Links formatted as [label](url)
-    rendered = rendered.replace(/\[(.*?)\]\((.*?)\)/g, (match, label, url) => {
-       const targetUrl = url.trim();
-       if (!targetUrl || targetUrl === 'url') {
-          // If URL part is 'url' or empty, check if label is a URL
-          if (label.match(/^(https?:\/\/|www\.)/)) {
-             const fullUrl = label.startsWith('www.') ? `https://${label}` : label;
-             return `<span class="text-[#0052cc] hover:underline cursor-pointer font-bold" onclick="window.open(\'${fullUrl}\', \'_blank\')">${label}</span>`;
-          }
-          return match; // Return as is if no valid URL found
-       }
-       const fullUrl = targetUrl.startsWith('www.') ? `https://${targetUrl}` : targetUrl;
-       return `<span class="text-[#0052cc] hover:underline cursor-pointer font-bold" onclick="window.open(\'${fullUrl}\', \'_blank\')">${label}</span>`;
-    });
-    
-    // 5. Handle raw URLs (that aren't already part of a link)
-    rendered = rendered.replace(/(?<![">])(?<=\s|^)((?:https?:\/\/|www\.)[^\s<]+)/g, (match) => {
-       const fullUrl = match.startsWith('www.') ? `https://${match}` : match;
-       return `<span class="text-[#0052cc] hover:underline cursor-pointer font-bold" onclick="window.open(\'${fullUrl}\', \'_blank\')">${match}</span>`;
-    });
-
-    return rendered;
-  };
 
   const getTimeAgo = (date) => {
     const diff = new Date() - new Date(date);
@@ -770,7 +716,7 @@ const KanbanBoard = () => {
                 <Badge variant="outline" className="text-[10px] uppercase font-medium bg-zinc-50">{boardData?.team?.name}</Badge>
               )}
             </div>
-            <p className="text-zinc-500 text-xs font-normal">{boardData?.description}</p>
+            <div className="text-zinc-500 text-xs font-normal"><MarkdownRenderer content={boardData?.description} /></div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -1052,7 +998,7 @@ const KanbanBoard = () => {
             handleRemoveChecklist={handleRemoveChecklist}
             handleAddSubTask={handleAddSubTask}
             getTimeAgo={getTimeAgo}
-            renderMarkdown={renderMarkdown}
+
           />
         </Suspense>
       )}

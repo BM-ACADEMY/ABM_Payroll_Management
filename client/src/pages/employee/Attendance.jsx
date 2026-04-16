@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,12 @@ import {
   Building2,
   LogOut,
   List,
-  LayoutGrid
+  LayoutGrid,
+  MapPin,
+  LogIn,
+  Fingerprint
 } from "lucide-react";
+import { getCurrentLocation } from '@/utils/location';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { parse, format } from 'date-fns';
 import axios from 'axios';
@@ -56,24 +60,29 @@ const Attendance = () => {
   const [viewMode, setViewMode] = useState('list'); // 'list', 'table', 'calendar'
   const [filterPeriod, setFilterPeriod] = useState('monthly'); // 'weekly', 'monthly'
   const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     fetchCurrentStatus();
     fetchUserTimings();
     fetchEstimatedEarnings();
-    fetchAttendanceLogs();
+    fetchLogs();
   }, [filterPeriod]);
 
-  const fetchAttendanceLogs = async () => {
+  const fetchLogs = async () => {
     setLogsLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/logs`, {
-        headers: { 'x-auth-token': token }
-      });
-      // Sort and filter handled client-side for better UX in this small-scale app
-      setAttendanceLogs(res.data);
+      const headers = { 'x-auth-token': token };
+      
+      const [attendRes, auditRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/logs`, { headers }),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/audit-logs`, { headers })
+      ]);
+      
+      setAttendanceLogs(attendRes.data);
+      setAuditLogs(auditRes.data);
     } catch (err) {
       console.error("Error fetching logs:", err);
     } finally {
@@ -133,8 +142,12 @@ const Attendance = () => {
     }
   };
 
+  // Replaced local function with utility import
+
   const handleAction = async (action) => {
     setLoading(true);
+    const location = await getCurrentLocation();
+    
     try {
       const token = sessionStorage.getItem('token');
       const config = { headers: { 'x-auth-token': token } };
@@ -144,7 +157,8 @@ const Attendance = () => {
         case 'check-in':
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/checkin`, { 
             mode: workingMode,
-            lateReason: '' 
+            lateReason: '',
+            location
           }, config);
           setAttendanceState('working');
           setSessionTimes(prev => ({ ...prev, checkIn: res.data.checkIn.time }));
@@ -184,7 +198,8 @@ const Attendance = () => {
           break;
         case 'check-out':
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/checkout`, { 
-            reason: '' 
+            reason: '',
+            location
           }, config);
           setAttendanceState('completed');
           setSessionTimes(prev => ({ ...prev, checkOut: res.data.checkOut.time }));
@@ -220,19 +235,29 @@ const Attendance = () => {
   const StatusConfig = getStatusConfig(attendanceState);
   const StatusIcon = StatusConfig.icon;
 
-  const filteredLogs = attendanceLogs.filter(log => {
-     if (filterPeriod === 'weekly') {
+  const combinedLogs = useMemo(() => {
+    const logs = [
+      ...attendanceLogs.map(l => ({ ...l, type: 'attendance', timestamp: new Date(l.date + (l.checkIn?.time ? 'T' + l.checkIn.time : '')) })),
+      ...auditLogs.map(l => ({ ...l, type: 'audit', timestamp: new Date(l.timestamp) }))
+    ];
+    
+    // Sort by timestamp descending
+    logs.sort((a, b) => b.timestamp - a.timestamp);
+
+    return logs.filter(log => {
+      if (filterPeriod === 'weekly') {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(log.date) >= weekAgo;
-     }
-     return true; // monthly or all for now
-  });
+        return log.timestamp >= weekAgo;
+      }
+      return true;
+    });
+  }, [attendanceLogs, auditLogs, filterPeriod]);
 
   const stats = [
     { label: 'Avg. Login', value: '09:12 AM', icon: Clock },
     { label: 'On-Time Rate', value: '94%', icon: CheckCircle2 },
-    { label: 'Active Days', value: filteredLogs.length, icon: Calendar },
+    { label: 'Active Days', value: combinedLogs.filter(l => l.type === 'attendance').length, icon: Calendar },
     { label: 'Perm. Used', value: `${estimatedEarnings?.totalPermissionHours || 0}h`, icon: Timer },
     { label: 'Est. Salary', value: `₹${estimatedEarnings?.estimatedNetSalary?.toLocaleString() || 0}`, icon: TrendingUp }
   ];
@@ -617,35 +642,93 @@ const Attendance = () => {
                  <>
                    {viewMode === 'list' ? (
                      <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {filteredLogs.map((log, i) => (
-                          <div key={i} className="group p-6 rounded-[2rem] border border-gray-100 bg-white hover:border-[#fffe01] hover:shadow-xl transition-all duration-500 flex flex-col gap-6 relative overflow-hidden">
+                        {combinedLogs.map((log, i) => (
+                          <div key={i} className={`group p-6 rounded-[2rem] border border-gray-100 bg-white hover:border-[#fffe01] hover:shadow-xl transition-all duration-500 flex flex-col gap-6 relative overflow-hidden ${log.type === 'audit' ? 'border-dashed' : ''}`}>
                             <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50 rounded-bl-[4rem] flex items-center justify-center group-hover:bg-[#fffe01]/10 transition-colors">
-                               <span className="text-2xl font-medium text-gray-300 group-hover:text-black transition-colors">{new Date(log.date).getDate()}</span>
+                               <span className="text-2xl font-medium text-gray-300 group-hover:text-black transition-colors">{new Date(log.timestamp).getDate()}</span>
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.2em]">{format(new Date(log.date), 'EEEE')}</span>
-                              <h4 className="text-lg font-medium text-gray-900 tracking-tight">{format(new Date(log.date), 'MMMM dd, yyyy')}</h4>
+                              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.2em]">{format(new Date(log.timestamp), 'EEEE')}</span>
+                              <h4 className="text-lg font-medium text-gray-900 tracking-tight">{format(new Date(log.timestamp), 'MMMM dd, yyyy')}</h4>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                               <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
-                                  <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">In</span>
-                                  <span className="text-sm font-medium text-gray-900">{log.checkIn?.time || '--:--'}</span>
-                               </div>
-                               <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
-                                  <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">Out</span>
-                                  <span className="text-sm font-medium text-gray-900">{log.checkOut?.time || '--:--'}</span>
-                               </div>
-                            </div>
-                            <div className="flex justify-between items-center">
-                               <Badge className={`uppercase text-[10px] font-bold tracking-widest py-1.5 px-4 rounded-full border-0 ${
-                                 log.status?.includes('late') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                               }`}>
-                                 {log.status || 'Verified'}
-                               </Badge>
-                               {log.checkIn?.mode && (
-                                 <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.2em]">{log.checkIn.mode}</span>
-                               )}
-                            </div>
+
+                            {log.type === 'attendance' ? (
+                              <>
+                                <div className="grid grid-cols-2 gap-4">
+                                   <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
+                                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">In</span>
+                                      <span className="text-sm font-medium text-gray-900">{log.checkIn?.time || '--:--'}</span>
+                                   </div>
+                                   <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
+                                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">Out</span>
+                                      <span className="text-sm font-medium text-gray-900">{log.checkOut?.time || '--:--'}</span>
+                                   </div>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                   <div className="flex items-center gap-2">
+                                      <Badge className={`uppercase text-[10px] font-bold tracking-widest py-1.5 px-4 rounded-full border-0 ${
+                                        log.status?.includes('late') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                                      }`}>
+                                        <Fingerprint className="w-3 h-3 mr-2" />
+                                        {log.status || 'Duty'}
+                                      </Badge>
+                                      {(log.checkIn?.location || log.checkOut?.location) && (
+                                        <div className="flex gap-1">
+                                          {log.checkIn?.location && (
+                                            <a 
+                                              href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
+                                              title="Check-in Location"
+                                            >
+                                              <MapPin className="w-3 h-3" />
+                                            </a>
+                                          )}
+                                          {log.checkOut?.location && (
+                                            <a 
+                                              href={`https://www.google.com/maps?q=${log.checkOut.location.lat},${log.checkOut.location.lng}`} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
+                                              title="Check-out Location"
+                                            >
+                                              <MapPin className="w-3 h-3" />
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+                                   </div>
+                                   {log.checkIn?.mode && (
+                                     <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.2em]">{log.checkIn.mode}</span>
+                                   )}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-3 rounded-xl ${log.action === 'LOGIN' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
+                                    {log.action === 'LOGIN' ? <LogIn className="w-5 h-5" /> : <LogOut className="w-5 h-5" />}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{log.action === 'LOGIN' ? 'System Login' : 'System Logout'}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">{format(new Date(log.timestamp), 'hh:mm:ss a')}</p>
+                                  </div>
+                                </div>
+                                
+                                {log.location && (
+                                  <a 
+                                    href={`https://www.google.com/maps?q=${log.location.lat},${log.location.lng}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-black hover:text-[#fffe01] transition-all group-hover:scale-110"
+                                    title="Auth Location"
+                                  >
+                                    <MapPin className="w-4 h-4" />
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                      </div>
@@ -661,12 +744,12 @@ const Attendance = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredLogs.map((log, i) => (
+                          {combinedLogs.filter(l => l.type === 'attendance').map((log, i) => (
                             <TableRow key={i} className="h-20 hover:bg-gray-50/50 transition-colors border-gray-50">
                               <TableCell className="pl-10 font-medium text-gray-900">
                                  <div className="flex flex-col">
-                                   <span>{format(new Date(log.date), 'MMM dd, yyyy')}</span>
-                                   <span className="text-[10px] text-gray-400 uppercase tracking-tighter">{format(new Date(log.date), 'EEEE')}</span>
+                                   <span>{format(new Date(log.timestamp), 'MMM dd, yyyy')}</span>
+                                   <span className="text-[10px] text-gray-400 uppercase tracking-tighter">{format(new Date(log.timestamp), 'EEEE')}</span>
                                  </div>
                               </TableCell>
                               <TableCell>
@@ -679,12 +762,40 @@ const Attendance = () => {
                                  <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-gray-200">{log.checkIn?.mode || 'OFFICE'}</Badge>
                               </TableCell>
                               <TableCell className="text-right pr-10">
-                                 <Badge className={`uppercase text-[9px] font-bold tracking-widest py-1 px-3 rounded-full border-0 ${
-                                   log.status?.includes('late') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                                 }`}>
-                                   {log.status || 'Present'}
-                                 </Badge>
-                              </TableCell>
+                                 <div className="flex items-center justify-end gap-2">
+                                   {(log.checkIn?.location || log.checkOut?.location) && (
+                                      <div className="flex gap-1 mr-2">
+                                        {log.checkIn?.location && (
+                                          <a 
+                                            href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="p-1 text-emerald-600 hover:text-emerald-700 transition-colors"
+                                            title="Check-in Location"
+                                          >
+                                            <MapPin className="w-3.5 h-3.5" />
+                                          </a>
+                                        )}
+                                        {log.checkOut?.location && (
+                                          <a 
+                                            href={`https://www.google.com/maps?q=${log.checkOut.location.lat},${log.checkOut.location.lng}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="p-1 text-rose-600 hover:text-rose-700 transition-colors"
+                                            title="Check-out Location"
+                                          >
+                                            <MapPin className="w-3.5 h-3.5" />
+                                          </a>
+                                        )}
+                                      </div>
+                                   )}
+                                   <Badge className={`uppercase text-[9px] font-bold tracking-widest py-1 px-3 rounded-full border-0 ${
+                                     log.status?.includes('late') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                                   }`}>
+                                     {log.status || 'Present'}
+                                   </Badge>
+                                 </div>
+                               </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

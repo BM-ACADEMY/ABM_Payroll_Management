@@ -15,21 +15,39 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifUnread, setNotifUnread] = useState(0);
 
   useEffect(() => {
     // Socket handled via shared service
     socket.on('notification', (data) => {
-      // Check if this notification is for the current logged in user
-      const currentUserId = sessionStorage.getItem('userId') || (user?.id);
-      if (data.userId === currentUserId) {
+      // 1. Common system notifications (like work off)
+      if (data.type === 'work_off') {
         toast({
-          title: "New Mention",
+          title: "Important Update",
           description: data.message,
           variant: "default",
           className: "bg-black text-[#fffe01] border-none rounded-2xl shadow-2xl"
         });
+        fetchNotifUnread();
+      }
+      
+      // 2. Direct notifications (like mentions)
+      const currentUserId = sessionStorage.getItem('userId') || (user?.id);
+      if (data.userId === currentUserId) {
+        toast({
+          title: "New Alert",
+          description: data.message,
+          variant: "default",
+          className: "bg-black text-[#fffe01] border-none rounded-2xl shadow-2xl"
+        });
+        fetchNotifUnread();
       }
     });
+
+    fetchNotifUnread();
 
     if (user?.role?.name === 'admin') {
       fetchUnreadCount();
@@ -51,6 +69,48 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
       }
     };
   }, [user, toast]);
+
+  const fetchNotifUnread = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      if (!token) return;
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/unread-count`, {
+        headers: { 'x-auth-token': token }
+      });
+      setNotifUnread(res.data.count);
+    } catch (err) {
+      console.error("Error fetching notif unread:", err);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications`, {
+        headers: { 'x-auth-token': token }
+      });
+      setNotifications(res.data);
+      if (showNotifications) {
+        // Mark all as read when opening if they hasn't been already
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/read-all`, {}, {
+          headers: { 'x-auth-token': token }
+        });
+        setNotifUnread(0);
+      }
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const toggleNotifications = () => {
+    if (!showNotifications) {
+      fetchNotifications();
+    }
+    setShowNotifications(!showNotifications);
+  };
 
   const fetchUnreadCount = async () => {
     try {
@@ -169,8 +229,9 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
             size="icon"
             onClick={() => navigate('/admin/permissions')}
             className="text-gray-500 hover:text-black hover:bg-gray-100 relative"
+            title="Admin Requests"
           >
-            <Bell className="w-5 h-5" />
+            <ShieldCheck className="w-5 h-5" />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-4 h-4 bg-[#fffe01] rounded-full border-2 border-white text-[8px] font-medium text-black flex items-center justify-center animate-bounce">
                 {unreadCount}
@@ -178,6 +239,65 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
             )}
           </Button>
         )}
+
+        {/* User Notifications */}
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleNotifications}
+            className="text-gray-500 hover:text-black hover:bg-gray-100 relative"
+          >
+            <Bell className="w-5 h-5" />
+            {notifUnread > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-black rounded-full border-2 border-white text-[8px] font-medium text-[#fffe01] flex items-center justify-center">
+                {notifUnread}
+              </span>
+            )}
+          </Button>
+
+          {showNotifications && (
+            <>
+              <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotifications(false)}></div>
+              <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-black">Notifications</h3>
+                  {notifUnread > 0 && <span className="text-[10px] text-gray-400 font-medium">{notifUnread} New</span>}
+                </div>
+                <div className="max-h-[400px] overflow-y-auto">
+                  {notifLoading ? (
+                    <div className="p-8 text-center text-xs text-gray-400 uppercase tracking-widest animate-pulse">Loading Alerts...</div>
+                  ) : notifications.length > 0 ? (
+                    notifications.map((n, i) => (
+                      <div key={i} className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-[#fffe01]/5' : ''}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-[#fffe01]' : 'bg-gray-200'}`}></div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-black leading-snug">{n.title}</p>
+                            <p className="text-[11px] text-gray-500 font-normal leading-relaxed">{n.message}</p>
+                            <p className="text-[9px] text-gray-400 font-normal pt-1">{new Date(n.createdAt).toLocaleDateString()} at {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-12 text-center">
+                      <p className="text-xs text-gray-400 font-normal">All clear! No alerts.</p>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                   <button 
+                     onClick={() => navigate(user?.role?.name === 'admin' ? '/admin' : '/dashboard')} 
+                     className="text-[10px] font-bold text-black uppercase tracking-widest hover:underline"
+                   >
+                     View Control Center
+                   </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
         <div className="h-6 w-[1px] bg-gray-200 mx-2"></div>
         <Button
           variant="ghost"

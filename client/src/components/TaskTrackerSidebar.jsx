@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from 'date-fns';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 
 const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChange, settings }) => {
   const [seconds, setSeconds] = useState(0);
@@ -56,24 +57,7 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderTextWithLinks = (text) => {
-    if (!text) return null;
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    return parts.map((part, index) => 
-      urlRegex.test(part) ? (
-        <a 
-          key={index} 
-          href={part} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="underline text-blue-400 hover:text-blue-300 break-all transition-colors"
-        >
-          {part}
-        </a>
-      ) : part
-    );
-  };
+
 
   const isOverLimit = settings && seconds > settings.taskTimeLimit * 3600;
 
@@ -153,7 +137,7 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
                                     </Button>
                                 </div>
                             ) : (
-                                <p className="text-[10px] leading-relaxed text-zinc-400 font-medium">{renderTextWithLinks(c.text)}</p>
+                                <div className="text-[10px] leading-relaxed text-zinc-400 font-medium"><MarkdownRenderer content={c.text} /></div>
                             )}
                             
                             {/* Improved Action Overlay */}
