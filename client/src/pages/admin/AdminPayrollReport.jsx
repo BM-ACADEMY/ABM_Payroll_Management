@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import PaginationControl from '@/components/ui/PaginationControl';
+import Loader from "@/components/ui/Loader";
 
 const AdminPayrollReport = () => {
   const [loading, setLoading] = useState(false);
@@ -175,9 +176,7 @@ const AdminPayrollReport = () => {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-32 text-center text-slate-500">
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black"></div>
-                    </div>
+                    <Loader size="md" color="red" />
                   </TableCell>
                 </TableRow>
               ) : employees.length === 0 ? (
@@ -282,7 +281,7 @@ const AdminPayrollReport = () => {
                   </Button>
                   <Button type="submit" disabled={generatingLoading} className="rounded-xl h-12 px-8 bg-black hover:bg-zinc-900 text-[#fffe01] font-bold shadow-lg flex items-center gap-2">
                     {generatingLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white"></div>
+                      <Loader size="sm" color="white" />
                     ) : (
                       <Calculator className="w-4 h-4" />
                     )}

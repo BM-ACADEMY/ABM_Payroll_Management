@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import Loader from "@/components/ui/Loader";
 import { Eye, EyeOff } from "lucide-react";
 
 
@@ -141,7 +142,7 @@ const ResetPassword = () => {
               disabled={loading || otp.length !== 6 || newPassword.length < 6}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Resetting password...' : 'Reset Password'}
+              {loading ? <Loader size="sm" color="white" /> : 'Reset Password'}
             </Button>
             
             <div className="flex flex-col space-y-3 pt-2">
@@ -153,7 +154,7 @@ const ResetPassword = () => {
                   disabled={resendLoading}
                   className="text-indigo-600 hover:text-indigo-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {resendLoading ? 'Sending...' : 'Click to resend'}
+                  {resendLoading ? <Loader size="sm" color="indigo" /> : 'Click to resend'}
                 </button>
               </div>
               <div className="text-center text-sm text-gray-500">

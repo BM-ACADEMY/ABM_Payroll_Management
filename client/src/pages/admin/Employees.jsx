@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
 import { hasPermission } from '@/utils/permissionUtils';
 import { useAuth } from '@/context/AuthContext';
+import Loader from '@/components/ui/Loader';
 
 const MODULES = [
   { id: 'employees', label: 'Employees' },
@@ -505,8 +506,8 @@ const Employees = () => {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black"></div>
+            <div className="py-12">
+              <Loader size="md" color="red" />
             </div>
           ) : employees.length === 0 ? (
              <div className="text-center py-12 text-gray-500">No employees found. Add one to get started.</div>

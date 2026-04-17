@@ -13,6 +13,20 @@ const KanbanCard = ({ task, index, onClick }) => {
           onClick={onClick} 
           className="bg-white p-4 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)] transition-all hover:-translate-y-1 cursor-pointer group border border-zinc-100 hover:border-yellow-400 active:scale-[0.98] duration-300"
         >
+          {/* Label section */}
+          {task.labels && task.labels.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {task.labels.map((l, i) => (
+                <div 
+                  key={i} 
+                  style={{ backgroundColor: l.color }} 
+                  className="h-1.5 w-8 rounded-full shadow-sm"
+                  title={l.text}
+                />
+              ))}
+            </div>
+          )}
+          
           <div className="flex items-start justify-between mb-2">
             <h4 className={`text-sm font-semibold text-zinc-900 group-hover:text-[#d30614] transition-all leading-snug ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}>
               {task.title}

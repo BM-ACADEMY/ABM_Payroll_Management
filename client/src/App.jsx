@@ -3,7 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import TaskTrackerSidebar from './components/TaskTrackerSidebar';
-import { Timer } from 'lucide-react';
+import SitePhotoSidebar from './components/SitePhotoSidebar';
+import { Timer, Camera } from 'lucide-react';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Loader from "@/components/ui/Loader";
 
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -30,6 +33,7 @@ const KanbanBoards = lazy(() => import('./pages/admin/KanbanBoards'));
 const KanbanBoard = lazy(() => import('./pages/admin/KanbanBoard'));
 const Analytics = lazy(() => import('./pages/admin/Analytics'));
 const TimeHistory = lazy(() => import('./pages/TimeHistory'));
+const SitePhotoHistory = lazy(() => import('./pages/SitePhotoHistory'));
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from './components/ui/toaster';
 
@@ -38,6 +42,8 @@ function AppContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
+  const [isSitePhotoOpen, setIsSitePhotoOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, type: '', data: null, title: '', description: '' });
 
   useEffect(() => {
     const handleResize = () => {
@@ -67,8 +73,8 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader size="lg" color="red" />
       </div>
     );
   }
@@ -91,16 +97,35 @@ function AppContent() {
               onClose={() => setIsTrackerOpen(false)} 
               user={user} 
             />
-            {/* Floating Tracker Toggle */}
-            <button 
-              onClick={() => setIsTrackerOpen(!isTrackerOpen)}
-              className="fixed bottom-8 right-8 w-16 h-16 bg-[#fffe01] text-black rounded-full shadow-2xl flex items-center justify-center z-[55] hover:scale-110 active:scale-95 transition-all group"
-            >
-              <Timer className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-              <div className="absolute -top-2 -right-2 bg-black text-[#fffe01] text-[10px] font-bold px-2 py-1 rounded-full border border-[#fffe01] opacity-0 group-hover:opacity-100 transition-opacity">
-                TRACKER
-              </div>
-            </button>
+            <SitePhotoSidebar 
+              isOpen={isSitePhotoOpen} 
+              onClose={() => setIsSitePhotoOpen(false)} 
+              user={user} 
+            />
+            {/* Floating Toggle Buttons */}
+            <div className="fixed bottom-8 right-8 flex flex-col gap-4 z-[55]">
+              {/* Tracker Toggle */}
+              <button 
+                onClick={() => setIsTrackerOpen(!isTrackerOpen)}
+                className="w-16 h-16 bg-[#fffe01] text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative"
+              >
+                <Timer className="w-8 h-8 group-hover:rotate-12 transition-transform" />
+                <div className="absolute right-full mr-4 bg-black text-[#fffe01] text-[10px] font-bold px-2 py-1 rounded-full border border-[#fffe01] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  TRACKER
+                </div>
+              </button>
+
+              {/* Site Photo Toggle */}
+              <button 
+                onClick={() => setIsSitePhotoOpen(!isSitePhotoOpen)}
+                className="w-16 h-16 bg-white text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative border border-zinc-200"
+              >
+                <Camera className="w-8 h-8 group-hover:scale-110 transition-transform text-zinc-800" />
+                <div className="absolute right-full mr-4 bg-black text-white text-[10px] font-bold px-2 py-1 rounded-full border border-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  SITE PHOTOS
+                </div>
+              </button>
+            </div>
           </>
         )}
         <div 
@@ -118,8 +143,8 @@ function AppContent() {
           )}
           <main className="flex-1">
             <Suspense fallback={
-              <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+              <div className="flex-1 flex items-center justify-center bg-white min-h-[400px]">
+                <Loader size="lg" color="red" />
               </div>
             }>
               <Routes>
@@ -189,6 +214,10 @@ function AppContent() {
                   element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <TimeHistory /> : <Navigate to="/login" />}
                 />
                 <Route
+                  path="/admin/site-photos"
+                  element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <SitePhotoHistory /> : <Navigate to="/login" />}
+                />
+                <Route
                   path="/admin/profile"
                   element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <Profile setUser={handleSetUser} /> : <Navigate to="/login" />}
                 />
@@ -227,6 +256,10 @@ function AppContent() {
                 <Route
                   path="/dashboard/time-history"
                   element={user ? <TimeHistory /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/dashboard/site-photos"
+                  element={user ? <SitePhotoHistory /> : <Navigate to="/login" />}
                 />
                 <Route path="/" element={<Navigate to={user ? (['admin', 'subadmin'].includes(user.role?.name) ? '/admin' : '/dashboard') : '/login'} />} />
               </Routes>

@@ -16,6 +16,7 @@ import {
   CheckCircle2
 } from "lucide-react";
 import axios from 'axios';
+import Loader from "@/components/ui/Loader";
 import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
@@ -193,7 +194,7 @@ const LeaveRequest = () => {
                 disabled={formLoading}
                 className="w-full h-16 bg-[#fffe01] hover:bg-indigo-600 text-black font-medium text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95"
               >
-                {formLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Apply for Leave'}
+                {formLoading ? <Loader size="sm" color="white" /> : 'Apply for Leave'}
               </Button>
             </form>
           </CardContent>
@@ -213,7 +214,7 @@ const LeaveRequest = () => {
           <CardContent className="p-0">
             {loading ? (
               <div className="p-12 flex justify-center">
-                <Loader2 className="w-8 h-8 text-black animate-spin" />
+                <Loader size="md" color="red" />
               </div>
             ) : requests.length === 0 ? (
               <div className="p-20 text-center space-y-4">

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
+import Loader from "@/components/ui/Loader";
 
 
 const Signup = () => {
@@ -120,7 +121,7 @@ const Signup = () => {
               disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all duration-200 ease-in-out"
             >
-              {loading ? 'Creating account...' : 'Sign up'}
+              {loading ? <Loader size="sm" color="white" /> : 'Sign up'}
             </Button>
             <div className="text-center text-sm text-gray-500">
               Already have an account? {' '}

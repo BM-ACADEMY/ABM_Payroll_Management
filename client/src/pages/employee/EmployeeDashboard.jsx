@@ -18,11 +18,13 @@ import {
   Wallet,
   Clock,
   Trophy,
-  MessageSquare
+  MessageSquare,
+  MapPin
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import axios from 'axios';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import Loader from "@/components/ui/Loader";
 
 const COLORS = ['#fffe01', '#000000', '#f3f4f6']; // Early, Late, Future
 
@@ -210,7 +212,7 @@ const EmployeeDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <div className="w-12 h-12 border-4 border-gray-100 border-t-[#fffe01] rounded-full animate-spin"></div>
+        <Loader size="lg" color="red" />
         <p className="text-sm font-medium text-gray-400 uppercase tracking-widest">Synchronizing Dashboard...</p>
       </div>
     );
@@ -527,9 +529,22 @@ const EmployeeDashboard = () => {
                               Sch: {log.schedule.loginTime}
                             </span>
                           )}
-                          <span className={`px-3 py-1.5 rounded-lg text-sm font-medium w-fit ${log.checkIn?.status === 'late' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                              {log.checkIn?.time || '--:--'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                             <span className={`px-3 py-1.5 rounded-lg text-sm font-medium w-fit ${log.checkIn?.status === 'late' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                 {log.checkIn?.time || '--:--'}
+                             </span>
+                             {log.checkIn?.location && (
+                               <a 
+                                 href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
+                                 target="_blank" 
+                                 rel="noopener noreferrer"
+                                 className="text-emerald-600 hover:scale-110 transition-transform"
+                                 title="View Location"
+                               >
+                                 <MapPin className="w-3.5 h-3.5" />
+                               </a>
+                             )}
+                          </div>
                        </div>
                     </TableCell>
                     <TableCell>
@@ -539,9 +554,22 @@ const EmployeeDashboard = () => {
                               Sch: {log.schedule.logoutTime}
                             </span>
                           )}
-                          <span className="bg-zinc-900 text-[#fffe01] px-3 py-1.5 rounded-lg text-sm font-medium w-fit">
-                             {log.checkOut?.time || '--:--'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                             <span className="bg-zinc-900 text-[#fffe01] px-3 py-1.5 rounded-lg text-sm font-medium w-fit">
+                                {log.checkOut?.time || '--:--'}
+                             </span>
+                             {log.checkOut?.location && (
+                               <a 
+                                 href={`https://www.google.com/maps?q=${log.checkOut.location.lat},${log.checkOut.location.lng}`} 
+                                 target="_blank" 
+                                 rel="noopener noreferrer"
+                                 className="text-[#fffe01] hover:scale-110 transition-transform"
+                                 title="View Location"
+                               >
+                                 <MapPin className="w-3.5 h-3.5" />
+                               </a>
+                             )}
+                          </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-center">

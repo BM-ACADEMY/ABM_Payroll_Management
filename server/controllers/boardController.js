@@ -6,6 +6,7 @@ const CardHistory = require('../models/CardHistory');
 const User = require('../models/User');
 const Team = require('../models/Team');
 const mongoose = require('mongoose');
+const Role = require('../models/Role');
 
 // --- Board Operations ---
 
@@ -36,14 +37,19 @@ exports.getSpecialBoard = async (req, res) => {
     let board = await Board.findOne({ team: teamId, type });
     
     if (!board) {
+      // Find system admins to set as board admins
+      const adminRole = await Role.findOne({ name: 'admin' });
+      const systemAdmins = await User.find({ role: adminRole?._id }).select('_id');
+      const adminIds = systemAdmins.map(a => a._id);
+
       // Auto-create
       board = new Board({
         title: type === 'daily' ? 'Daily Board' : 'Weekly Board',
         description: type === 'daily' ? 'Daily tasks and progress' : 'Weekly focus and goals',
         team: teamId,
         type,
-        admins: [req.user.id],
-        members: [req.user.id]
+        admins: adminIds.length > 0 ? adminIds : [req.user.id], // Fallback to creator if no admin role found
+        members: Array.from(new Set([...adminIds, req.user.id])) // Creator must be a member
       });
       await board.save();
       
@@ -103,8 +109,8 @@ exports.getSpecialBoard = async (req, res) => {
 
     res.json({ board: populatedBoard, lists, tasks: tasksWithCounts });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -127,23 +133,30 @@ exports.createBoard = async (req, res) => {
       return res.status(400).json({ msg: 'Team selection is required' });
     }
 
+    // Find system admins to set as board admins
+    const adminRole = await Role.findOne({ name: 'admin' });
+    const systemAdmins = await User.find({ role: adminRole?._id }).select('_id');
+    const adminIds = systemAdmins.map(a => a._id);
+
     // Auto-populate members: All users currently assigned to this team
     const teamMembers = await User.find({ teams: targetTeamId }).select('_id');
     const memberIds = teamMembers.map(m => m._id);
     
-    // Ensure the creator is also an admin of the board
+    // Ensure the creator is also an admin of the board ONLY if they are a system admin
+    const isSystemAdmin = String(req.user.role?._id || req.user.role) === String(adminRole?._id);
+
     const board = new Board({
       title,
       description,
       team: targetTeamId,
-      admins: [req.user.id],
-      members: Array.from(new Set([...memberIds, req.user.id])) // Unique IDs including creator
+      admins: adminIds.length > 0 ? adminIds : [req.user.id], // Fallback to creator if no admin role found
+      members: Array.from(new Set([...memberIds, ...adminIds, req.user.id])) // Unique IDs including creator and admins
     });
     await board.save();
     res.json(board);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -167,41 +180,13 @@ exports.getBoardsByTeam = async (req, res) => {
     
     const boards = await Board.find(query).populate('team', 'name');
     
-    // Auto-create "Upcoming Projects" if no regular boards exist
-    if (boards.length === 0) {
-      const teamId = req.params.teamId;
-      const team = await Team.findById(teamId);
-      if (team) {
-        const defaultBoard = new Board({
-          title: 'Upcoming Projects',
-          description: 'A place to list all upcoming team projects and tasks',
-          team: teamId,
-          type: 'regular',
-          admins: [req.user.id],
-          members: [req.user.id]
-        });
-        await defaultBoard.save();
-        
-        // Add default lists
-        const defaultLists = ['To Do', 'In Process', 'Done'];
-        for (let i = 0; i < defaultLists.length; i++) {
-          const list = new List({
-            title: defaultLists[i],
-            board: defaultBoard._id,
-            position: i
-          });
-          await list.save();
-        }
-        
-        const populatedBoard = await Board.findById(defaultBoard._id).populate('team', 'name');
-        return res.json([populatedBoard]);
-      }
-    }
+    // Auto-create "Upcoming Projects" if no regular boards exist - REMOVED for manual control
+
     
     res.json(boards);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -256,8 +241,8 @@ exports.getBoardById = async (req, res) => {
 
     res.json({ board, lists, tasks: tasksWithCounts });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -271,8 +256,8 @@ exports.updateBoard = async (req, res) => {
 
     res.json(board);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -281,12 +266,12 @@ exports.deleteBoard = async (req, res) => {
     const board = await Board.findById(req.params.id);
     if (!board) return res.status(404).json({ msg: 'Board not found' });
 
-    // Access control: Only global admins/subadmins or board-level admins can delete boards
+    // Access control: Allow any member of the board to delete it (as requested)
+    const isMember = board.members.some(m => m.toString() === req.user.id);
     const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
                     req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
-    const isBoardAdmin = board.admins.some(a => a.toString() === req.user.id);
 
-    if (!isAdmin && !isBoardAdmin) {
+    if (!isAdmin && !isMember) {
       return res.status(403).json({ msg: 'Not authorized to delete this board' });
     }
 
@@ -306,8 +291,8 @@ exports.deleteBoard = async (req, res) => {
 
     res.json({ msg: 'Board deleted successfully' });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -334,8 +319,8 @@ exports.createList = async (req, res) => {
 
     res.json(list);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -349,8 +334,8 @@ exports.updateList = async (req, res) => {
 
     res.json(list);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -369,16 +354,25 @@ exports.deleteList = async (req, res) => {
 
     res.json({ msg: 'List deleted' });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
 // --- Task Operations ---
 
 exports.createTask = async (req, res) => {
-    const { title, description, listId, boardId, position, parentTaskId, originTaskId, originChecklistItemId, assignees, deadline } = req.body;
+    const { 
+      title, description, listId, boardId, position, 
+      parentTaskId, originTaskId, originChecklistItemId, 
+      assignees, deadline, labels, checklists 
+    } = req.body;
+    
     try {
+      if (!listId || !boardId) {
+        return res.status(400).json({ msg: 'List ID and Board ID are required' });
+      }
+
       const task = new Task({
         title,
         description,
@@ -389,7 +383,9 @@ exports.createTask = async (req, res) => {
         originTaskId: originTaskId || null,
         originChecklistItemId: originChecklistItemId || null,
         assignees: assignees || [],
-        deadline: deadline || null
+        deadline: deadline || null,
+        labels: labels || [],
+        checklists: checklists || []
       });
     await task.save();
 
@@ -408,8 +404,8 @@ exports.createTask = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -516,8 +512,8 @@ exports.updateTask = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -552,8 +548,8 @@ exports.getTaskDetails = async (req, res) => {
       subTasks 
     });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -572,8 +568,8 @@ exports.deleteTask = async (req, res) => {
 
     res.json({ msg: 'Task deleted' });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -618,8 +614,8 @@ exports.addComment = async (req, res) => {
 
     res.json(comment);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -661,7 +657,7 @@ exports.updateComment = async (req, res) => {
     }
     res.json(comment);
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -679,7 +675,7 @@ exports.deleteComment = async (req, res) => {
     }
     res.json({ msg: 'Comment deleted' });
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -700,7 +696,7 @@ exports.addChecklist = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -719,7 +715,7 @@ exports.addChecklistItem = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -756,7 +752,7 @@ exports.updateChecklistItem = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -775,7 +771,7 @@ exports.deleteChecklistItem = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -790,7 +786,7 @@ exports.updateLabels = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -808,7 +804,7 @@ exports.deleteChecklist = async (req, res) => {
 
     res.json(task);
   } catch (err) {
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -844,8 +840,8 @@ exports.addMemberToBoard = async (req, res) => {
 
     res.json(updatedBoard);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -855,12 +851,13 @@ exports.removeMemberFromBoard = async (req, res) => {
     const board = await Board.findById(req.params.id);
     if (!board) return res.status(404).json({ msg: 'Board not found' });
 
-    // Access control: ONLY system global admins/subadmins can "restrict" (remove) members
+    // Access control: Allow all members to manage participants (as requested)
+    const isMember = board.members.some(m => m.toString() === req.user.id);
     const isAdmin = req.user.role === 'admin' || req.user.role?.name === 'admin' || 
                     req.user.role === 'subadmin' || req.user.role?.name === 'subadmin';
 
-    if (!isAdmin) {
-      return res.status(403).json({ msg: 'Only system administrators can remove members from a board' });
+    if (!isAdmin && !isMember) {
+      return res.status(403).json({ msg: 'Not authorized to modify members on this board' });
     }
 
     // Pull from both members and admins
@@ -875,8 +872,8 @@ exports.removeMemberFromBoard = async (req, res) => {
     const updatedBoard = await Board.findById(req.params.id).populate('members', 'name email').populate('admins', 'name email');
     res.json(updatedBoard);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -885,8 +882,8 @@ exports.searchMembers = async (req, res) => {
     const users = await User.find({}).select('name email teams').populate('teams', 'name');
     res.json(users);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    console.error('Create Task Error:', err);
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };
 
@@ -956,6 +953,6 @@ exports.getBoardDestinations = async (req, res) => {
     res.json(destinations);
   } catch (err) {
     console.error('getBoardDestinations Error:', err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ msg: 'Server Error', error: err.message });
   }
 };

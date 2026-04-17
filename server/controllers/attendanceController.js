@@ -87,7 +87,8 @@ exports.checkIn = async (req, res) => {
         time: now, 
         mode, 
         status, 
-        permissionMinutes: Math.ceil(permissionMinutes) 
+        permissionMinutes: Math.ceil(permissionMinutes),
+        location: req.body.location || null
       }
     });
 
@@ -195,6 +196,9 @@ exports.checkOut = async (req, res) => {
     if (attendance.checkOut.time) return res.status(400).json({ msg: 'Already checked out today' });
 
     attendance.checkOut.time = now;
+    if (req.body.location) {
+      attendance.checkOut.location = req.body.location;
+    }
 
     // Early Logout Logic using Schedule Snapshot
     const schedule = await Schedule.findOne({ user: req.user.id, date: today });

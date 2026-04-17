@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { format, isSameDay } from 'date-fns';
 import socket from '@/services/socket';
 import PaginationControl from '@/components/ui/PaginationControl';
+import Loader from "@/components/ui/Loader";
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 
 const TimeHistory = () => {
   const [logs, setLogs] = useState([]);
@@ -91,24 +93,7 @@ const TimeHistory = () => {
     return format(new Date(dateString), 'hh:mm a');
   };
 
-  const renderTextWithLinks = (text) => {
-    if (!text) return null;
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    return parts.map((part, index) =>
-      urlRegex.test(part) ? (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-blue-600 hover:text-blue-800 break-all transition-colors"
-        >
-          {part}
-        </a>
-      ) : part
-    );
-  };
+
 
   const toggleRow = (id) => {
     const newExpanded = new Set(expandedRows);
@@ -258,7 +243,7 @@ const TimeHistory = () => {
 
         {loading ? (
           <div className="flex justify-center items-center py-24">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#fffe01]"></div>
+            <Loader size="lg" color="red" />
           </div>
         ) : groupedLogs.length === 0 ? (
           <div className="text-center py-24 bg-white border border-gray-100 rounded-3xl text-gray-400 font-medium">
@@ -429,7 +414,7 @@ const TimeHistory = () => {
                                                 </Button>
                                               </div>
                                             ) : (
-                                              <p className="text-xs text-gray-700 leading-normal">{renderTextWithLinks(comment.text)}</p>
+                                              <div className="text-xs text-gray-700 leading-normal"><MarkdownRenderer content={comment.text} /></div>
                                             )}
                                           </div>
                                         ))

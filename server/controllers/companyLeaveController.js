@@ -40,6 +40,28 @@ exports.addLeave = async (req, res) => {
 
     await Promise.all(attendancePromises);
 
+    // Create notifications for all employees
+    const Notification = require('../models/Notification');
+    const notificationPromises = employees.map(emp => {
+      const newNotification = new Notification({
+        user: emp._id,
+        title: 'Work Off Announced',
+        message: `A work off has been announced for ${date} due to: ${reason}`,
+        type: 'info'
+      });
+      return newNotification.save();
+    });
+    await Promise.all(notificationPromises);
+
+    // Emit real-time notification via Socket.io
+    if (req.io) {
+      req.io.emit('notification', {
+        type: 'work_off',
+        message: `Work off announced for ${date}`,
+        date
+      });
+    }
+
     res.json(leave);
   } catch (err) {
     console.error(err.message);

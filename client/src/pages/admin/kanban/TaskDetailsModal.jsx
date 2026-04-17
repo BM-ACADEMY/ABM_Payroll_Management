@@ -2,7 +2,7 @@ import {
   X, ChevronDown, MoreHorizontal, Plus, Tag, CheckSquare, 
   Paperclip, Layout, Bold, Italic, Link, MessageSquare,
   Check, Trash2, Edit2, Send, List, Bell, Calendar, Clock,
-  TrendingUp
+  TrendingUp, Copy
 } from 'lucide-react';
 import { memo, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import SubTaskItem from './SubTaskItem';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
+import Loader from '@/components/ui/Loader';
 
 const TaskDetailsModal = ({ 
   isOpen, 
@@ -31,7 +33,6 @@ const TaskDetailsModal = ({
   handleRemoveChecklist,
   handleAddSubTask,
   getTimeAgo,
-  renderMarkdown,
   handleUpdateComment,
   handleDeleteComment,
   handleDeleteTask,
@@ -64,6 +65,12 @@ const TaskDetailsModal = ({
   const [showActivityDetails, setShowActivityDetails] = useState(true);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef(null);
+
+  // Copy Flow State
+  const [copyFlowStep, setCopyFlowStep] = useState(0); // 0: main menu, 1: select type, 2: select board/list
+  const [copyTargetType, setCopyTargetType] = useState(null);
+  const [destinations, setDestinations] = useState([]);
+  const [isDestLoading, setIsDestLoading] = useState(false);
 
   // Date picker staging states
   const [tempStartDate, setTempStartDate] = useState('');
@@ -196,47 +203,70 @@ const TaskDetailsModal = ({
     setActiveInput(null);
   };
 
-  const handleCopyTask = async (targetType) => {
+  const handleCopyTask = async (targetType, targetBoardId = null, targetListId = null) => {
     try {
       const token = sessionStorage.getItem('token');
-      // 1. Get the special board
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${targetType}`, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      const targetBoard = res.data.board || res.data;
-      if (!targetBoard) throw new Error(`Could not find ${targetType} board`);
-      
-      // 2. Refresh the board/list IDs
-      const listsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${targetBoard._id}`, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      const targetLists = listsRes.data.lists || [];
-      let listId = targetLists[0]?._id;
-      let todayName = '';
+      let finalBoardId = targetBoardId;
+      let finalListId = targetListId;
 
-      if (targetType === 'daily') {
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        todayName = days[new Date().getDay()];
-        listId = targetLists.find(l => l.title === todayName)?._id || listId;
+      // If upcoming board was selected without a list, fetch lists for that board first
+      if (targetType === 'upcoming' && finalBoardId && (!finalListId || finalListId === 'auto')) {
+        const boardRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${finalBoardId}`, {
+          headers: { 'x-auth-token': token }
+        });
+        const targetLists = boardRes.data.lists || [];
+        if (targetLists.length === 0) {
+          toast({ variant: "destructive", title: "Error", description: "The selected board has no columns/lists to copy into." });
+          return;
+        }
+        finalListId = targetLists[0]._id;
       }
-      
-      if (!listId) {
-        toast({ variant: "destructive", title: "Error", description: "Target board has no columns" });
+
+      // If no boardId provided (special types), we need to fetch the special board
+      if (!finalBoardId && (targetType === 'weekly' || targetType === 'daily')) {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${targetType}?teamId=${boardData.team?._id || boardData.team}`, {
+          headers: { 'x-auth-token': token }
+        });
+        const targetBoard = res.data.board || res.data;
+        if (!targetBoard) throw new Error(`Could not find ${targetType} board`);
+        finalBoardId = targetBoard._id;
+        
+        if (!finalListId) {
+           const targetLists = res.data.lists || [];
+           if (targetType === 'daily') {
+             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+             const todayName = days[new Date().getDay()];
+             finalListId = targetLists.find(l => l.title === todayName)?._id || targetLists[0]?._id;
+           } else {
+             finalListId = targetLists[0]?._id;
+           }
+        }
+      }
+
+      if (!finalBoardId || !finalListId) {
+        toast({ variant: "destructive", title: "Error", description: "Destination not fully selected" });
         return;
       }
       
-      // 3. Perform conversion (Copy)
       const payload = {
         title: task.title,
         description: task.description || `Copied from ${boardData.title}`,
-        listId: listId,
-        boardId: targetBoard._id,
+        listId: finalListId,
+        boardId: finalBoardId,
         position: 0,
         deadline: task.deadline,
         assignees: task.assignees?.map(a => a._id || a) || [],
-        originTaskId: task._id
+        originTaskId: task._id,
+        labels: task.labels || [],
+        checklists: task.checklists?.map(cl => ({
+          name: cl.name,
+          items: cl.items?.map(item => ({
+            text: item.text,
+            isCompleted: item.isCompleted,
+            assignedTo: item.assignedTo?._id || item.assignedTo,
+            dueDate: item.dueDate
+          }))
+        })) || []
       };
       
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
@@ -245,9 +275,10 @@ const TaskDetailsModal = ({
       
       toast({ 
         title: "Success", 
-        description: `Copied to ${targetType === 'daily' ? `Daily Board (${todayName})` : 'Weekly Board'}.` 
+        description: `Task copied successfully.` 
       });
       setIsMoreMenuOpen(false);
+      setCopyFlowStep(0);
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Copy Error:', err);
@@ -255,10 +286,39 @@ const TaskDetailsModal = ({
     }
   };
 
+  const fetchDestinations = async (type) => {
+    setIsDestLoading(true);
+    setCopyTargetType(type);
+    try {
+      const token = sessionStorage.getItem('token');
+      const teamId = boardData.team?._id || boardData.team;
+      
+      if (type === 'upcoming') {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/team/${teamId}`, {
+          headers: { 'x-auth-token': token }
+        });
+        setDestinations(res.data);
+        setCopyFlowStep(2);
+      } else {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${type}?teamId=${teamId}`, {
+          headers: { 'x-auth-token': token }
+        });
+        setDestinations(res.data.lists || []);
+        // Save boardId for later
+        setCopyTargetType({ type, boardId: res.data.board?._id || res.data._id });
+        setCopyFlowStep(2);
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to fetch destinations" });
+    } finally {
+      setIsDestLoading(false);
+    }
+  };
+
   const Toolbar = ({ targetText, setTargetText, onSave, onCancel, showActions = true, textareaRef }) => {
     const handleFormat = (openTag, closeTag, placeholder) => {
       if (!textareaRef?.current) {
-        setTargetText(targetText + openTag + placeholder + closeTag);
+        setTargetText(targetText + (openTag.includes('\n') ? openTag : openTag + placeholder + closeTag));
         return;
       }
       const textarea = textareaRef.current;
@@ -268,15 +328,32 @@ const TaskDetailsModal = ({
       const before = targetText.substring(0, start);
       const after = targetText.substring(end);
 
-      const content = selected || placeholder;
-      const newText = before + openTag + content + closeTag + after;
+      let content = selected || placeholder;
+      let newText;
+
+      // Special handling for lists (starts with - or 1.) and multi-line selection
+      const isList = openTag.trim().startsWith('-') || openTag.trim().startsWith('1.');
+      
+      if (isList && selected.includes('\n')) {
+        const marker = openTag.trim() + ' ';
+        const lines = selected.split('\n');
+        const formattedLines = lines.map(line => {
+          if (!line.trim()) return line;
+          if (line.trim().startsWith(marker.trim())) return line; // Avoid double marking
+          return marker + line;
+        });
+        content = formattedLines.join('\n');
+        newText = before + content + after;
+      } else {
+        newText = before + openTag + content + closeTag + after;
+      }
       
       setTargetText(newText);
       
       // Need to wait for React to re-render before setting selection
       setTimeout(() => {
         textarea.focus();
-        const cursorPosition = start + openTag.length + content.length + closeTag.length;
+        const cursorPosition = start + (isList && selected.includes('\n') ? content.length : openTag.length + content.length + closeTag.length);
         textarea.setSelectionRange(cursorPosition, cursorPosition);
       }, 0);
     };
@@ -394,44 +471,84 @@ const TaskDetailsModal = ({
                 </Button>
                 
                 {isMoreMenuOpen && (
-                  <div ref={moreMenuRef} className="absolute right-0 top-10 w-48 bg-white border border-zinc-200 rounded-lg shadow-xl z-[100] py-1 animate-in fade-in zoom-in-95 duration-200">
-                    <button 
-                      onClick={() => {
-                        const url = window.location.href.split('?')[0] + '?task=' + task._id;
-                        navigator.clipboard.writeText(url);
-                        toast({ title: "Link Copied", description: "Task link copied to clipboard" });
-                        setIsMoreMenuOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 flex items-center gap-2"
-                    >
-                      <Link className="w-4 h-4" /> Share Card
-                    </button>
-                    
-                    {boardData.type === 'regular' && (
-                      <button 
-                        onClick={() => handleCopyTask('weekly')}
-                        className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2"
-                      >
-                        <Calendar className="w-4 h-4" /> Copy to Weekly
-                      </button>
+                  <div ref={moreMenuRef} className="absolute right-0 top-10 w-56 bg-white border border-zinc-200 rounded-lg shadow-xl z-[100] py-1 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                    {copyFlowStep === 0 && (
+                      <>
+                        <button 
+                          onClick={() => setCopyFlowStep(1)}
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-zinc-700 hover:bg-zinc-50 flex items-center justify-between group transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                             <Copy className="w-4 h-4 text-zinc-400 group-hover:text-black" /> Copy Card
+                          </div>
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-300 -rotate-90" />
+                        </button>
+                        
+                        <div className="h-px bg-zinc-100 my-1" />
+                        <button 
+                          onClick={() => handleDeleteTask(task._id)}
+                          className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" /> Delete Card
+                        </button>
+                      </>
                     )}
 
-                    {boardData.type === 'weekly' && (
-                      <button 
-                        onClick={() => handleCopyTask('daily')}
-                        className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
-                      >
-                        <Clock className="w-4 h-4" /> Copy to Daily
-                      </button>
+                    {copyFlowStep === 1 && (
+                      <div className="animate-in slide-in-from-right-2 duration-200">
+                        <div className="px-4 py-2 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
+                           <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select target</span>
+                           <button onClick={() => setCopyFlowStep(0)} className="text-[10px] text-zinc-500 hover:text-black font-bold">Back</button>
+                        </div>
+                        <button onClick={() => fetchDestinations('upcoming')} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-indigo-500" /> Upcoming Project
+                        </button>
+                        <button onClick={() => fetchDestinations('weekly')} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-emerald-500" /> Weekly Focus
+                        </button>
+                        <button onClick={() => fetchDestinations('daily')} className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-amber-500" /> Daily Tracker
+                        </button>
+                      </div>
                     )}
 
-                    <div className="h-px bg-zinc-100 my-1" />
-                    <button 
-                      onClick={() => handleDeleteTask(task._id)}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete Task
-                    </button>
+                    {copyFlowStep === 2 && (
+                      <div className="animate-in slide-in-from-right-2 duration-200">
+                        <div className="px-4 py-2 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
+                           <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                             {copyTargetType === 'upcoming' ? 'Select Board' : 'Select List'}
+                           </span>
+                           <button onClick={() => setCopyFlowStep(1)} className="text-[10px] text-zinc-500 hover:text-black font-bold">Back</button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                           {isDestLoading ? (
+                             <div className="p-4 flex justify-center"><Loader size="sm" /></div>
+                           ) : destinations.length === 0 ? (
+                             <div className="p-4 text-zinc-400 text-xs italic">No destinations found</div>
+                           ) : (
+                             destinations.map(d => (
+                               <button 
+                                 key={d._id} 
+                                 onClick={() => {
+                                   if (copyTargetType === 'upcoming') {
+                                     // For upcoming, we need a list. Fetch board details first?
+                                     // Actually, just copy to the first list of that board for simplicity, or we'd need a Step 3.
+                                     // Let's assume Step 3 is needed for Upcoming to select a list too? 
+                                     // Or just choose the first list.
+                                     handleCopyTask('upcoming', d._id, d.lists?.[0] || 'auto'); 
+                                   } else {
+                                     handleCopyTask(copyTargetType.type, copyTargetType.boardId, d._id);
+                                   }
+                                 }}
+                                 className="w-full text-left px-4 py-2 text-[12px] font-medium text-zinc-600 hover:bg-zinc-100 transition-colors border-b border-zinc-50 last:border-0 truncate"
+                               >
+                                 {d.title}
+                               </button>
+                             ))
+                           )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -762,8 +879,10 @@ const TaskDetailsModal = ({
                   </div>
                 ) : (
                    <div className="space-y-4">
-                      <div className="w-full bg-white border border-transparent rounded-xl p-4 text-[15px] text-zinc-800 min-h-[100px] shadow-sm border-dashed border-2 border-zinc-100">
-                         <div className={`whitespace-pre-wrap leading-relaxed ${(!isDescExpanded && task.description?.split('\n').length > 3) ? 'line-clamp-3' : ''}`} dangerouslySetInnerHTML={{ __html: renderMarkdown(task.description) || '<span class="text-zinc-400 italic">Add a more detailed description...</span>' }} />
+                      <div className={`w-full bg-white border border-transparent rounded-xl p-4 text-[15px] text-zinc-800 min-h-[100px] shadow-sm border-dashed border-2 border-zinc-100`}>
+                         <div className={`leading-relaxed ${(!isDescExpanded && task.description?.split('\n').length > 3) ? 'line-clamp-3' : ''}`}>
+                            <MarkdownRenderer content={task.description || 'Add a more detailed description...'} />
+                         </div>
                          {task.description?.split('\n').length > 3 && (
                            <Button variant="ghost" size="sm" onClick={() => setIsDescExpanded(!isDescExpanded)} className="mt-2 text-[#0052cc] font-bold hover:bg-transparent p-0 h-auto">
                              {isDescExpanded ? 'Show less' : 'Show more'}
@@ -778,9 +897,10 @@ const TaskDetailsModal = ({
                              <div 
                                key={idx} 
                                onClick={() => {
-                                 const fullUrl = file.url.startsWith('blob:') 
+                                 const baseUrl = import.meta.env.VITE_API_URL || '';
+                                 const fullUrl = (file.url.startsWith('blob:') || file.url.startsWith('http')) 
                                    ? file.url 
-                                   : `${import.meta.env.VITE_API_URL}${file.url}`;
+                                   : `${baseUrl.replace(/\/$/, '')}/${file.url.replace(/^\//, '')}`;
                                  window.open(fullUrl, '_blank');
                                }}
                                className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl hover:bg-white transition-all cursor-pointer group/file"
@@ -917,7 +1037,7 @@ const TaskDetailsModal = ({
                                  <span className="font-bold text-zinc-900">{item.user.name}</span>
                                  {item.type === 'history' ? (
                                     <span className="text-zinc-500 font-medium whitespace-pre-wrap">
-                                       {item.action.toLowerCase().replace('_',' ')} <span className="text-zinc-900 font-bold" dangerouslySetInnerHTML={{ __html: renderMarkdown(item.details || '') }} />
+                                       {item.action.toLowerCase().replace('_',' ')} <span className="text-zinc-900 font-bold inline-block ml-1"><MarkdownRenderer content={item.details || ''} /></span>
                                     </span>
                                  ) : null}
                                  <span className="text-[11px] font-bold text-zinc-300 ml-1 uppercase tracking-tighter">{getTimeAgo(item.createdAt)}</span>
@@ -951,7 +1071,9 @@ const TaskDetailsModal = ({
                                     {activeInput === 'editComment' && <MentionList />}
                                  </div>
                                ) : (
-                                 <div className="bg-white px-4 py-3 rounded-2xl text-[14px] text-zinc-900 shadow-sm border border-zinc-200/50 leading-relaxed font-bold" dangerouslySetInnerHTML={{ __html: renderMarkdown(item.text) }} />
+                                 <div className="bg-white px-4 py-3 rounded-2xl text-[14px] text-zinc-900 shadow-sm border border-zinc-200/50 leading-relaxed font-bold">
+                                    <MarkdownRenderer content={item.text} />
+                                 </div>
                                )}
                              </>
                            )}
@@ -968,4 +1090,3 @@ const TaskDetailsModal = ({
 };
 
 export default memo(TaskDetailsModal);
-

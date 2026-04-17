@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { getCurrentLocation } from '@/utils/location';
 
 const AuthContext = createContext();
 
@@ -75,13 +76,26 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.setItem('userPermissions', JSON.stringify(userData.permissions || []));
   };
 
-  const logout = () => {
-    setUser(null);
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('userRole');
-    sessionStorage.removeItem('userName');
-    sessionStorage.removeItem('userId');
-    sessionStorage.removeItem('userPermissions');
+  const logout = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      if (token) {
+        const locationData = await getCurrentLocation();
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/logout`, 
+          { location: locationData },
+          { headers: { 'x-auth-token': token } }
+        );
+      }
+    } catch (err) {
+      console.error('Logout logging failed:', err);
+    } finally {
+      setUser(null);
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('userRole');
+      sessionStorage.removeItem('userName');
+      sessionStorage.removeItem('userId');
+      sessionStorage.removeItem('userPermissions');
+    }
   };
 
   return (
