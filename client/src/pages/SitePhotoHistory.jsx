@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
 import Loader from "@/components/ui/Loader";
+import PhotoDetailModal from '@/components/PhotoDetailModal';
 
 const SitePhotoHistory = () => {
   const [photos, setPhotos] = useState([]);
@@ -31,6 +32,8 @@ const SitePhotoHistory = () => {
   const [endDate, setEndDate] = useState('');
   const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   const [userRole] = useState(sessionStorage.getItem('userRole'));
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchPhotos = async (page = 1) => {
@@ -61,6 +64,26 @@ const SitePhotoHistory = () => {
 
   const handlePageChange = (page) => {
     fetchPhotos(page);
+  };
+
+  const handlePhotoClick = (photo) => {
+    setSelectedPhoto(photo);
+    setIsModalOpen(true);
+  };
+
+  const handleCommentAdded = (photoId, newComment) => {
+    setPhotos(prevPhotos => prevPhotos.map(p => 
+      p._id === photoId 
+        ? { ...p, comments: [...(p.comments || []), newComment] }
+        : p
+    ));
+    // Also update selectedPhoto if it's the one that was open
+    if (selectedPhoto && selectedPhoto._id === photoId) {
+        setSelectedPhoto(prev => ({
+            ...prev,
+            comments: [...(prev.comments || []), newComment]
+        }));
+    }
   };
 
   return (
@@ -137,7 +160,11 @@ const SitePhotoHistory = () => {
         <div className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {photos.map((photo) => (
-                    <Card key={photo._id} className="overflow-hidden border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-2xl group bg-white">
+                    <Card 
+                        key={photo._id} 
+                        className="overflow-hidden border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-2xl group bg-white cursor-pointer"
+                        onClick={() => handlePhotoClick(photo)}
+                    >
                         <div className="aspect-[4/3] relative overflow-hidden bg-zinc-100">
                             <img 
                                 src={`${import.meta.env.VITE_API_URL}${photo.imageUrl}`} 
@@ -206,6 +233,13 @@ const SitePhotoHistory = () => {
             </Card>
         </div>
       )}
+
+      <PhotoDetailModal 
+        photo={selectedPhoto}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCommentAdded={handleCommentAdded}
+      />
     </div>
   );
 };
