@@ -62,6 +62,7 @@ const Attendance = () => {
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logFilter, setLogFilter] = useState('attendance'); // 'attendance', 'audit', 'all'
 
   useEffect(() => {
     fetchCurrentStatus();
@@ -236,10 +237,15 @@ const Attendance = () => {
   const StatusIcon = StatusConfig.icon;
 
   const combinedLogs = useMemo(() => {
-    const logs = [
-      ...attendanceLogs.map(l => ({ ...l, type: 'attendance', timestamp: new Date(l.date + (l.checkIn?.time ? 'T' + l.checkIn.time : '')) })),
-      ...auditLogs.map(l => ({ ...l, type: 'audit', timestamp: new Date(l.timestamp) }))
-    ];
+    let logs = [];
+    
+    if (logFilter === 'attendance' || logFilter === 'all') {
+      logs = [...logs, ...attendanceLogs.map(l => ({ ...l, type: 'attendance', timestamp: new Date(l.date + (l.checkIn?.time ? 'T' + l.checkIn.time : '')) }))];
+    }
+    
+    if (logFilter === 'audit' || logFilter === 'all') {
+      logs = [...logs, ...auditLogs.map(l => ({ ...l, type: 'audit', timestamp: new Date(l.timestamp) }))];
+    }
     
     // Sort by timestamp descending
     logs.sort((a, b) => b.timestamp - a.timestamp);
@@ -252,7 +258,7 @@ const Attendance = () => {
       }
       return true;
     });
-  }, [attendanceLogs, auditLogs, filterPeriod]);
+  }, [attendanceLogs, auditLogs, filterPeriod, logFilter]);
 
   const stats = [
     { label: 'Avg. Login', value: '09:12 AM', icon: Clock },
@@ -608,6 +614,25 @@ const Attendance = () => {
                         }`}
                       >
                         {p}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Log Filter */}
+                  <div className="flex p-1 bg-gray-50 rounded-xl mr-2">
+                    {[
+                      { id: 'attendance', label: 'Attendance' },
+                      { id: 'audit', label: 'Security' },
+                      { id: 'all', label: 'All' }
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setLogFilter(f.id)}
+                        className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                          logFilter === f.id ? 'bg-[#fffe01] text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        {f.label}
                       </button>
                     ))}
                   </div>

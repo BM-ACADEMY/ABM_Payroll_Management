@@ -14,11 +14,14 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import PhotoDetailModal from '@/components/PhotoDetailModal';
 
 const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchPhotos = async () => {
@@ -95,6 +98,25 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
     });
   };
 
+  const handlePhotoClick = (photo) => {
+    setSelectedPhoto(photo);
+    setIsModalOpen(true);
+  };
+
+  const handleCommentAdded = (photoId, newComment) => {
+    setPhotos(prevPhotos => prevPhotos.map(p => 
+      p._id === photoId 
+        ? { ...p, comments: [...(p.comments || []), newComment] }
+        : p
+    ));
+    if (selectedPhoto && selectedPhoto._id === photoId) {
+        setSelectedPhoto(prev => ({
+            ...prev,
+            comments: [...(prev.comments || []), newComment]
+        }));
+    }
+  };
+
   return (
     <div className={`fixed right-0 top-0 h-screen transition-all duration-300 ease-in-out bg-black border-l border-zinc-800 z-[60] flex flex-col shadow-2xl ${isOpen ? 'w-80 translate-x-0' : 'w-0 translate-x-full overflow-hidden'}`}>
       {/* Header */}
@@ -163,7 +185,11 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
           ) : (
             <div className="space-y-4">
                 {photos.map(photo => (
-                  <div key={photo._id} className="bg-[#121214] border border-zinc-800/80 rounded-2xl overflow-hidden shadow-xl hover:bg-[#18181b] transition-all group">
+                  <div 
+                    key={photo._id} 
+                    className="bg-[#121214] border border-zinc-800/80 rounded-2xl overflow-hidden shadow-xl hover:bg-[#18181b] transition-all group cursor-pointer"
+                    onClick={() => handlePhotoClick(photo)}
+                  >
                     <div className="aspect-video w-full relative group">
                         <img 
                             src={`${import.meta.env.VITE_API_URL}${photo.imageUrl}`} 
@@ -212,7 +238,6 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
             </div>
           )}
         </div>
-
         <div className="mt-6 border-t border-zinc-800 pt-6">
            <Button 
              variant="ghost" 
@@ -224,6 +249,13 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
            </Button>
         </div>
       </div>
+
+      <PhotoDetailModal 
+        photo={selectedPhoto}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCommentAdded={handleCommentAdded}
+      />
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {

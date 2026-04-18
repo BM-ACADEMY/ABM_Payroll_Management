@@ -10,7 +10,7 @@ const User = require('../models/User');
 // Storage Configuration
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = 'uploads/site-photos/';
+    const dir = 'uploads/site/';
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -46,7 +46,7 @@ router.post('/', auth, upload.single('photo'), async (req, res) => {
 
     const newPhoto = new SitePhoto({
       user: req.user.id,
-      imageUrl: `/uploads/site-photos/${req.file.filename}`,
+      imageUrl: `/uploads/site/${req.file.filename}`,
       date,
       day,
       time,
@@ -115,6 +115,43 @@ router.get('/', auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   POST /api/site-photos/:id/comments
+// @desc    Add a comment to a site photo
+// @access  Private
+router.post('/:id/comments', auth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ msg: 'Comment text is required' });
+    }
+
+    const photo = await SitePhoto.findById(req.params.id);
+    if (!photo) {
+      return res.status(404).json({ msg: 'Photo not found' });
+    }
+
+    const user = await User.findById(req.user.id);
+    
+    const newComment = {
+      user: req.user.id,
+      userName: user.name,
+      text,
+      createdAt: new Date()
+    };
+
+    photo.comments.push(newComment);
+    await photo.save();
+
+    res.json(photo.comments[photo.comments.length - 1]);
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ msg: 'Photo not found' });
+    }
     res.status(500).send('Server Error');
   }
 });
