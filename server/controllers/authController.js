@@ -229,7 +229,7 @@ exports.login = async (req, res) => {
         console.error('Error creating login audit log:', logErr.message);
       }
 
-      res.json({ token, user: { id: user.id, name: user.name, role: user.role, permissions: user.permissions || [] } });
+      res.json({ token, user: { id: user.id, name: user.name, role: user.role, permissions: user.permissions || [], timingSettings: user.timingSettings } });
     });
   } catch (err) {
     console.error(err.message);
@@ -248,7 +248,8 @@ exports.getUser = async (req, res) => {
       role: user.role, 
       permissions: user.permissions || [],
       phoneNumber: user.phoneNumber,
-      isEmailVerified: user.isEmailVerified
+      isEmailVerified: user.isEmailVerified,
+      timingSettings: user.timingSettings
     });
   } catch (err) {
     console.error(err.message);

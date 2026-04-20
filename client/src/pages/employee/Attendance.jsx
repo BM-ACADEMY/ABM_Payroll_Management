@@ -156,14 +156,24 @@ const Attendance = () => {
 
       switch (action) {
         case 'check-in':
+          const now = new Date();
+          const checkInLimit = parse('14:30', 'HH:mm', new Date());
+          
+          if (now > checkInLimit && !lateReason) {
+            setShowLateDialog(true);
+            setLoading(false);
+            return;
+          }
+
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/checkin`, { 
             mode: workingMode,
-            lateReason: '',
+            lateReason: lateReason,
             location
           }, config);
           setAttendanceState('working');
           setSessionTimes(prev => ({ ...prev, checkIn: res.data.checkIn.time }));
           setLateReason('');
+          setShowLateDialog(false);
           fetchEstimatedEarnings();
           break;
         case 'lunch-out':
@@ -172,20 +182,24 @@ const Attendance = () => {
           setSessionTimes(prev => ({ ...prev, lunchOut: res.data.lunch.out }));
           break;
         case 'lunch-in':
-          if (userTimings && sessionTimes.lunchOut) {
-            const now = new Date();
+          const lunchInNow = new Date();
+          const lunchLimitOut = parse('14:00', 'HH:mm', new Date());
+          const lunchLimitIn = parse('14:30', 'HH:mm', new Date());
+          
+          let isLunchSpecialCase = false;
+          if (sessionTimes.lunchOut) {
             const lunchOutTime = parse(sessionTimes.lunchOut, 'HH:mm', new Date());
-            
-            const limitOut = parse('14:00', 'HH:mm', new Date());
-            const limitIn = parse('14:30', 'HH:mm', new Date());
-            
-            const isSpecialCase = lunchOutTime > limitOut && now > limitIn;
+            isLunchSpecialCase = lunchOutTime > lunchLimitOut && lunchInNow > lunchLimitIn;
+          } else {
+            // Fallback: if it's after 2:30 PM, we should probably check if a reason is needed
+            // since the backend will check its own record of lunchOut.
+            isLunchSpecialCase = lunchInNow > lunchLimitIn;
+          }
 
-            if (isSpecialCase && !lunchDelayReason) {
-              setShowLunchDelayDialog(true);
-              setLoading(false);
-              return;
-            }
+          if (isLunchSpecialCase && !lunchDelayReason) {
+            setShowLunchDelayDialog(true);
+            setLoading(false);
+            return;
           }
 
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/lunchin`, { 
@@ -494,14 +508,16 @@ const Attendance = () => {
 
                         {attendanceState === 'working' && (
                           <div className="space-y-6">
-                            <Button
-                              disabled={loading}
-                              onClick={() => handleAction('lunch-out')}
-                              className="w-full py-12 text-2xl font-medium bg-white border-2 border-amber-400 text-amber-500 hover:bg-amber-50 shadow-md transition-all hover:-translate-y-1 rounded-2xl flex flex-col gap-1"
-                            >
-                              <span className="tracking-tight uppercase">Lunch Break</span>
-                              <span className="text-[10px] font-normal opacity-70 uppercase tracking-[0.3em]">Pause Session</span>
-                            </Button>
+                            {!sessionTimes.lunchIn && (
+                              <Button
+                                disabled={loading}
+                                onClick={() => handleAction('lunch-out')}
+                                className="w-full py-12 text-2xl font-medium bg-white border-2 border-amber-400 text-amber-500 hover:bg-amber-50 shadow-md transition-all hover:-translate-y-1 rounded-2xl flex flex-col gap-1"
+                              >
+                                <span className="tracking-tight uppercase">Lunch Break</span>
+                                <span className="text-[10px] font-normal opacity-70 uppercase tracking-[0.3em]">Pause Session</span>
+                              </Button>
+                            )}
                             <Button
                               disabled={loading}
                               onClick={() => handleAction('check-out')}
@@ -861,7 +877,7 @@ const Attendance = () => {
              </div>
              <div className="flex gap-4">
                 <Button variant="outline" onClick={() => setShowLunchDelayDialog(false)} className="flex-1 h-14 rounded-2xl font-medium uppercase text-[10px] tracking-widest border border-gray-200 text-gray-500">
-                  Cancel
+                   Cancel
                 </Button>
                 <Button 
                   disabled={!lunchDelayReason.trim() || loading}
@@ -869,6 +885,44 @@ const Attendance = () => {
                   className="flex-1 h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-medium uppercase text-[10px] tracking-widest shadow-lg shadow-amber-500/10"
                 >
                   {loading ? <Loader size="sm" color="white" /> : 'Confirm & Resume'}
+                </Button>
+             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Late Login Dialog */}
+      <Dialog open={showLateDialog} onOpenChange={setShowLateDialog}>
+        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 shadow-xl p-0 overflow-hidden bg-white">
+          <DialogHeader className="p-8 bg-gray-50 border-b border-gray-100">
+            <div className="flex items-center gap-3 text-rose-500 mb-2">
+              <Clock className="w-6 h-6" />
+              <DialogTitle className="text-xl font-medium uppercase tracking-tight text-gray-900">Late Login Reason</DialogTitle>
+            </div>
+            <DialogDescription className="text-gray-500 font-normal">
+              You are logging in after 2:30 PM. Please provide a reason for the delay for administrative records.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-8 space-y-6">
+            <div className="space-y-3">
+               <Label className="text-[10px] font-medium text-gray-400 uppercase tracking-widest ml-1">Reason for Late Login</Label>
+                <Textarea 
+                  placeholder="Enter reason..."
+                  value={lateReason}
+                  onChange={(e) => setLateReason(e.target.value)}
+                  className="min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 p-4 font-normal transition-all text-gray-900 focus:border-black"
+                />
+             </div>
+             <div className="flex gap-4">
+                <Button variant="outline" onClick={() => setShowLateDialog(false)} className="flex-1 h-14 rounded-2xl font-medium uppercase text-[10px] tracking-widest border border-gray-200 text-gray-500">
+                   Cancel
+                </Button>
+                <Button 
+                  disabled={!lateReason.trim() || loading}
+                  onClick={() => handleAction('check-in')}
+                  className="flex-1 h-14 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-medium uppercase text-[10px] tracking-widest shadow-lg shadow-rose-600/10"
+                >
+                  {loading ? <Loader size="sm" color="white" /> : 'Confirm & Start'}
                 </Button>
              </div>
           </div>

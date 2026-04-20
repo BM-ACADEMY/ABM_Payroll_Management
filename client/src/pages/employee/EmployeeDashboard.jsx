@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -434,9 +435,20 @@ const EmployeeDashboard = () => {
       {/* WEEKLY PERFORMANCE SCORES */}
       {weeklyScores.length > 0 && (
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 delay-300">
-          <div className="flex items-center gap-3">
-             <div className="h-6 w-1.5 bg-[#fffe01] rounded-full"></div>
-             <h2 className="text-2xl font-medium tracking-tight text-gray-900">Weekly Performance <span className="text-[#d30614]">Credits</span></h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <div className="h-6 w-1.5 bg-[#fffe01] rounded-full"></div>
+               <h2 className="text-2xl font-medium tracking-tight text-gray-900">Weekly Performance <span className="text-[#d30614]">Credits</span></h2>
+            </div>
+            <Link to="/dashboard/performance-history">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-[#d30614] hover:bg-transparent transition-colors"
+              >
+                View Full History <ChevronRight className="w-3 h-3 ml-1" />
+              </Button>
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {weeklyScores.map((score, idx) => (

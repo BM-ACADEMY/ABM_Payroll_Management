@@ -147,9 +147,8 @@ const PayrollSettings = () => {
               </CardHeader>
               <CardContent className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
                     <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
-                      Monthly Permission Hours
+                      Monthly Permission Hours (Tier 1)
                     </Label>
                     <div className="relative group">
                       <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
@@ -163,7 +162,64 @@ const PayrollSettings = () => {
                         className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
                       />
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium ml-1">Maximum allowed permission hours per month.</p>
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">Maximum allowed permission hours before first deduction.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
+                      Tier 1 LOP Deduction (Days)
+                    </Label>
+                    <div className="relative group">
+                      <TrendingDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
+                      <Input
+                        type="number"
+                        name="permissionTier1Deduction"
+                        value={settings.permissionTier1Deduction}
+                        onChange={handleChange}
+                        step="0.1"
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">Salary days deducted when Tier 1 limit is exceeded.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
+                      Tier 2 Permission Limit (Hrs)
+                    </Label>
+                    <div className="relative group">
+                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
+                      <Input
+                        type="number"
+                        name="permissionTier2Limit"
+                        value={settings.permissionTier2Limit}
+                        onChange={handleChange}
+                        step="0.5"
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">Higher threshold for severe deduction.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
+                      Tier 2 LOP Deduction (Days)
+                    </Label>
+                    <div className="relative group">
+                      <TrendingDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
+                      <Input
+                        type="number"
+                        name="permissionTier2Deduction"
+                        value={settings.permissionTier2Deduction}
+                        onChange={handleChange}
+                        step="0.1"
+                        disabled={!isEditing}
+                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium ml-1">Salary days deducted when Tier 2 limit is exceeded.</p>
                   </div>
 
                   <div className="space-y-3">

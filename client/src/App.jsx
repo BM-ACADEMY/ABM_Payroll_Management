@@ -34,6 +34,7 @@ const KanbanBoard = lazy(() => import('./pages/admin/KanbanBoard'));
 const Analytics = lazy(() => import('./pages/admin/Analytics'));
 const TimeHistory = lazy(() => import('./pages/TimeHistory'));
 const SitePhotoHistory = lazy(() => import('./pages/SitePhotoHistory'));
+const PerformanceHistory = lazy(() => import('./pages/employee/PerformanceHistory'));
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from './components/ui/toaster';
 
@@ -260,6 +261,10 @@ function AppContent() {
                 <Route
                   path="/dashboard/site-photos"
                   element={user ? <SitePhotoHistory /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/dashboard/performance-history"
+                  element={user ? <PerformanceHistory /> : <Navigate to="/login" />}
                 />
                 <Route path="/" element={<Navigate to={user ? (['admin', 'subadmin'].includes(user.role?.name) ? '/admin' : '/dashboard') : '/login'} />} />
               </Routes>
