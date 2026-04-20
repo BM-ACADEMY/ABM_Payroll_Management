@@ -114,166 +114,228 @@ const Analytics = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Analytics & Reports</h1>
-          <p className="text-zinc-500 font-medium mt-1">Deep insights into employee performance and external project status.</p>
+    <div className="p-4 md:p-10 space-y-6 md:space-y-10 animate-in fade-in duration-700 bg-background min-h-screen pb-24">
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 pb-2">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 text-black">
+            <div className="p-2 bg-[#fffe01] rounded-xl shadow-sm">
+              <BarChart3 className="w-5 h-5 text-black" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Intelligence Bureau</span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900 leading-tight">
+            Advanced <span className="text-[#d30614]">Analytics</span>
+          </h1>
+          <p className="text-gray-500 font-normal max-w-2xl text-sm md:text-base leading-relaxed">Synthesizing operational velocity, performance vectors, and cross-platform synchronization metadata.</p>
         </div>
-        <div className="flex bg-white p-1 rounded-xl border border-zinc-200 shadow-sm">
+
+        <div className="flex bg-white p-1.5 md:p-2 rounded-[1.5rem] border-2 border-zinc-50 shadow-xl shadow-zinc-200/50 w-full xl:w-auto overflow-x-auto no-scrollbar">
           <button 
             onClick={() => setActiveTab('internal')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'internal' ? 'bg-black text-white shadow-md' : 'text-zinc-500 hover:bg-zinc-100'}`}
+            className={`flex-1 md:flex-none px-6 md:px-8 py-3 md:py-4 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'internal' ? 'bg-black text-[#fffe01] shadow-2xl scale-105 z-10' : 'text-zinc-400 hover:text-black hover:bg-zinc-50'}`}
           >
             Internal Performance
           </button>
           <button 
             onClick={() => setActiveTab('external')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'external' ? 'bg-black text-white shadow-md' : 'text-zinc-500 hover:bg-zinc-100'}`}
+            className={`flex-1 md:flex-none px-6 md:px-8 py-3 md:py-4 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'external' ? 'bg-black text-[#fffe01] shadow-2xl scale-105 z-10' : 'text-zinc-400 hover:text-black hover:bg-zinc-50'}`}
           >
-            Google Sheets
+            External Sync
           </button>
         </div>
-      </div>
+      </header>
 
       {activeTab === 'internal' ? (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 slide-in-from-bottom-4">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-none shadow-sm bg-indigo-600 text-white overflow-hidden relative">
-              <CardContent className="p-6">
-                <CheckCircle2 className="w-12 h-12 absolute -right-2 -bottom-2 opacity-10" />
-                <div className="text-sm font-bold opacity-80 uppercase tracking-widest mb-1">Total Completed</div>
-                <div className="text-4xl font-black">{performanceData.reduce((acc, curr) => acc + curr.totalCompleted, 0)}</div>
-                <p className="text-xs mt-2 opacity-70">Across all boards and teams</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <Card className="border-0 shadow-2xl shadow-indigo-500/20 bg-indigo-600 text-white overflow-hidden relative group rounded-[2.5rem] h-48 md:h-56">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all duration-1000"></div>
+              <CardContent className="p-8 h-full flex flex-col justify-between relative">
+                <div>
+                  <div className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em] mb-1">Cumulative Throughput</div>
+                  <div className="text-5xl md:text-6xl font-black tracking-tighter">
+                    {performanceData.reduce((acc, curr) => acc + curr.totalCompleted, 0)}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold opacity-60 uppercase tracking-widest">Total Validated Units</p>
+                  <CheckCircle2 className="w-8 h-8 opacity-20" />
+                </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm bg-emerald-600 text-white overflow-hidden relative">
-              <CardContent className="p-6">
-                <Clock className="w-12 h-12 absolute -right-2 -bottom-2 opacity-10" />
-                <div className="text-sm font-bold opacity-80 uppercase tracking-widest mb-1">On-Time Completion</div>
-                <div className="text-4xl font-black">
-                  {Math.round((performanceData.reduce((acc, curr) => acc + curr.onTime, 0) / performanceData.reduce((acc, curr) => acc + curr.totalCompleted, 0) || 0) * 100)}%
+
+            <Card className="border-0 shadow-2xl shadow-emerald-500/20 bg-emerald-600 text-white overflow-hidden relative group rounded-[2.5rem] h-48 md:h-56">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all duration-1000"></div>
+              <CardContent className="p-8 h-full flex flex-col justify-between relative">
+                <div>
+                  <div className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em] mb-1">Operational Velocity</div>
+                  <div className="text-5xl md:text-6xl font-black tracking-tighter">
+                    {Math.round((performanceData.reduce((acc, curr) => acc + curr.onTime, 0) / performanceData.reduce((acc, curr) => acc + curr.totalCompleted, 0) || 0) * 100)}%
+                  </div>
                 </div>
-                <p className="text-xs mt-2 opacity-70">Average efficiency rate</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold opacity-60 uppercase tracking-widest">On-Time Accuracy Rate</p>
+                  <Clock className="w-8 h-8 opacity-20" />
+                </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm bg-[#fffe01] text-black overflow-hidden relative border-b-4 border-yellow-500">
-              <CardContent className="p-6">
-                <Layers className="w-12 h-12 absolute -right-2 -bottom-2 opacity-10" />
-                <div className="text-sm font-bold opacity-60 uppercase tracking-widest mb-1">Daily Tasks Met</div>
-                <div className="text-4xl font-black">
-                  {performanceData.reduce((acc, curr) => acc + curr.dailyCompletions, 0)}
+
+            <Card className="border-0 shadow-2xl shadow-zinc-200/50 bg-[#fffe01] text-black overflow-hidden relative group rounded-[2.5rem] h-48 md:h-56">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-black/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-black/10 transition-all duration-1000"></div>
+              <CardContent className="p-8 h-full flex flex-col justify-between relative">
+                <div>
+                  <div className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em] mb-1">Dynamic Engagement</div>
+                  <div className="text-5xl md:text-6xl font-black tracking-tighter">
+                    {performanceData.reduce((acc, curr) => acc + curr.dailyCompletions, 0)}
+                  </div>
                 </div>
-                <p className="text-xs mt-2 opacity-60">Tasks closed from daily boards</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold opacity-40 uppercase tracking-widest">Daily Anomalies Resolved</p>
+                  <Layers className="w-8 h-8 opacity-10" />
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 gap-6">
-            <Card className="border-zinc-200 shadow-sm rounded-2xl overflow-hidden bg-white">
-              <CardHeader className="border-b border-zinc-100 bg-white p-6">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-indigo-600" />
-                  <CardTitle className="text-xl font-black">Employee Performance Comparison</CardTitle>
-                </div>
-                <CardDescription className="text-zinc-500 font-medium">Breakdown of on-time vs. delayed task completions by person.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 pt-10 h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12, fontWeight: 700}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12, fontWeight: 700}} />
-                    <Tooltip 
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
-                      cursor={{fill: '#f8fafc'}}
-                    />
-                    <Legend verticalAlign="top" align="right" height={36} iconType="circle" wrapperStyle={{fontWeight: 'bold', fontSize: '12px'}} />
-                    <Bar dataKey="onTime" name="On Time" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
-                    <Bar dataKey="delayed" name="Delayed" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="p-8 md:p-10 border-b border-zinc-50 bg-zinc-50/30 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-1">
+                <CardTitle className="text-2xl font-bold text-zinc-900 tracking-tight flex items-center gap-4">
+                   <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+                  Performance Vectors
+                </CardTitle>
+                <CardDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px] pl-14">Comparative analysis of personnel execution efficacy</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 md:p-10 h-[400px] md:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={performanceData} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} 
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    dy={10} 
+                  />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', fontWeight: '900', fontSize: '12px', padding: '16px'}}
+                    cursor={{fill: '#f8fafc', radius: 10}}
+                  />
+                  <Legend 
+                    verticalAlign="top" 
+                    align="right" 
+                    height={60} 
+                    iconType="circle" 
+                    wrapperStyle={{fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8'}} 
+                  />
+                  <Bar dataKey="onTime" name="Validated On-Time" fill="#10b981" radius={[8, 8, 0, 0]} barSize={24} />
+                  <Bar dataKey="delayed" name="Delayed Units" fill="#ef4444" radius={[8, 8, 0, 0]} barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </div>
       ) : (
-        <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-8 animate-in fade-in duration-500 slide-in-from-bottom-4">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
             {/* Sidebar for Sources */}
-            <div className="lg:col-span-4 space-y-6">
-              <Card className="border-zinc-200 shadow-sm rounded-2xl bg-white sticky top-6">
-                <CardHeader className="p-6">
+            <div className="xl:col-span-4 space-y-8">
+              <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden xl:sticky xl:top-10">
+                <CardHeader className="p-8 border-b border-zinc-50 bg-zinc-50/30">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-black flex items-center gap-2">
-                      <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                      Sources
+                    <CardTitle className="text-xl font-bold flex items-center gap-4 tracking-tight">
+                      <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <FileSpreadsheet className="w-5 h-5 text-white" />
+                      </div>
+                      Sync Channels
                     </CardTitle>
                     {!isAddingSource && (
-                      <Button size="icon" variant="ghost" onClick={() => setIsAddingSource(true)} className="h-8 w-8 rounded-full hover:bg-emerald-50 text-emerald-600">
+                      <Button size="icon" onClick={() => setIsAddingSource(true)} className="h-10 w-10 rounded-2xl bg-black hover:bg-zinc-800 text-[#fffe01] shadow-xl active:scale-95 transition-all">
                         <Plus className="w-5 h-5" />
                       </Button>
                     )}
                   </div>
+                  <CardDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[9px] mt-2 pl-14">External synchronization pipelines</CardDescription>
                 </CardHeader>
-                <CardContent className="p-4 space-y-2">
+                <CardContent className="p-6 md:p-8 space-y-4">
                   {isAddingSource && (
-                    <form onSubmit={handleAddSource} className="p-4 bg-zinc-50 rounded-xl border border-zinc-200 space-y-3 mb-4">
-                      <Input 
-                        placeholder="Report Name (e.g., Marketing Tracker)" 
-                        value={newSource.title} 
-                        onChange={e => setNewSource({...newSource, title: e.target.value})} 
-                        className="bg-white" required
-                      />
-                      <Input 
-                        placeholder="Google Sheet Link" 
-                        value={newSource.url} 
-                        onChange={e => setNewSource({...newSource, url: e.target.value})} 
-                        className="bg-white" required
-                      />
-                      <div className="grid grid-cols-2 gap-2">
+                    <form onSubmit={handleAddSource} className="p-6 bg-zinc-50 rounded-[2rem] border-2 border-zinc-100 space-y-4 mb-4 animate-in zoom-in-95 duration-300">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Channel Identifier</Label>
                         <Input 
-                          placeholder="Status Col (e.g., F)" 
-                          value={newSource.statusCol} 
-                          onChange={e => setNewSource({...newSource, statusCol: e.target.value})} 
-                          className="bg-white" required
-                        />
-                        <Input 
-                          placeholder="Handler Col (e.g., H)" 
-                          value={newSource.handlerCol} 
-                          onChange={e => setNewSource({...newSource, handlerCol: e.target.value})} 
-                          className="bg-white" required
+                          placeholder="E.g. Marketing Dashboard" 
+                          value={newSource.title} 
+                          onChange={e => setNewSource({...newSource, title: e.target.value})} 
+                          className="bg-white h-12 rounded-xl border-zinc-200 font-bold shadow-inner" required
                         />
                       </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-xs">Save</Button>
-                        <Button type="button" variant="ghost" onClick={() => setIsAddingSource(false)} className="flex-1 h-9 text-xs">Cancel</Button>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Archive URL (CSV EXPORT)</Label>
+                        <Input 
+                          placeholder="Public Google Sheet URL" 
+                          value={newSource.url} 
+                          onChange={e => setNewSource({...newSource, url: e.target.value})} 
+                          className="bg-white h-12 rounded-xl border-zinc-200 font-bold shadow-inner" required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Status COL</Label>
+                          <Input 
+                            placeholder="E.g. F" 
+                            value={newSource.statusCol} 
+                            onChange={e => setNewSource({...newSource, statusCol: e.target.value})} 
+                            className="bg-white h-12 rounded-xl border-zinc-200 font-bold text-center uppercase shadow-inner" required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Handler COL</Label>
+                          <Input 
+                            placeholder="E.g. H" 
+                            value={newSource.handlerCol} 
+                            onChange={e => setNewSource({...newSource, handlerCol: e.target.value})} 
+                            className="bg-white h-12 rounded-xl border-zinc-200 font-bold text-center uppercase shadow-inner" required
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <Button type="submit" className="flex-1 bg-black hover:bg-zinc-800 text-[#fffe01] font-black uppercase tracking-widest h-12 rounded-xl shadow-xl active:scale-95 transition-all text-[10px]">Initialize</Button>
+                        <Button type="button" variant="ghost" onClick={() => setIsAddingSource(false)} className="flex-1 h-12 text-[10px] font-black uppercase tracking-widest text-zinc-400">Abort</Button>
                       </div>
                     </form>
                   )}
 
                   {sources.length === 0 ? (
-                    <div className="text-center py-10">
-                      <FileSpreadsheet className="w-10 h-10 text-zinc-200 mx-auto mb-2" />
-                      <p className="text-sm font-bold text-zinc-400 italic">No sources added yet</p>
+                    <div className="text-center py-16 space-y-4">
+                      <div className="w-20 h-20 bg-zinc-50 rounded-[1.5rem] flex items-center justify-center mx-auto shadow-inner border border-zinc-100 opacity-50">
+                        <FileSpreadsheet className="w-8 h-8 text-zinc-300" />
+                      </div>
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">Zero active pipelines found.</p>
                     </div>
                   ) : (
-                    <div className="space-y-1">
+                    <div className="grid grid-cols-1 gap-3">
                       {sources.map(source => (
                         <div 
                           key={source._id}
-                          className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${activeSourceId === source._id ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-white border-transparent hover:bg-zinc-50 text-zinc-600'}`}
+                          className={`group flex items-center justify-between p-5 rounded-2xl cursor-pointer transition-all border-2 ${activeSourceId === source._id ? 'bg-zinc-900 border-black text-white shadow-2xl translate-x-2' : 'bg-white border-zinc-50 hover:border-zinc-200 text-zinc-600 shadow-sm'}`}
                           onClick={() => fetchSourceData(source._id)}
                         >
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <div className={`w-2 h-2 rounded-full ${activeSourceId === source._id ? 'bg-emerald-600 animate-pulse' : 'bg-zinc-300'}`} />
-                            <span className="text-sm font-bold truncate">{source.title}</span>
+                          <div className="flex items-center gap-4 overflow-hidden">
+                            <div className={`w-3 h-3 rounded-full shadow-lg ${activeSourceId === source._id ? 'bg-[#fffe01] animate-pulse' : 'bg-zinc-200'}`} />
+                            <span className="text-xs font-black uppercase tracking-widest truncate">{source.title}</span>
                           </div>
                           <Button 
                             variant="ghost" size="icon" 
                             onClick={(e) => { e.stopPropagation(); handleDeleteSource(source._id); }}
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 text-zinc-400 transition-all"
+                            className={`h-10 w-10 rounded-xl transition-all ${activeSourceId === source._id ? 'hover:bg-white/10 text-zinc-500 hover:text-white' : 'opacity-0 group-hover:opacity-100 hover:text-[#d30614] hover:bg-rose-50 text-zinc-300'}`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -286,78 +348,100 @@ const Analytics = () => {
             </div>
 
             {/* Main Graph Content */}
-            <div className="lg:col-span-8">
+            <div className="xl:col-span-8">
               {!activeSourceId ? (
-                <Card className="h-full min-h-[500px] border-zinc-200 shadow-sm flex flex-col items-center justify-center bg-white rounded-2xl border-dashed border-2">
-                  <div className="text-center space-y-3">
-                    <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
-                      <BarChart3 className="w-10 h-10 text-emerald-600" />
+                <Card className="h-full min-h-[500px] border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] flex flex-col items-center justify-center bg-white border-2 border-dashed border-zinc-100">
+                  <div className="text-center space-y-6">
+                    <div className="w-32 h-32 bg-emerald-50 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-inner relative group">
+                      <div className="absolute inset-0 bg-emerald-500/10 rounded-[2.5rem] scale-90 group-hover:scale-110 transition-transform duration-700"></div>
+                      <BarChart3 className="w-12 h-12 text-emerald-600 relative z-10" />
                     </div>
-                    <h3 className="text-xl font-black text-zinc-900">Select a Source</h3>
-                    <p className="text-zinc-500 font-medium max-w-xs mx-auto">Click on a Google Sheet source from the left to load its analytics and visualization.</p>
+                    <div className="space-y-2">
+                       <h3 className="text-2xl font-black text-zinc-900 tracking-tight">Deployment Pending</h3>
+                       <p className="text-zinc-400 font-bold uppercase tracking-widest text-[10px] max-w-xs mx-auto">Select a synchronization pipeline from the registry to initialize visualization.</p>
+                    </div>
                   </div>
                 </Card>
               ) : (
-                <Card className="border-zinc-200 shadow-sm rounded-2xl overflow-hidden bg-white">
-                  <CardHeader className="border-b border-zinc-100 bg-white p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-xl font-black">{sources.find(s => s._id === activeSourceId)?.title}</CardTitle>
-                        <CardDescription className="text-zinc-500 font-medium flex items-center gap-1">
-                          Mapped to Status ({sources.find(s => s._id === activeSourceId)?.statusCol}) and Handler ({sources.find(s => s._id === activeSourceId)?.handlerCol})
-                        </CardDescription>
+                <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] overflow-hidden bg-white animate-in zoom-in-95 duration-500">
+                  <CardHeader className="p-8 md:p-10 border-b border-zinc-50 bg-zinc-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-black rounded-xl shadow-lg">
+                          <Layers className="w-5 h-5 text-[#fffe01]" />
+                        </div>
+                        <CardTitle className="text-2xl font-black tracking-tight">{sources.find(s => s._id === activeSourceId)?.title}</CardTitle>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        disabled={sourceLoading} 
-                        onClick={() => fetchSourceData(activeSourceId)}
-                        className="h-8 font-black text-xs gap-2 rounded-lg"
-                      >
-                        {sourceLoading ? <Loader size="sm" color="red" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                        Refresh
-                      </Button>
+                      <CardDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[9px] pl-16">
+                        Mapped Vectors: STATUS ({sources.find(s => s._id === activeSourceId)?.statusCol}) &bull; HANDLER ({sources.find(s => s._id === activeSourceId)?.handlerCol})
+                      </CardDescription>
                     </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => fetchSourceData(activeSourceId)}
+                      disabled={sourceLoading}
+                      className="h-14 px-8 rounded-2xl border-2 border-zinc-100 font-black uppercase tracking-[0.2em] text-[10px] hover:text-black hover:border-black transition-all bg-white shadow-xl active:scale-95"
+                    >
+                      {sourceLoading ? <Loader size="sm" color="red" /> : <RefreshCw className="w-4 h-4 mr-3" />}
+                      Sync Cache
+                    </Button>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 md:p-10">
                     {sourceLoading ? (
-                      <div className="h-[400px] flex items-center justify-center">
-                        <div className="text-center space-y-4">
-                          <Loader size="lg" color="red" />
-                          <p className="text-sm font-bold text-zinc-400">Gleaning insights from the spreadsheet...</p>
+                      <div className="h-[500px] flex flex-col items-center justify-center gap-6">
+                        <Loader size="xl" color="red" />
+                        <div className="text-center">
+                          <p className="text-xs font-black text-zinc-900 uppercase tracking-widest animate-pulse">Extracting Intelligence</p>
+                          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">Cross-referencing spreadsheet metadata architecture...</p>
                         </div>
                       </div>
                     ) : activeSourceData ? (
-                      <div className="space-y-10">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-12">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                           {activeSourceData.statuses?.slice(0, 4).map((status, i) => (
-                            <div key={status} className="bg-zinc-50 rounded-xl p-4 border border-zinc-100">
-                              <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{status}</div>
-                              <div className="text-2xl font-black">
+                            <div key={status} className="bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] p-6 shadow-inner hover:bg-white hover:border-zinc-200 hover:shadow-xl transition-all duration-500 group">
+                              <div className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2 group-hover:text-black transition-colors">{status}</div>
+                              <div className="text-3xl md:text-4xl font-black text-zinc-900 tracking-tight">
                                 {activeSourceData.chartData.reduce((acc, curr) => acc + (curr[status] || 0), 0)}
                               </div>
                             </div>
                           ))}
                         </div>
 
-                        <div className="h-[400px] pt-4">
+                        <div className="h-[400px] md:h-[500px] pt-4">
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={activeSourceData.chartData}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis dataKey="handler" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12, fontWeight: 700}} dy={10} />
-                              <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12, fontWeight: 700}} />
-                              <Tooltip 
-                                contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
-                                cursor={{fill: '#f8fafc'}}
+                            <BarChart data={activeSourceData.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis 
+                                dataKey="handler" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} 
+                                interval={0}
+                                angle={-45}
+                                textAnchor="end"
+                                dy={10} 
                               />
-                              <Legend verticalAlign="top" align="right" height={36} iconType="circle" wrapperStyle={{fontWeight: 'bold', fontSize: '12px'}} />
+                              <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} />
+                              <Tooltip 
+                                contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', fontWeight: '900', fontSize: '12px', padding: '16px'}}
+                                cursor={{fill: '#f8fafc', radius: 10}}
+                              />
+                              <Legend 
+                                verticalAlign="top" 
+                                align="right" 
+                                height={60} 
+                                iconType="circle" 
+                                wrapperStyle={{fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8'}} 
+                              />
                               {activeSourceData.statuses.map((status, i) => (
                                 <Bar 
                                   key={status} 
                                   stackId="a" 
                                   dataKey={status} 
                                   fill={COLORS[i % COLORS.length]} 
-                                  radius={i === activeSourceData.statuses.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} 
+                                  radius={i === activeSourceData.statuses.length - 1 ? [8, 8, 0, 0] : [0, 0, 0, 0]} 
+                                  barSize={28}
                                 />
                               ))}
                             </BarChart>
@@ -365,10 +449,14 @@ const Analytics = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="h-[400px] flex flex-col items-center justify-center text-center space-y-2">
-                        <AlertCircle className="w-10 h-10 text-amber-500" />
-                        <h4 className="text-lg font-black text-zinc-900">Unable to load data</h4>
-                        <p className="text-sm text-zinc-500 font-medium max-w-xs">Please verify the link is a valid public Google Sheet and columns are correctly identified.</p>
+                      <div className="h-[500px] flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in duration-700">
+                        <div className="w-24 h-24 bg-rose-50 rounded-[2rem] flex items-center justify-center shadow-inner relative group">
+                          <AlertCircle className="w-10 h-10 text-[#d30614]" />
+                        </div>
+                        <div className="space-y-2">
+                           <h4 className="text-2xl font-black text-zinc-900 tracking-tight">Sync Failure</h4>
+                           <p className="text-zinc-400 font-bold uppercase tracking-widest text-[10px] max-w-xs mx-auto leading-loose">The requested spreadsheet architecture is inaccessible. Verify public permissions and column mapping integrity.</p>
+                        </div>
                       </div>
                     )}
                   </CardContent>

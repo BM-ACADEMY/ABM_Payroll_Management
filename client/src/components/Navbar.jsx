@@ -159,23 +159,32 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     setIsOpen(false);
   };
 
+  const [showSearch, setShowSearch] = useState(false);
+
   return (
     <nav
       className="h-16 border-b border-gray-200 bg-white/95 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between transition-all duration-300 ease-in-out"
     >
       <div className="flex items-center gap-4 flex-1">
-        {isMobile && (
+        {(isMobile || showSearch) && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={() => {
+              if (showSearch) {
+                setShowSearch(false);
+                setSearchTerm('');
+              } else {
+                setIsSidebarCollapsed(!isSidebarCollapsed);
+              }
+            }}
             className="text-gray-500 hover:bg-gray-100"
           >
-            <Menu className="w-6 h-6" />
+            {showSearch ? <ChevronRight className="w-6 h-6 rotate-180" /> : <Menu className="w-6 h-6" />}
           </Button>
         )}
 
-        <div className="relative w-full max-w-md hidden sm:block">
+        <div className={`relative w-full max-w-md ${showSearch ? 'block' : 'hidden sm:block'}`}>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-black transition-colors" />
             <Input
@@ -222,7 +231,16 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className={`flex items-center gap-2 md:gap-4 ${showSearch ? 'hidden' : 'flex'}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowSearch(true)}
+          className="text-gray-500 hover:text-black hover:bg-gray-100 sm:hidden"
+        >
+          <Search className="w-5 h-5" />
+        </Button>
+
         {user?.role?.name === 'admin' && (
           <Button
             variant="ghost"
@@ -259,7 +277,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
           {showNotifications && (
             <>
               <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotifications(false)}></div>
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="absolute top-full right-0 mt-2 w-[75vw] sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-black">Notifications</h3>
                   {notifUnread > 0 && <span className="text-[10px] text-gray-400 font-medium">{notifUnread} New</span>}
@@ -298,14 +316,14 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
             </>
           )}
         </div>
-        <div className="h-6 w-[1px] bg-gray-200 mx-2"></div>
+        <div className="h-6 w-[1px] bg-gray-200 mx-1 md:mx-2"></div>
         <Button
           variant="ghost"
           onClick={handleLogout}
-          className="text-gray-500 hover:text-black hover:bg-gray-100 flex items-center gap-2 font-normal text-sm rounded-xl px-4 py-2"
+          className="text-gray-500 hover:text-black hover:bg-gray-100 flex items-center gap-2 font-normal text-sm rounded-xl px-2 md:px-4 py-2"
         >
-          <LogOut className="w-4 h-4" />
-          Logout
+          <LogOut className="w-5 h-5 md:w-4 md:h-4" />
+          <span className="hidden md:inline">Logout</span>
         </Button>
       </div>
     </nav>
@@ -313,4 +331,5 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
 };
 
 export default Navbar;
+
 

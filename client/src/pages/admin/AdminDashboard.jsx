@@ -9,9 +9,10 @@ import {
   UserCheck2, 
   CalendarClock, 
   PieChart as PieChartIcon, 
-  MoreHorizontal, 
+  TrendingUp,
   ShieldAlert,
-  TrendingUp
+  ChevronRight,
+  UserPlus
 } from "lucide-react";
 import { lazy, Suspense } from 'react';
 import axios from 'axios';
@@ -43,10 +44,9 @@ const AdminDashboard = () => {
       setStats(statsRes.data.stats || []);
       setChartData(statsRes.data.chartData || []);
       setEmployees(Array.isArray(employeesRes.data.employees) ? employeesRes.data.employees : []);
-      setLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      // Fallback or error state
+    } finally {
       setLoading(false);
     }
   };
@@ -60,38 +60,53 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full gap-4">
         <Loader size="lg" color="red" />
+        <p className="text-sm font-medium text-gray-400 uppercase tracking-widest">Loading Admin Stats...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 md:p-10 space-y-10 animate-in fade-in duration-700 bg-background min-h-full">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 md:p-10 space-y-8 md:space-y-10 animate-in fade-in duration-500 bg-gray-50/20 min-h-screen pb-32">
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-2 bg-[#d30614] rounded-full"></div>
-            <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-gray-900">Admin <span className="text-black">Overview</span></h1>
+          <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900 leading-tight">
+            Admin <span className="text-[#d30614]">Dashboard</span>
+          </h1>
+          <p className="text-gray-500 text-base md:text-lg font-normal">
+            Comprehensive overview of organizational performance and attendance
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Button onClick={() => navigate('/admin/employees')} className="bg-[#d30614] hover:bg-gray-900 text-white font-bold rounded-xl shadow-lg shadow-red-100 px-6">
+            <UserPlus className="w-4 h-4 mr-2" /> All Employees
+          </Button>
+          <div className="hidden lg:flex flex-col items-end px-4 border-l border-gray-200">
+             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">System Status</span>
+             <span className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 mt-0.5">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+               ONLINE
+             </span>
           </div>
-          <p className="text-gray-500 text-lg font-normal">Comprehensive <span className="text-gray-900 font-medium">organizational overview</span> and real-time operational metrics.</p>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat, i) => {
           const Icon = IconMap[stat.icon] || Users2;
           return (
-            <Card key={i} className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <p className="text-sm font-normal text-gray-500">{stat.label}</p>
-                    <p className="text-2xl md:text-3xl font-medium text-gray-900">{stat.value}</p>
-                  </div>
-                  <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
-                  </div>
+            <Card key={i} className="group border-gray-100 shadow-sm bg-white rounded-2xl transition-all hover:shadow-md">
+              <CardContent className="p-6 md:p-8 flex flex-col items-center md:items-start text-center md:text-left gap-4">
+                <div className={`p-3 md:p-4 rounded-xl ${stat.bg} ${stat.color} shadow-sm group-hover:scale-110 transition-transform`}>
+                  <Icon className="w-5 h-5 md:w-6 md:h-6" />
+                </div>
+                <div>
+                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-2">{stat.label}</p>
+                   <div className="text-2xl md:text-4xl font-bold text-gray-900 tracking-tight">{stat.value}</div>
                 </div>
               </CardContent>
             </Card>
@@ -99,62 +114,70 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Attendance Chart */}
-        <Card className="bg-white border-gray-200 shadow-sm lg:col-span-1">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#d30614]" />
-              <CardTitle className="text-xl text-gray-900">Today's Attendance</CardTitle>
-            </div>
-            <CardDescription>Real-time status of all employees</CardDescription>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Attendance Pulse */}
+        <Card className="xl:col-span-1 border-gray-100 shadow-sm bg-white rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 md:p-8 pb-4">
+             <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gray-50 text-gray-400 rounded-xl">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900">Today's Pulse</CardTitle>
+                  <CardDescription className="text-xs font-medium text-gray-400 uppercase tracking-wider">Attendance Breakdown</CardDescription>
+                </div>
+             </div>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <Suspense fallback={<div className="h-full flex items-center justify-center text-gray-500">Loading chart...</div>}>
+          <CardContent className="p-6 md:p-8 pt-0 h-[300px]">
+            <Suspense fallback={<div className="h-full flex items-center justify-center text-gray-400">Loading charts...</div>}>
               <DashboardCharts chartData={chartData} />
             </Suspense>
           </CardContent>
         </Card>
 
-        {/* Employee Table */}
-        <Card className="bg-white border-gray-200 shadow-sm overflow-hidden lg:col-span-2">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle className="text-xl text-gray-900">Employee Directory</CardTitle>
-              <CardDescription className="text-gray-500">Showing recent active members</CardDescription>
+        {/* Directory Snapshot */}
+        <Card className="xl:col-span-2 border-gray-100 shadow-sm bg-white rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 md:p-8 pb-4 flex flex-row items-center justify-between border-b border-gray-50">
+            <div>
+               <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                 <Users2 className="w-5 h-5 text-[#d30614]" /> Employee Registry
+               </CardTitle>
+               <CardDescription className="text-xs font-medium text-gray-400">Recent talent acquisitions and payroll metrics</CardDescription>
             </div>
             <Button 
-              variant="outline" 
-              onClick={() => navigate('/admin/employees')}
-              className="border-gray-200 text-gray-500 hover:text-black hover:bg-gray-50 w-full sm:w-auto"
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/admin/employees')}
+                className="text-xs font-bold text-[#d30614] hover:bg-red-50 uppercase tracking-widest"
             >
-              View All
+              Full List <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6">
+          
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-100 hover:bg-transparent">
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Employee ID</TableHead>
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Name</TableHead>
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Role</TableHead>
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Base Salary</TableHead>
-                    {/* <TableHead className="text-gray-500 font-medium whitespace-nowrap text-right">Actions</TableHead> */}
+                <TableHeader className="bg-gray-50/50">
+                  <TableRow>
+                    <TableHead className="text-gray-400 font-bold uppercase tracking-widest text-[10px] pl-8">ID</TableHead>
+                    <TableHead className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Name</TableHead>
+                    <TableHead className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Rank</TableHead>
+                    <TableHead className="text-gray-400 font-bold uppercase tracking-widest text-[10px] text-right pr-8">Yield</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {employees.slice(0, 5).map((emp, i) => (
-                    <TableRow key={i} className="border-gray-100 hover:bg-gray-50/60 transition-colors">
-                      <TableCell className="font-mono text-black">{emp.employeeId}</TableCell>
-                      <TableCell className="font-normal text-gray-900 whitespace-nowrap">{emp.name}</TableCell>
-                      <TableCell className="text-gray-500 capitalize">{emp.role?.name || 'Employee'}</TableCell>
-                      <TableCell className="font-medium text-emerald-600 whitespace-nowrap">₹{emp.baseSalary?.toLocaleString()}</TableCell>
-                      {/* <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="text-gray-400 hover:text-[#d30614] hover:bg-red-50">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </TableCell> */}
+                    <TableRow key={i} className="hover:bg-gray-50/50 transition-all border-gray-50">
+                      <TableCell className="font-mono text-gray-400 text-xs pl-8 py-5">{emp.employeeId}</TableCell>
+                      <TableCell className="font-bold text-gray-900 py-5">{emp.name}</TableCell>
+                      <TableCell className="py-5">
+                         <Badge variant="outline" className="bg-white border-gray-200 text-gray-500 font-bold uppercase text-[9px] px-2.5 py-1 rounded-lg">
+                            {emp.role?.name || 'Staff'}
+                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-gray-900 pr-8 py-5">
+                         ₹{emp.baseSalary?.toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -163,6 +186,23 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Info Card Responsive Full Width */}
+      <Card className="bg-gray-900 text-white rounded-[2rem] border-none shadow-xl overflow-hidden p-8 md:p-12 relative">
+         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+            <ShieldAlert className="w-40 h-40" />
+         </div>
+         <div className="max-w-3xl space-y-6 relative z-10">
+            <h3 className="text-2xl md:text-3xl font-bold tracking-tight">Security & Operational Intelligence</h3>
+            <p className="text-gray-400 text-sm md:text-base leading-relaxed">
+               All personnel telemetry is synchronized in real-time with our centralized attendance matrix. Ensure your administrative protocols are followed when overriding shift finalizations or adjusting threshold credits.
+            </p>
+            <div className="flex flex-wrap gap-4 pt-2">
+               <Badge className="bg-[#fffe01] text-black font-bold border-none uppercase text-[10px] py-1.5 px-4 rounded-full">Automated Audit</Badge>
+               <Badge className="bg-white/10 text-white border-none uppercase text-[10px] py-1.5 px-4 rounded-full">Geo-fencing Active</Badge>
+            </div>
+         </div>
+      </Card>
     </div>
   );
 };

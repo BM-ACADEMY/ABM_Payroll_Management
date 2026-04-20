@@ -10,11 +10,13 @@ import {
   Upload,
   Image as ImageIcon,
   User,
-  History
+  History,
+  Trash2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import PhotoDetailModal from '@/components/PhotoDetailModal';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
   const [photos, setPhotos] = useState([]);
@@ -22,6 +24,8 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
   const [uploading, setUploading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchPhotos = async () => {
@@ -101,6 +105,30 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
   const handlePhotoClick = (photo) => {
     setSelectedPhoto(photo);
     setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = (e, photoId) => {
+    e.stopPropagation();
+    setDeleteId(photoId);
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
+    
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/site-photos/${deleteId}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setPhotos(prev => prev.filter(p => p._id !== deleteId));
+      toast({ title: "Success", description: "Photo deleted successfully." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete photo." });
+    } finally {
+      setIsConfirmOpen(false);
+      setDeleteId(null);
+    }
   };
 
   const handleCommentAdded = (photoId, newComment) => {
@@ -202,6 +230,17 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
                                 <span className="text-[10px] font-bold text-white uppercase">{photo.user?.name}</span>
                             </div>
                         </div>
+
+                        {/* Delete Button */}
+                        {(user?._id === photo.user?._id || ['admin', 'subadmin'].includes(user?.role?.name)) && (
+                          <button 
+                            onClick={(e) => handleDeleteClick(e, photo._id)}
+                            className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-red-600 text-white rounded-xl transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md border border-white/10"
+                            title="Delete Photo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                     </div>
                     
                     <div className="p-4 space-y-3">
@@ -255,6 +294,15 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onCommentAdded={handleCommentAdded}
+      />
+
+      <ConfirmDialog 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Photo"
+        description="Are you sure you want to remove this site photo? This action cannot be undone."
+        confirmText="Remove"
       />
 
       <style>{`

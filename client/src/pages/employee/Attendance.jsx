@@ -19,7 +19,8 @@ import {
   LayoutGrid,
   MapPin,
   LogIn,
-  Fingerprint
+  Fingerprint,
+  Info
 } from "lucide-react";
 import { getCurrentLocation } from '@/utils/location';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -53,16 +54,14 @@ const Attendance = () => {
   const [showLateDialog, setShowLateDialog] = useState(false);
   const [lunchDelayReason, setLunchDelayReason] = useState('');
   const [showLunchDelayDialog, setShowLunchDelayDialog] = useState(false);
-  const [earlyLogoutReason, setEarlyLogoutReason] = useState('');
-  const [showEarlyLogoutDialog, setShowEarlyLogoutDialog] = useState(false);
   const [estimatedEarnings, setEstimatedEarnings] = useState(null);
-  const [activeTab, setActiveTab] = useState('terminal'); // 'terminal', 'logs'
-  const [viewMode, setViewMode] = useState('list'); // 'list', 'table', 'calendar'
-  const [filterPeriod, setFilterPeriod] = useState('monthly'); // 'weekly', 'monthly'
+  const [activeTab, setActiveTab] = useState('terminal'); 
+  const [viewMode, setViewMode] = useState('list'); 
+  const [filterPeriod, setFilterPeriod] = useState('monthly'); 
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
-  const [logFilter, setLogFilter] = useState('attendance'); // 'attendance', 'audit', 'all'
+  const [logFilter, setLogFilter] = useState('attendance'); 
 
   useEffect(() => {
     fetchCurrentStatus();
@@ -76,12 +75,10 @@ const Attendance = () => {
     try {
       const token = sessionStorage.getItem('token');
       const headers = { 'x-auth-token': token };
-      
       const [attendRes, auditRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/logs`, { headers }),
         axios.get(`${import.meta.env.VITE_API_URL}/api/audit-logs`, { headers })
       ]);
-      
       setAttendanceLogs(attendRes.data);
       setAuditLogs(auditRes.data);
     } catch (err) {
@@ -143,8 +140,6 @@ const Attendance = () => {
     }
   };
 
-  // Replaced local function with utility import
-
   const handleAction = async (action) => {
     setLoading(true);
     const location = await getCurrentLocation();
@@ -158,13 +153,11 @@ const Attendance = () => {
         case 'check-in':
           const now = new Date();
           const checkInLimit = parse('14:30', 'HH:mm', new Date());
-          
           if (now > checkInLimit && !lateReason) {
             setShowLateDialog(true);
             setLoading(false);
             return;
           }
-
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/checkin`, { 
             mode: workingMode,
             lateReason: lateReason,
@@ -185,23 +178,18 @@ const Attendance = () => {
           const lunchInNow = new Date();
           const lunchLimitOut = parse('14:00', 'HH:mm', new Date());
           const lunchLimitIn = parse('14:30', 'HH:mm', new Date());
-          
           let isLunchSpecialCase = false;
           if (sessionTimes.lunchOut) {
             const lunchOutTime = parse(sessionTimes.lunchOut, 'HH:mm', new Date());
             isLunchSpecialCase = lunchOutTime > lunchLimitOut && lunchInNow > lunchLimitIn;
           } else {
-            // Fallback: if it's after 2:30 PM, we should probably check if a reason is needed
-            // since the backend will check its own record of lunchOut.
             isLunchSpecialCase = lunchInNow > lunchLimitIn;
           }
-
           if (isLunchSpecialCase && !lunchDelayReason) {
             setShowLunchDelayDialog(true);
             setLoading(false);
             return;
           }
-
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/lunchin`, { 
             delayReason: lunchDelayReason 
           }, config);
@@ -218,7 +206,6 @@ const Attendance = () => {
           }, config);
           setAttendanceState('completed');
           setSessionTimes(prev => ({ ...prev, checkOut: res.data.checkOut.time }));
-          setEarlyLogoutReason('');
           fetchEstimatedEarnings();
           break;
         default:
@@ -241,29 +228,24 @@ const Attendance = () => {
       case 'working': return { label: 'On Duty', color: 'bg-emerald-500', icon: Clock };
       case 'lunch': return { label: 'Lunch Break', color: 'bg-amber-500', icon: Coffee };
       case 'completed': return { label: 'Shift Ended', color: 'bg-rose-500', icon: CheckCircle2 };
-      case 'holiday': return { label: 'Company Holiday', color: 'bg-black', icon: Calendar };
+      case 'holiday': return { label: 'Company Holiday', color: 'bg-zinc-900', icon: Calendar };
       case 'leave': return { label: 'Approved Leave', color: 'bg-emerald-500', icon: Coffee };
       default: return { label: 'Offline', color: 'bg-slate-400', icon: Zap };
     }
   };
 
-  const StatusConfig = getStatusConfig(attendanceState);
-  const StatusIcon = StatusConfig.icon;
+  const statusConfig = getStatusConfig();
+  const StatusIcon = statusConfig.icon;
 
   const combinedLogs = useMemo(() => {
     let logs = [];
-    
     if (logFilter === 'attendance' || logFilter === 'all') {
       logs = [...logs, ...attendanceLogs.map(l => ({ ...l, type: 'attendance', timestamp: new Date(l.date + (l.checkIn?.time ? 'T' + l.checkIn.time : '')) }))];
     }
-    
     if (logFilter === 'audit' || logFilter === 'all') {
       logs = [...logs, ...auditLogs.map(l => ({ ...l, type: 'audit', timestamp: new Date(l.timestamp) }))];
     }
-    
-    // Sort by timestamp descending
     logs.sort((a, b) => b.timestamp - a.timestamp);
-
     return logs.filter(log => {
       if (filterPeriod === 'weekly') {
         const weekAgo = new Date();
@@ -277,78 +259,50 @@ const Attendance = () => {
   const stats = [
     { label: 'Avg. Login', value: '09:12 AM', icon: Clock },
     { label: 'On-Time Rate', value: '94%', icon: CheckCircle2 },
-    { label: 'Active Days', value: combinedLogs.filter(l => l.type === 'attendance').length, icon: Calendar },
+    { label: 'Active Days', value: attendanceLogs.length, icon: Calendar },
     { label: 'Perm. Used', value: `${estimatedEarnings?.totalPermissionHours || 0}h`, icon: Timer },
     { label: 'Est. Salary', value: `₹${estimatedEarnings?.estimatedNetSalary?.toLocaleString() || 0}`, icon: TrendingUp }
   ];
 
   return (
-    <div className="min-h-full bg-background p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-      {/* Header Section */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 text-black font-medium mb-1">
-            <div className="w-10 h-10 rounded-2xl bg-[#fffe01]/10 flex items-center justify-center shadow-sm">
-              <Timer className="w-6 h-6 text-black" />
-            </div>
-            <span className="text-sm tracking-[0.2em] uppercase font-normal">Live Shift Center</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-gray-900">
-            Attendance <span className="text-[#d30614]">Tracker</span>
+    <div className="min-h-screen bg-gray-50/30 p-4 md:p-8 lg:p-10 space-y-8 animate-in fade-in duration-500 pb-32">
+      {/* Header */}
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900">
+            Shift <span className="text-[#d30614]">Management</span>
           </h1>
-          <p className="text-gray-500 font-normal max-w-xl leading-relaxed">System-monitored workspace for managing your professional hours and shift logs in real-time.</p>
+          <p className="text-gray-500 text-base md:text-lg font-normal">
+            Track and manage your daily attendance status and logs
+          </p>
         </div>
 
         {estimatedEarnings && (
-          <div className="flex flex-col items-end gap-1 px-10 py-5 bg-[#fffe01] text-black rounded-2xl shadow-lg animate-in slide-in-from-top-4 duration-700 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-150 transition-transform duration-1000">
-               <TrendingUp className="w-20 h-20 text-black" />
+          <Card className="bg-[#fffe01] border-none shadow-sm p-6 rounded-2xl flex items-center gap-6">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Monthly Estimate</span>
+              <div className="text-3xl font-bold text-black">₹{estimatedEarnings.estimatedNetSalary.toLocaleString()}</div>
             </div>
-            <span className="text-[9px] font-normal text-black/60 uppercase tracking-[0.2em] relative z-10">Live Monthly Yield</span>
-            <div className="flex items-center gap-3 relative z-10">
-              <span className="text-4xl font-medium tracking-tighter text-black">₹{estimatedEarnings.estimatedNetSalary.toLocaleString()}</span>
-              <div className="flex items-center gap-1 bg-black/10 px-2 py-0.5 rounded-full border border-black/20">
-                 <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse"></div>
-                 <span className="text-[8px] font-medium text-black uppercase tracking-tighter">Live</span>
-              </div>
+            <div className="h-10 w-[1px] bg-black/10"></div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Status</span>
+              <Badge className="bg-black/10 text-black border-none hover:bg-black/20 text-[10px] font-bold">LIVE SYNC</Badge>
             </div>
-            <div className="flex items-center gap-2 relative z-10 mt-1">
-               <span className="text-[8px] font-normal text-black/70 uppercase tracking-widest">LOP: {estimatedEarnings.totalLOPDays}D</span>
-               <div className="w-1 h-1 rounded-full bg-black/20"></div>
-               <span className="text-[8px] font-normal text-black/70 uppercase tracking-widest">Perm: {estimatedEarnings.totalPermissionHours}h</span>
-            </div>
-          </div>
+          </Card>
         )}
-
-        
-        <div className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded-2xl shadow-sm">
-           <div className="flex flex-col px-6 border-r border-gray-200">
-              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">Operational Date</span>
-              <span className="text-sm font-normal text-gray-900">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-           </div>
-           <div className="flex flex-col px-6">
-              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1">Status Protocol</span>
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${StatusConfig.color.replace('bg-', 'bg-')} shadow-lg shadow-current/20 animate-pulse`}></div>
-                <span className="text-sm font-normal text-gray-900 uppercase tracking-tight">{StatusConfig.label}</span>
-              </div>
-           </div>
-        </div>
       </header>
-<br/>
-      {/* Analytics Stats Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map((stat, i) => (
-          <Card key={i} className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden group">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-gray-50 rounded-xl group-hover:bg-[#fffe01]/10 transition-colors">
-                  <stat.icon className="w-5 h-5 text-gray-400 group-hover:text-black transition-colors" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
-                  <p className="text-xl font-medium text-gray-900 tracking-tight">{stat.value}</p>
-                </div>
+          <Card key={i} className={`border-gray-100 shadow-sm bg-white rounded-2xl ${i === 4 ? 'col-span-2 md:col-span-1' : ''}`}>
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-3 bg-gray-50 rounded-xl text-gray-400">
+                <stat.icon className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mb-0.5">{stat.label}</p>
+                <p className="text-lg font-bold text-gray-900">{stat.value}</p>
               </div>
             </CardContent>
           </Card>
@@ -356,575 +310,422 @@ const Attendance = () => {
       </div>
 
       {/* View Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-gray-100/50 border border-gray-200 rounded-2xl w-fit mx-auto">
-        <button
-          onClick={() => setActiveTab('terminal')}
-          className={`px-8 py-3 rounded-xl text-xs font-medium uppercase tracking-widest transition-all ${
-            activeTab === 'terminal' 
-              ? 'bg-black text-[#fffe01] shadow-lg' 
-              : 'text-gray-400 hover:text-black hover:bg-white'
-          }`}
-        >
-          Live Terminal
-        </button>
-        <button
-          onClick={() => setActiveTab('logs')}
-          className={`px-8 py-3 rounded-xl text-xs font-medium uppercase tracking-widest transition-all ${
-            activeTab === 'logs' 
-              ? 'bg-black text-[#fffe01] shadow-lg' 
-              : 'text-gray-400 hover:text-black hover:bg-white'
-          }`}
-        >
-          Audit Logs
-        </button>
+      <div className="flex justify-center md:justify-start">
+        <div className="flex bg-gray-100/80 p-1 rounded-xl shadow-inner">
+          <button
+            onClick={() => setActiveTab('terminal')}
+            className={`px-8 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === 'terminal' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`px-8 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === 'logs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            Records
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-10 items-start">
-        {activeTab === 'terminal' ? (
-          <div className="lg:col-span-12 max-w-5xl mx-auto w-full">
-            <Card className="border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden relative">
-              {loading && (
-                <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-md transition-all">
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader size="lg" color="red" />
-                    <span className="text-black font-medium text-xs tracking-[0.3em] uppercase animate-pulse">Synchronizing Session...</span>
-                  </div>
+      {activeTab === 'terminal' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Active Status Card */}
+          <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl bg-white overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-8 md:p-12 relative text-center">
+            {loading && (
+              <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
+                <Loader size="lg" color="red" />
+              </div>
+            )}
+            
+            <div className="space-y-10 w-full max-w-sm">
+              <div className="flex flex-col items-center gap-4">
+                <div className={`p-6 rounded-[2rem] ${statusConfig.color} shadow-lg shadow-current/10`}>
+                  <StatusIcon className="w-12 h-12 text-white" />
                 </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2">
-                {/* Left Side: Configuration */}
-                <div className="p-10 md:p-14 bg-gray-50/50 border-r border-gray-200">
-                  <div className="space-y-12">
-                    <div className="space-y-6">
-                      <Label className="text-gray-600 font-medium text-xs uppercase tracking-[0.3em] ml-2 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#fffe01]"></div>
-                        Work Environment Selection
-                      </Label>
-                      <div className="grid grid-cols-2 gap-4 p-2 bg-gray-100 border border-gray-200 rounded-2xl shadow-inner">
-                        <button
-                          onClick={() => setWorkingMode('WFH')}
-                          disabled={attendanceState !== 'idle'}
-                          className={`flex flex-col items-center gap-3 py-8 rounded-xl transition-all duration-500 ${
-                            workingMode === 'WFH' 
-                              ? 'bg-[#fffe01] text-black shadow-lg scale-[1.03]' 
-                              : 'bg-transparent text-gray-400 hover:bg-white active:scale-95'
-                          } ${attendanceState !== 'idle' ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        >
-                          <Home className={`w-7 h-7 ${workingMode === 'WFH' ? 'text-black' : 'text-gray-400'}`} />
-                          <span className="text-[10px] font-medium uppercase tracking-[0.2em]">{workingMode === 'WFH' ? 'ACTIVE' : ''} HOME</span>
-                        </button>
-                        
-                        <button
-                          onClick={() => setWorkingMode('WFO')}
-                          disabled={attendanceState !== 'idle'}
-                          className={`flex flex-col items-center gap-3 py-8 rounded-xl transition-all duration-500 ${
-                            workingMode === 'WFO' 
-                              ? 'bg-[#fffe01] text-black shadow-lg scale-[1.03]' 
-                              : 'bg-transparent text-gray-400 hover:bg-white active:scale-95'
-                          } ${attendanceState !== 'idle' ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        >
-                          <Building2 className={`w-7 h-7 ${workingMode === 'WFO' ? 'text-black' : 'text-gray-400'}`} />
-                          <span className="text-[10px] font-medium uppercase tracking-[0.2em]">{workingMode === 'WFO' ? 'ACTIVE' : ''} OFFICE</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <Label className="text-gray-600 font-medium text-xs uppercase tracking-[0.3em] ml-2 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#fffe01]"></div>
-                        Session Timeline
-                      </Label>
-                      <div className="grid grid-cols-2 gap-5">
-                        {[
-                          { label: 'Clock-In', time: sessionTimes.checkIn, icon: Clock, color: 'text-black', bg: 'bg-[#fffe01]/10' },
-                          { label: 'Clock-Out', time: sessionTimes.checkOut, icon: LogOut, color: 'text-rose-500', bg: 'bg-rose-50' },
-                          { label: 'Lunch Start', time: sessionTimes.lunchOut, icon: Coffee, color: 'text-amber-500', bg: 'bg-amber-50' },
-                          { label: 'Lunch End', time: sessionTimes.lunchIn, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' }
-                        ].map((item, i) => (
-                          <div key={i} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center gap-3 transition-all hover:border-gray-300 group">
-                            <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}>
-                              <item.icon className={`w-6 h-6 ${item.color}`} />
-                            </div>
-                            <div className="text-[9px] font-medium text-gray-400 uppercase tracking-[0.2em]">{item.label}</div>
-                            <div className={`text-lg font-medium tracking-tight ${item.time ? 'text-gray-900' : 'text-gray-200'}`}>
-                              {item.time || '--:--'}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Current Status</span>
+                  <div className="text-4xl font-bold text-gray-900 uppercase tracking-tight">{statusConfig.label}</div>
                 </div>
+              </div>
 
-                {/* Right Side: Primary Actions */}
-                <div className="p-10 md:p-14 flex flex-col justify-center items-center h-full bg-white relative">
-                  <div className="absolute top-10 right-10 opacity-[0.03] pointer-events-none">
-                     <Zap className="w-64 h-64 text-indigo-600 rotate-12" />
+              <div className="space-y-4">
+                {attendanceState === 'idle' && (
+                  <div className="space-y-6">
+                    <div className="flex bg-gray-100 p-1.5 rounded-2xl w-full">
+                      <button
+                        onClick={() => setWorkingMode('WFH')}
+                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${workingMode === 'WFH' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}
+                      >
+                        <Home className="w-4 h-4" /> Remote (WFH)
+                      </button>
+                      <button
+                        onClick={() => setWorkingMode('WFO')}
+                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${workingMode === 'WFO' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400'}`}
+                      >
+                        <Building2 className="w-4 h-4" /> Office (WFO)
+                      </button>
+                    </div>
+                    
+                    <Button
+                      disabled={loading}
+                      onClick={() => handleAction('check-in')}
+                      className="w-full py-10 bg-gray-900 hover:bg-[#d30614] text-white text-xl font-bold rounded-2xl shadow-xl transition-all active:scale-95"
+                    >
+                      Process Check-in
+                    </Button>
                   </div>
+                )}
 
-                  {workingMode === 'WFO' && attendanceState === 'idle' ? (
-                    <div className="space-y-10 text-center animate-in slide-in-from-right-8 duration-700">
-                      <div className="w-40 h-40 mx-auto rounded-2xl bg-gray-50 flex items-center justify-center shadow-sm group">
-                        <Building2 className="w-20 h-20 text-gray-300 group-hover:scale-110 transition-transform duration-700" />
+                {attendanceState === 'working' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {!sessionTimes.lunchIn && (
+                      <Button
+                        disabled={loading}
+                        onClick={() => handleAction('lunch-out')}
+                        className="py-8 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow-md transition-all h-auto flex flex-col"
+                      >
+                        <Coffee className="w-6 h-6 mb-2" /> Lunch Break
+                      </Button>
+                    )}
+                    <Button
+                      disabled={loading}
+                      onClick={() => handleAction('check-out')}
+                      className={`py-8 bg-zinc-900 hover:bg-rose-600 text-white font-bold rounded-2xl shadow-md transition-all h-auto flex flex-col ${sessionTimes.lunchIn ? 'col-span-2' : ''}`}
+                    >
+                      <LogOut className="w-6 h-6 mb-2" /> End Shift
+                    </Button>
+                  </div>
+                )}
+
+                {attendanceState === 'lunch' && (
+                  <Button
+                    disabled={loading}
+                    onClick={() => handleAction('lunch-in')}
+                    className="w-full py-10 bg-emerald-500 hover:bg-emerald-600 text-white text-xl font-bold rounded-2xl shadow-xl transition-all active:scale-95"
+                  >
+                    Resume Working
+                  </Button>
+                )}
+
+                {attendanceState === 'completed' && (
+                   <div className="p-8 bg-emerald-50 rounded-3xl border border-emerald-100 space-y-4">
+                      <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto">
+                        <CheckCircle2 className="w-8 h-8" />
                       </div>
-                      <div className="space-y-4">
-                        <h3 className="text-3xl font-medium text-gray-900 tracking-tighter uppercase">Biometric Link Required</h3>
-                        <p className="text-gray-500 font-normal leading-relaxed max-w-[320px] mx-auto text-sm">
-                          Shift data must be captured via the <span className="text-black font-medium">Authorized Office Fingerprint Device</span>.
-                        </p>
-                      </div>
-                      <div className="inline-flex items-center gap-3 py-2 px-6 border border-gray-200 text-black bg-gray-50 rounded-full font-medium text-[10px] tracking-widest uppercase shadow-sm">
-                        <div className="w-2 h-2 rounded-full bg-black animate-ping"></div>
-                        Terminal Recognition Active
-                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">Shift Finalized</h3>
+                      <p className="text-xs text-emerald-700 font-medium">Your work logs for today have been successfully recorded and synced.</p>
+                   </div>
+                )}
+
+                {(attendanceState === 'holiday' || attendanceState === 'leave') && (
+                  <div className="p-10 bg-gray-100 rounded-3xl space-y-4">
+                    <StatusIcon className="w-12 h-12 text-gray-400 mx-auto" />
+                    <h3 className="text-xl font-bold text-gray-900 uppercase tracking-tight">{statusConfig.label}</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed font-medium">Operations are suspended for your profile today as per the organizational calendar.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          {/* Times Log Snapshot */}
+          <div className="space-y-6">
+            <Card className="border-gray-100 shadow-sm rounded-3xl bg-white p-6">
+               <CardHeader className="p-0 pb-4 border-b border-gray-50 mb-6">
+                  <CardTitle className="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <Timer className="w-4 h-4" /> Today's Timeline
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="p-0 space-y-6">
+                  {[
+                    { label: 'Check-in', time: sessionTimes.checkIn, icon: LogIn, color: 'text-gray-900' },
+                    { label: 'Lunch Out', time: sessionTimes.lunchOut, icon: Coffee, color: 'text-amber-500' },
+                    { label: 'Lunch In', time: sessionTimes.lunchIn, icon: CheckCircle2, color: 'text-emerald-500' },
+                    { label: 'Check-out', time: sessionTimes.checkOut, icon: LogOut, color: 'text-rose-500' }
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg bg-gray-50 ${item.color}`}>
+                             <item.icon className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs font-bold text-gray-600">{item.label}</span>
+                       </div>
+                       <span className={`text-sm font-bold font-mono ${item.time ? 'text-gray-900' : 'text-gray-200'}`}>
+                          {item.time || '00:00:00'}
+                       </span>
                     </div>
-                  ) : (
-                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-500">
-                      <div className="flex flex-col items-center gap-5">
-                          <StatusIcon className={`w-16 h-16 ${StatusConfig.color.replace('bg-', 'text-')} drop-shadow-xl animate-pulse`} />
-                          <div className="flex flex-col items-center gap-1">
-                             <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.4em]">Protocol Status</span>
-                             <span className={`text-4xl font-medium ${StatusConfig.color.replace('bg-', 'text-')} tracking-tighter uppercase`}>
-                               {StatusConfig.label}
-                             </span>
-                          </div>
-                      </div>
+                  ))}
+               </CardContent>
+            </Card>
 
-                      <div className="space-y-6">
-                        {attendanceState === 'idle' && (
-                          <Button
-                            disabled={loading}
-                            onClick={() => handleAction('check-in')}
-                            className="group w-full py-16 text-3xl font-medium bg-[#fffe01] hover:bg-indigo-600 text-black shadow-lg transition-all hover:-translate-y-2 active:scale-[0.98] rounded-2xl flex flex-col gap-2 relative overflow-hidden"
-                          >
-                            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-150 transition-transform duration-1000">
-                              <Zap className="w-32 h-32" />
-                            </div>
-                            <span className="tracking-tighter relative z-10 uppercase text-4xl">Start Day</span>
-                            <span className="text-[11px] font-medium opacity-80 uppercase tracking-[0.4em] relative z-10">Initialize Session</span>
-                          </Button>
-                        )}
-
-                        {attendanceState === 'working' && (
-                          <div className="space-y-6">
-                            {!sessionTimes.lunchIn && (
-                              <Button
-                                disabled={loading}
-                                onClick={() => handleAction('lunch-out')}
-                                className="w-full py-12 text-2xl font-medium bg-white border-2 border-amber-400 text-amber-500 hover:bg-amber-50 shadow-md transition-all hover:-translate-y-1 rounded-2xl flex flex-col gap-1"
-                              >
-                                <span className="tracking-tight uppercase">Lunch Break</span>
-                                <span className="text-[10px] font-normal opacity-70 uppercase tracking-[0.3em]">Pause Session</span>
-                              </Button>
-                            )}
-                            <Button
-                              disabled={loading}
-                              onClick={() => handleAction('check-out')}
-                              className="w-full py-12 text-2xl font-medium bg-rose-600 hover:bg-rose-700 text-white shadow-lg transition-all hover:-translate-y-1 rounded-2xl flex flex-col gap-1"
-                            >
-                              <span className="tracking-tight uppercase">Clock-Out</span>
-                              <span className="text-[10px] font-normal opacity-70 uppercase tracking-[0.3em]">Terminate Session</span>
-                            </Button>
-                          </div>
-                        )}
-
-                        {attendanceState === 'lunch' && (
-                          <Button
-                            disabled={loading}
-                            onClick={() => handleAction('lunch-in')}
-                            className="w-full py-16 text-3xl font-medium bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg transition-all hover:-translate-y-2 active:scale-[0.98] rounded-2xl flex flex-col gap-2"
-                          >
-                            <span className="tracking-tighter uppercase text-white">RESUME WORK</span>
-                            <span className="text-[11px] font-normal opacity-80 uppercase tracking-[0.4em] text-white">Continue Session</span>
-                          </Button>
-                        )}
-
-                        {attendanceState === 'completed' && (
-                          <div className="relative group">
-                            <div className="absolute inset-0 bg-emerald-400 blur-[60px] opacity-10 transition-opacity"></div>
-                            <div className="relative text-center p-14 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm">
-                              <div className="w-24 h-24 mx-auto rounded-2xl bg-emerald-50 flex items-center justify-center mb-8 shadow-inner">
-                                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-                              </div>
-                              <h3 className="text-3xl font-medium text-gray-900 tracking-tighter uppercase mb-3">Day Finalized</h3>
-                              <p className="text-gray-500 font-normal text-sm leading-relaxed mb-8">
-                                Professional summary synchronized accurately across the central network.
-                              </p>
-                              <div className="flex items-center justify-center gap-3 py-2 px-6 bg-gray-50 rounded-full inline-flex">
-                                 <div className="flex -space-x-3">
-                                   {[1,2,3].map(i => (
-                                     <div key={i} className="w-10 h-10 rounded-full border-4 border-white bg-gray-200" />
-                                   ))}
-                                 </div>
-                                 <span className="text-[9px] font-medium text-gray-400 uppercase tracking-widest pl-2">System Verified</span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {attendanceState === 'holiday' && (
-                          <div className="relative group animate-in zoom-in-95 duration-700">
-                            <div className="relative text-center p-14 bg-white border-2 border-[#fffe01]/30 rounded-2xl shadow-sm">
-                              <div className="w-28 h-28 mx-auto rounded-2xl bg-[#fffe01]/10 flex items-center justify-center mb-10 shadow-inner group-hover:rotate-6 transition-transform">
-                                <Calendar className="w-14 h-14 text-black" />
-                              </div>
-                              <h3 className="text-4xl font-medium text-gray-900 tracking-tighter uppercase mb-4">Official Holiday</h3>
-                              <p className="text-gray-500 font-normal text-md leading-relaxed mb-10">
-                                Marked as a company-wide day of rest. No operations required.
-                              </p>
-                              <div className="inline-block">
-                                  <Badge variant="outline" className="border-2 border-[#fffe01]/30 text-black bg-[#fffe01]/5 rounded-2xl py-3 px-8 font-medium text-xs tracking-[0.3em] uppercase shadow-sm">
-                                    OFF DUTY
-                                  </Badge>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {attendanceState === 'leave' && (
-                          <div className="relative group animate-in zoom-in-95 duration-700">
-                            <div className="relative text-center p-14 bg-white border-2 border-emerald-200 rounded-2xl shadow-sm">
-                              <div className="w-28 h-28 mx-auto rounded-2xl bg-emerald-50 flex items-center justify-center mb-10 shadow-inner group-hover:rotate-6 transition-transform">
-                                <Coffee className="w-14 h-14 text-emerald-500" />
-                              </div>
-                              <h3 className="text-4xl font-medium text-gray-900 tracking-tighter uppercase mb-4">On Leave</h3>
-                              <p className="text-gray-500 font-normal text-md leading-relaxed mb-10">
-                                Your leave request has been approved. Enjoy your time off and relax! No operations required today.
-                              </p>
-                              <div className="inline-block">
-                                  <Badge variant="outline" className="border-2 border-emerald-200 text-emerald-600 bg-emerald-50 rounded-2xl py-3 px-8 font-medium text-xs tracking-[0.3em] uppercase shadow-sm">
-                                    RELAXING
-                                  </Badge>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            <Card className="border-[#fffe01] bg-[#fffe01]/10 rounded-3xl p-6 border-dashed border-2">
+              <div className="flex gap-4">
+                <Info className="w-6 h-6 text-yellow-600 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-yellow-800 uppercase tracking-wider">Operational Note</p>
+                  <p className="text-xs text-yellow-700 leading-relaxed font-medium">Ensure your GPS is enabled for check-in/out to avoid validation errors.</p>
                 </div>
               </div>
             </Card>
           </div>
-        ) : (
-          <Card className="border border-gray-200 shadow-sm rounded-[2.5rem] bg-white overflow-hidden min-h-[600px] flex flex-col">
-            <CardHeader className="p-10 border-b border-gray-100 bg-gray-50/30 flex flex-col md:flex-row items-center justify-between gap-6">
-               <div className="space-y-1">
-                 <CardTitle className="text-2xl font-medium flex items-center gap-3">
-                   <Calendar className="w-7 h-7 text-black" />
-                   Attendance History
-                 </CardTitle>
-                 <CardDescription className="text-gray-500 font-normal">Review your professional engagement logs</CardDescription>
-               </div>
-
-               <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm">
-                  {/* Period Filter */}
-                  <div className="flex p-1 bg-gray-50 rounded-xl mr-2">
-                    {['weekly', 'monthly'].map(p => (
-                      <button
-                        key={p}
-                        onClick={() => setFilterPeriod(p)}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                          filterPeriod === p ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Log Filter */}
-                  <div className="flex p-1 bg-gray-50 rounded-xl mr-2">
-                    {[
-                      { id: 'attendance', label: 'Attendance' },
-                      { id: 'audit', label: 'Security' },
-                      { id: 'all', label: 'All' }
-                    ].map(f => (
-                      <button
-                        key={f.id}
-                        onClick={() => setLogFilter(f.id)}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                          logFilter === f.id ? 'bg-[#fffe01] text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* View Mode Selector */}
-                  <div className="flex gap-1 border-l border-gray-100 pl-3">
-                    {[
-                      { mode: 'list', icon: List },
-                      { mode: 'table', icon: LayoutGrid },
-                      { mode: 'calendar', icon: CalendarDays }
-                    ].map(v => (
-                      <Button
-                        key={v.mode}
-                        variant={viewMode === v.mode ? 'default' : 'ghost'}
-                        size="icon"
-                        onClick={() => setViewMode(v.mode)}
-                        className={`rounded-xl ${viewMode === v.mode ? 'bg-[#fffe01] text-black hover:bg-[#fffe01]' : 'text-gray-400'}`}
-                      >
-                        <v.icon className="w-5 h-5" />
-                      </Button>
-                    ))}
-                  </div>
-               </div>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-auto">
-               {logsLoading ? (
-                 <div className="flex flex-col items-center justify-center py-40 gap-4">
-                    <Loader size="lg" color="red" />
-                    <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Retrieving Logs...</span>
-                 </div>
-               ) : (
-                 <>
-                   {viewMode === 'list' ? (
-                     <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {combinedLogs.map((log, i) => (
-                          <div key={i} className={`group p-6 rounded-[2rem] border border-gray-100 bg-white hover:border-[#fffe01] hover:shadow-xl transition-all duration-500 flex flex-col gap-6 relative overflow-hidden ${log.type === 'audit' ? 'border-dashed' : ''}`}>
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50 rounded-bl-[4rem] flex items-center justify-center group-hover:bg-[#fffe01]/10 transition-colors">
-                               <span className="text-2xl font-medium text-gray-300 group-hover:text-black transition-colors">{new Date(log.timestamp).getDate()}</span>
-                            </div>
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.2em]">{format(new Date(log.timestamp), 'EEEE')}</span>
-                              <h4 className="text-lg font-medium text-gray-900 tracking-tight">{format(new Date(log.timestamp), 'MMMM dd, yyyy')}</h4>
-                            </div>
-
-                            {log.type === 'attendance' ? (
-                              <>
-                                <div className="grid grid-cols-2 gap-4">
-                                   <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
-                                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">In</span>
-                                      <span className="text-sm font-medium text-gray-900">{log.checkIn?.time || '--:--'}</span>
-                                   </div>
-                                   <div className="p-3 bg-gray-50 rounded-2xl space-y-1">
-                                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block">Out</span>
-                                      <span className="text-sm font-medium text-gray-900">{log.checkOut?.time || '--:--'}</span>
-                                   </div>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                   <div className="flex items-center gap-2">
-                                      <Badge className={`uppercase text-[10px] font-bold tracking-widest py-1.5 px-4 rounded-full border-0 ${
-                                        log.status?.includes('late') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                                      }`}>
-                                        <Fingerprint className="w-3 h-3 mr-2" />
-                                        {log.status || 'Duty'}
-                                      </Badge>
-                                      {(log.checkIn?.location || log.checkOut?.location) && (
-                                        <div className="flex gap-1">
-                                          {log.checkIn?.location && (
-                                            <a 
-                                              href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
-                                              title="Check-in Location"
-                                            >
-                                              <MapPin className="w-3 h-3" />
-                                            </a>
-                                          )}
-                                          {log.checkOut?.location && (
-                                            <a 
-                                              href={`https://www.google.com/maps?q=${log.checkOut.location.lat},${log.checkOut.location.lng}`} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
-                                              title="Check-out Location"
-                                            >
-                                              <MapPin className="w-3 h-3" />
-                                            </a>
-                                          )}
-                                        </div>
-                                      )}
-                                   </div>
-                                   {log.checkIn?.mode && (
-                                     <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.2em]">{log.checkIn.mode}</span>
-                                   )}
-                                </div>
-                              </>
-                            ) : (
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                  <div className={`p-3 rounded-xl ${log.action === 'LOGIN' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
-                                    {log.action === 'LOGIN' ? <LogIn className="w-5 h-5" /> : <LogOut className="w-5 h-5" />}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-gray-900">{log.action === 'LOGIN' ? 'System Login' : 'System Logout'}</p>
-                                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">{format(new Date(log.timestamp), 'hh:mm:ss a')}</p>
-                                  </div>
-                                </div>
-                                
-                                {log.location && (
-                                  <a 
-                                    href={`https://www.google.com/maps?q=${log.location.lat},${log.location.lng}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-black hover:text-[#fffe01] transition-all group-hover:scale-110"
-                                    title="Auth Location"
-                                  >
-                                    <MapPin className="w-4 h-4" />
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                     </div>
-                   ) : viewMode === 'table' ? (
-                     <Table>
-                        <TableHeader className="bg-gray-50/50">
-                          <TableRow className="border-gray-100 h-16">
-                            <TableHead className="pl-10 font-bold text-gray-400 text-[10px] uppercase tracking-[0.2em]">Date</TableHead>
-                            <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-[0.2em]">Login</TableHead>
-                            <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-[0.2em]">Logout</TableHead>
-                            <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-[0.2em]">Environment</TableHead>
-                            <TableHead className="text-right pr-10 font-bold text-gray-400 text-[10px] uppercase tracking-[0.2em]">Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {combinedLogs.filter(l => l.type === 'attendance').map((log, i) => (
-                            <TableRow key={i} className="h-20 hover:bg-gray-50/50 transition-colors border-gray-50">
-                              <TableCell className="pl-10 font-medium text-gray-900">
-                                 <div className="flex flex-col">
-                                   <span>{format(new Date(log.timestamp), 'MMM dd, yyyy')}</span>
-                                   <span className="text-[10px] text-gray-400 uppercase tracking-tighter">{format(new Date(log.timestamp), 'EEEE')}</span>
+        </div>
+      ) : (
+        <Card className="border-gray-100 shadow-sm rounded-[2rem] bg-white overflow-hidden">
+          <CardHeader className="p-6 md:p-10 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-3">
+              <CalendarDays className="w-6 h-6 text-[#d30614]" /> Records Log
+            </CardTitle>
+            
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex bg-gray-100 p-1 rounded-xl">
+                {['weekly', 'monthly'].map(p => (
+                  <button key={p} onClick={() => setFilterPeriod(p)} className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${filterPeriod === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <div className="flex bg-gray-100 p-1 rounded-xl">
+                {['attendance', 'audit', 'all'].map(f => (
+                  <button key={f} onClick={() => setLogFilter(f)} className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${logFilter === f ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+                {[List, LayoutGrid, CalendarDays].map((Icon, idx) => {
+                  const modes = ['list', 'table', 'calendar'];
+                  const mode = modes[idx];
+                  return (
+                    <Button
+                      key={idx}
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setViewMode(mode)}
+                      className={`h-8 w-8 rounded-lg transition-all ${viewMode === mode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {logsLoading ? (
+              <div className="py-40 flex flex-col items-center gap-4">
+                <Loader color="red" size="lg" />
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse">Synchronizing Terminal Logs...</span>
+              </div>
+            ) : (
+              <div className={`${viewMode === 'calendar' ? 'p-0' : 'p-6 md:p-10'}`}>
+                {viewMode === 'list' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-5 duration-500">
+                    {combinedLogs.length === 0 ? (
+                      <div className="col-span-full py-20 text-center text-gray-400 uppercase font-bold text-xs tracking-widest border-2 border-dashed border-gray-100 rounded-3xl">No operational logs found</div>
+                    ) : (
+                      combinedLogs.map((log, i) => (
+                        <Card key={i} className="border-gray-100 shadow-sm hover:shadow-xl hover:border-black/5 transition-all rounded-2xl group overflow-hidden">
+                           <div className="p-5 space-y-4">
+                              <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${log.type === 'attendance' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                       {log.type === 'attendance' ? <LogIn className="w-5 h-5" /> : <Fingerprint className="w-5 h-5" />}
+                                    </div>
+                                    <div>
+                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{log.type}</p>
+                                       <p className="text-sm font-bold text-gray-900">{format(new Date(log.timestamp), 'MMM dd, yyyy')}</p>
+                                    </div>
                                  </div>
+                                 {log.type === 'attendance' ? (
+                                    <Badge className={`${log.status?.includes('late') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} border-none text-[9px] font-black uppercase px-2`}>
+                                      {log.status || 'SYNCED'}
+                                    </Badge>
+                                 ) : (
+                                    <Badge className="bg-zinc-900 text-[#fffe01] border-none text-[9px] font-black uppercase px-2">AUDIT</Badge>
+                                 )}
+                              </div>
+                              
+                              {log.type === 'attendance' ? (
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                   <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100/50">
+                                      <span className="text-[9px] font-bold text-gray-400 uppercase block mb-1">Check-in</span>
+                                      <span className="font-mono text-sm text-gray-900">{log.checkIn?.time || '--:--'}</span>
+                                   </div>
+                                   <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100/50">
+                                      <span className="text-[9px] font-bold text-gray-400 uppercase block mb-1">Check-out</span>
+                                      <span className="font-mono text-sm text-gray-900">{log.checkOut?.time || '--:--'}</span>
+                                   </div>
+                                </div>
+                              ) : (
+                                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100/50">
+                                   <span className="text-[9px] font-bold text-gray-400 uppercase block mb-1">Activity</span>
+                                   <p className="text-xs font-medium text-gray-700 line-clamp-2">{log.action || log.details || 'System event recorded'}</p>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center justify-between pt-2">
+                                 <div className="flex items-center gap-1.5 text-gray-400">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span className="text-[10px] font-bold">{format(new Date(log.timestamp), 'hh:mm a')}</span>
+                                 </div>
+                                 {log.checkIn?.mode && (
+                                   <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
+                                      <MapPin className="w-3 h-3 text-red-400" />
+                                      {log.checkIn.mode}
+                                   </div>
+                                 )}
+                              </div>
+                           </div>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {viewMode === 'table' && (
+                  <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm animate-in fade-in duration-500">
+                    <Table>
+                      <TableHeader className="bg-gray-50/50">
+                        <TableRow>
+                          <TableHead className="pl-10 h-16 text-[10px] uppercase font-bold text-gray-400 tracking-[0.2em] w-48">Timestamp</TableHead>
+                          <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-[0.2em]">Category</TableHead>
+                          <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-[0.2em]">Record / Action</TableHead>
+                          <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-[0.2em]">Environment</TableHead>
+                          <TableHead className="text-right pr-10 text-[10px] uppercase font-bold text-gray-400 tracking-[0.2em]">Validation</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {combinedLogs.length === 0 ? (
+                          <TableRow><TableCell colSpan={5} className="text-center py-32 text-gray-400 uppercase font-bold text-xs tracking-widest opacity-50">Operational logs absent</TableCell></TableRow>
+                        ) : (
+                          combinedLogs.map((log, i) => (
+                            <TableRow key={i} className="hover:bg-gray-50 group transition-all">
+                              <TableCell className="pl-10 py-6">
+                                <div className="flex flex-col">
+                                   <span className="font-bold text-gray-900 text-sm">{format(new Date(log.timestamp), 'MMM dd, yyyy')}</span>
+                                   <span className="text-[10px] text-gray-400 font-bold font-mono">{format(new Date(log.timestamp), 'HH:mm:ss')}</span>
+                                </div>
                               </TableCell>
                               <TableCell>
-                                 <span className="bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-900">{log.checkIn?.time || '--:--'}</span>
+                                 <Badge variant="outline" className={`text-[9px] font-black uppercase ${log.type === 'attendance' ? 'text-emerald-600 border-emerald-100 bg-emerald-50' : 'text-indigo-600 border-indigo-100 bg-indigo-50'}`}>
+                                    {log.type}
+                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                 <span className="bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-900">{log.checkOut?.time || '--:--'}</span>
+                                 {log.type === 'attendance' ? (
+                                   <div className="flex items-center gap-6">
+                                      <div className="space-y-0.5">
+                                         <span className="text-[9px] font-bold text-gray-400 uppercase block">In</span>
+                                         <span className="font-mono text-xs font-bold text-gray-900">{log.checkIn?.time || '--:--'}</span>
+                                      </div>
+                                      <div className="space-y-0.5">
+                                         <span className="text-[9px] font-bold text-gray-400 uppercase block">Out</span>
+                                         <span className="font-mono text-xs font-bold text-gray-900">{log.checkOut?.time || '--:--'}</span>
+                                      </div>
+                                   </div>
+                                 ) : (
+                                   <span className="text-xs font-bold text-gray-700">{log.action || log.details || 'System event'}</span>
+                                 )}
                               </TableCell>
                               <TableCell>
-                                 <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-gray-200">{log.checkIn?.mode || 'OFFICE'}</Badge>
+                                 <div className="flex items-center gap-2">
+                                    <MapPin className="w-3 h-3 text-red-500 opacity-50" />
+                                    <span className="text-[10px] font-bold uppercase text-gray-500 tracking-tight">{log.checkIn?.mode || 'LOCAL_IP'}</span>
+                                 </div>
                               </TableCell>
                               <TableCell className="text-right pr-10">
-                                 <div className="flex items-center justify-end gap-2">
-                                   {(log.checkIn?.location || log.checkOut?.location) && (
-                                      <div className="flex gap-1 mr-2">
-                                        {log.checkIn?.location && (
-                                          <a 
-                                            href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="p-1 text-emerald-600 hover:text-emerald-700 transition-colors"
-                                            title="Check-in Location"
-                                          >
-                                            <MapPin className="w-3.5 h-3.5" />
-                                          </a>
-                                        )}
-                                        {log.checkOut?.location && (
-                                          <a 
-                                            href={`https://www.google.com/maps?q=${log.checkOut.location.lat},${log.checkOut.location.lng}`} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="p-1 text-rose-600 hover:text-rose-700 transition-colors"
-                                            title="Check-out Location"
-                                          >
-                                            <MapPin className="w-3.5 h-3.5" />
-                                          </a>
-                                        )}
-                                      </div>
-                                   )}
-                                   <Badge className={`uppercase text-[9px] font-bold tracking-widest py-1 px-3 rounded-full border-0 ${
-                                     log.status?.includes('late') ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                                   }`}>
-                                     {log.status || 'Present'}
-                                   </Badge>
-                                 </div>
-                               </TableCell>
+                                 <Badge className={`text-[9px] font-black uppercase ${log.status?.includes('late') ? 'bg-amber-100 text-amber-700 shadow-sm' : log.type === 'audit' ? 'bg-zinc-900 text-[#fffe01]' : 'bg-emerald-100 text-emerald-700 shadow-sm'}`}>
+                                   {log.status || (log.type === 'audit' ? 'LOGGED' : 'SYNCED')}
+                                 </Badge>
+                              </TableCell>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                     </Table>
-                   ) : (
-                     <div className="pb-20 p-10">
-                        <CalendarView />
-                     </div>
-                   )}
-                 </>
-               )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                {viewMode === 'calendar' && (
+                  <div className="animate-in zoom-in-95 duration-500">
+                    <CalendarView />
+                  </div>
+                )}
+              </div>
+            ) }
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Lunch Delay Dialog */}
+      {/* Re-entry Dialog */}
       <Dialog open={showLunchDelayDialog} onOpenChange={setShowLunchDelayDialog}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 shadow-xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="p-8 bg-gray-50 border-b border-gray-100">
-            <div className="flex items-center gap-3 text-amber-500 mb-2">
-              <Coffee className="w-6 h-6" />
-              <DialogTitle className="text-xl font-medium uppercase tracking-tight text-gray-900">Lunch Delay Reason</DialogTitle>
+        <DialogContent className="w-[95vw] sm:max-w-md rounded-3xl p-8 bg-white border-none shadow-2xl">
+          <DialogHeader className="space-y-4">
+            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto">
+              <Coffee className="w-8 h-8 text-amber-500" />
             </div>
-            <DialogDescription className="text-gray-500 font-normal">
-              Lunch logout after 2:00 PM and login after 2:30 PM requires a reason for admin approval.
-            </DialogDescription>
+            <div className="text-center space-y-2">
+              <DialogTitle className="text-2xl font-bold">Lunch Re-entry Validation</DialogTitle>
+              <DialogDescription className="text-xs font-medium text-gray-400">
+                An extended lunch break was detected. Please provide a brief reason for the delay to resume your session.
+              </DialogDescription>
+            </div>
           </DialogHeader>
-          <div className="p-8 space-y-6">
-            <div className="space-y-3">
-               <Label className="text-[10px] font-medium text-gray-400 uppercase tracking-widest ml-1">Reason for Delay</Label>
-                <Textarea 
-                  placeholder="Enter reason..."
-                  value={lunchDelayReason}
-                  onChange={(e) => setLunchDelayReason(e.target.value)}
-                  className="min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 p-4 font-normal transition-all text-gray-900 focus:border-black"
-                />
-             </div>
-             <div className="flex gap-4">
-                <Button variant="outline" onClick={() => setShowLunchDelayDialog(false)} className="flex-1 h-14 rounded-2xl font-medium uppercase text-[10px] tracking-widest border border-gray-200 text-gray-500">
-                   Cancel
-                </Button>
-                <Button 
-                  disabled={!lunchDelayReason.trim() || loading}
-                  onClick={() => handleAction('lunch-in')}
-                  className="flex-1 h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-medium uppercase text-[10px] tracking-widest shadow-lg shadow-amber-500/10"
-                >
-                  {loading ? <Loader size="sm" color="white" /> : 'Confirm & Resume'}
-                </Button>
-             </div>
+          <div className="space-y-6 pt-4">
+            <Textarea 
+              placeholder="Provide reason for delay..."
+              value={lunchDelayReason}
+              onChange={(e) => setLunchDelayReason(e.target.value)}
+              className="resize-none rounded-xl border-gray-100 focus:ring-[#d30614] h-32"
+            />
+            <div className="grid grid-cols-2 gap-4">
+               <Button variant="ghost" onClick={() => setShowLunchDelayDialog(false)} className="rounded-xl font-bold uppercase text-xs">Cancel</Button>
+               <Button 
+                 disabled={!lunchDelayReason.trim() || loading}
+                 onClick={() => handleAction('lunch-in')}
+                 className="rounded-xl bg-[#d30614] hover:bg-gray-900 text-white font-bold uppercase text-xs"
+               >
+                 Resume Duty
+               </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Late Login Dialog */}
+      {/* Late Entry Dialog */}
       <Dialog open={showLateDialog} onOpenChange={setShowLateDialog}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 shadow-xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="p-8 bg-gray-50 border-b border-gray-100">
-            <div className="flex items-center gap-3 text-rose-500 mb-2">
-              <Clock className="w-6 h-6" />
-              <DialogTitle className="text-xl font-medium uppercase tracking-tight text-gray-900">Late Login Reason</DialogTitle>
+        <DialogContent className="w-[95vw] sm:max-w-md rounded-3xl p-8 bg-white border-none shadow-2xl">
+          <DialogHeader className="space-y-4">
+            <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8 text-[#d30614]" />
             </div>
-            <DialogDescription className="text-gray-500 font-normal">
-              You are logging in after 2:30 PM. Please provide a reason for the delay for administrative records.
-            </DialogDescription>
+            <div className="text-center space-y-2">
+              <DialogTitle className="text-2xl font-bold">Check-in Validation</DialogTitle>
+              <DialogDescription className="text-xs font-medium text-gray-400">
+                You are checking in after the standard commencement time. A justification is required to initialize your session.
+              </DialogDescription>
+            </div>
           </DialogHeader>
-          <div className="p-8 space-y-6">
-            <div className="space-y-3">
-               <Label className="text-[10px] font-medium text-gray-400 uppercase tracking-widest ml-1">Reason for Late Login</Label>
-                <Textarea 
-                  placeholder="Enter reason..."
-                  value={lateReason}
-                  onChange={(e) => setLateReason(e.target.value)}
-                  className="min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 p-4 font-normal transition-all text-gray-900 focus:border-black"
-                />
-             </div>
-             <div className="flex gap-4">
-                <Button variant="outline" onClick={() => setShowLateDialog(false)} className="flex-1 h-14 rounded-2xl font-medium uppercase text-[10px] tracking-widest border border-gray-200 text-gray-500">
-                   Cancel
-                </Button>
-                <Button 
-                  disabled={!lateReason.trim() || loading}
-                  onClick={() => handleAction('check-in')}
-                  className="flex-1 h-14 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-medium uppercase text-[10px] tracking-widest shadow-lg shadow-rose-600/10"
-                >
-                  {loading ? <Loader size="sm" color="white" /> : 'Confirm & Start'}
-                </Button>
-             </div>
+          <div className="space-y-6 pt-4">
+            <Textarea 
+              placeholder="Reason for late check-in..."
+              value={lateReason}
+              onChange={(e) => setLateReason(e.target.value)}
+              className="resize-none rounded-xl border-gray-100 focus:ring-[#d30614] h-32"
+            />
+            <div className="grid grid-cols-2 gap-4">
+               <Button variant="ghost" onClick={() => setShowLateDialog(false)} className="rounded-xl font-bold uppercase text-xs">Cancel</Button>
+               <Button 
+                 disabled={!lateReason.trim() || loading}
+                 onClick={() => handleAction('check-in')}
+                 className="rounded-xl bg-[#d30614] hover:bg-gray-900 text-white font-bold uppercase text-xs"
+               >
+                 Confirm Check-in
+               </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -933,4 +734,3 @@ const Attendance = () => {
 };
 
 export default Attendance;
-

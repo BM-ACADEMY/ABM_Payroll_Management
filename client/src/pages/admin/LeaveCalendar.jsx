@@ -94,134 +94,201 @@ const LeaveCalendar = () => {
     }
   };
 
-  return (
-    <div className="p-6 md:p-10 space-y-10 animate-in fade-in duration-700 bg-background min-h-full">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-2 bg-[#fffe01] rounded-full"></div>
-            <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-gray-900">
-              Leave <span className="text-[#d30614]">Calendar</span>
+    <div className="min-h-screen bg-[#fdfdfd] p-4 md:p-8 lg:p-12 space-y-12 animate-in fade-in duration-1000 pb-32">
+      {/* Header Section */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-10">
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="h-10 md:h-14 w-2.5 bg-[#d30614] rounded-full shadow-lg shadow-red-100"></div>
+            <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-zinc-900 uppercase leading-[0.9]">
+              Temporal <span className="text-[#d30614] tracking-tight">Mapping</span>
             </h1>
           </div>
-          <p className="text-gray-500 text-lg font-normal">Manage and track <span className="text-[#d30614] font-medium">employee availability</span> across the organization.</p>
+          <p className="text-zinc-500 text-lg md:text-xl font-medium max-w-2xl leading-relaxed ml-2">
+            Strategic <span className="text-zinc-900 font-black">Availability Management</span> & Organizational Leave Registry.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-6 bg-white p-3 rounded-[2.5rem] border border-zinc-100 shadow-xl pr-10">
+           <div className="p-5 bg-zinc-900 text-[#fffe01] rounded-2xl shadow-xl">
+              <CalendarIcon className="w-8 h-8" />
+           </div>
+           <div>
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-1 block">ACTIVE_QUOTA</span>
+              <span className="text-xl font-black text-zinc-900 uppercase tracking-tight">Leave_Archive</span>
+           </div>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Add Leave Form */}
-        <Card className="bg-white border border-gray-200 shadow-sm h-fit sticky top-28 rounded-2xl overflow-hidden">
-          <CardHeader className="bg-gray-50 border-b border-gray-100">
-            <CardTitle className="text-xl flex items-center gap-2 text-gray-900 font-medium">
-              <Plus className="w-5 h-5 text-black" />
-              Add Company Leave
-            </CardTitle>
-            <CardDescription className="text-gray-500 font-normal">Mark a day as leave for all employees</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handleAddLeave} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="date" className="text-gray-600 font-medium text-sm ml-1 uppercase tracking-wider">Target Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  required
-                  className="bg-gray-50 border border-gray-200 h-12 rounded-xl focus:border-black focus:ring-1 focus:ring-black text-gray-900 font-normal transition-all"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reason" className="text-gray-600 font-medium text-sm ml-1 uppercase tracking-wider">Leave Description</Label>
-                <Input
-                  id="reason"
-                  placeholder="e.g. Holi, Diwali, Annual Trip"
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  required
-                  className="bg-gray-50 border border-gray-200 h-12 rounded-xl focus:border-black focus:ring-1 focus:ring-black text-gray-900 font-normal transition-all placeholder:text-gray-300"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                disabled={adding}
-                className="w-full bg-[#fffe01] hover:bg-yellow-400 text-black font-medium py-7 rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                {adding ? <Loader size="sm" color="black" /> : <CalendarIcon className="w-5 h-5 mr-2" />}
-                ADD TO CALENDAR
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-4 space-y-8">
+          <Card className="border-none shadow-3xl shadow-zinc-200/50 rounded-[3.5rem] bg-zinc-900 text-[#fffe01] overflow-hidden group">
+            <CardHeader className="p-10 md:p-14 pb-4 border-b border-white/5 relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-10 opacity-[0.05] group-hover:rotate-12 transition-transform duration-1000 pointer-events-none">
+                  <Plus className="w-32 h-32" />
+               </div>
+               <div className="space-y-4 relative z-10">
+                 <div className="flex items-center gap-4">
+                   <div className="p-3 bg-white/10 rounded-xl">
+                      <Plus className="w-6 h-6 text-[#fffe01]" />
+                   </div>
+                   <CardTitle className="text-2xl font-black uppercase tracking-tighter">Initialize Block</CardTitle>
+                 </div>
+                 <CardDescription className="text-zinc-500 font-bold text-[11px] uppercase tracking-widest leading-relaxed">
+                   Synchronize company-wide leave sequences with the <span className="text-white">Central Ledger</span>.
+                 </CardDescription>
+               </div>
+            </CardHeader>
+            <CardContent className="p-10 md:p-14 pt-10">
+              <form onSubmit={handleAddLeave} className="space-y-12">
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.4em] ml-2 text-zinc-500 flex items-center gap-3">
+                     <div className="w-1.5 h-1.5 rounded-full bg-[#d30614]"></div>
+                     TARGET_EPOCH
+                  </Label>
+                  <Input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    required
+                    className="rounded-[1.75rem] border-none bg-white/5 text-[#fffe01] h-16 font-black text-xs uppercase px-8 focus:bg-white/10 transition-all shadow-inner"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                   <Label className="text-[10px] font-black uppercase tracking-[0.4em] ml-2 text-zinc-500 flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#fffe01]/50 shadow-[0_0_10px_rgba(255,254,1,0.5)]"></div>
+                      RATIONALIZATION_LOG
+                   </Label>
+                   <Input
+                     placeholder="ENCODE RATIONALE..."
+                     value={formData.reason}
+                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                     required
+                     className="rounded-[1.75rem] border-none bg-white/5 text-[#fffe01] placeholder:text-zinc-800 h-16 font-black text-xs uppercase px-8 focus:bg-white/10 transition-all shadow-inner"
+                   />
+                </div>
+
+                <div className="pt-4">
+                  <Button
+                    type="submit"
+                    disabled={adding}
+                    className="w-full h-20 bg-[#fffe01] hover:bg-[#d30614] text-black hover:text-white font-black text-[11px] uppercase tracking-[0.5em] rounded-[2rem] shadow-[0_30px_60px_-12px_rgba(255,254,1,0.2)] transition-all hover:-translate-y-2 active:scale-95 group relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-5 transition-opacity"></div>
+                    {adding ? (
+                      <div className="flex items-center gap-4">
+                        <Loader size="sm" color="black" />
+                        <span>SYNCHRONIZING...</span>
+                      </div>
+                    ) : (
+                      'TRANSMIT_RECORD'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Leaves List */}
-        <Card className="lg:col-span-2 bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden min-h-[400px]">
-          <CardHeader className="bg-gray-50 border-b border-gray-100">
-            <CardTitle className="text-xl text-gray-900 font-medium">Active & Upcoming Leaves</CardTitle>
-            <CardDescription className="text-gray-500 font-normal">Complete history of company-marked leave days</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center h-80 text-gray-400">
-                <Loader size="lg" color="red" />
-                <p className="font-normal uppercase tracking-[0.2em] text-xs">Fetching records...</p>
-              </div>
-            ) : leaves.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-80 text-gray-400 p-12 text-center">
-                <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-6">
-                  <CalendarIcon className="w-10 h-10 text-gray-300" />
+        <div className="lg:col-span-8 flex flex-col">
+          <Card className="border-none shadow-3xl shadow-zinc-200/50 rounded-[3.5rem] bg-white overflow-hidden min-h-[600px] flex flex-col">
+            <CardHeader className="p-10 md:p-14 border-b border-zinc-50 bg-[#f8f8f8]/50 flex flex-col sm:flex-row items-center justify-between gap-8">
+              <div className="space-y-2">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-zinc-900 text-[#fffe01] rounded-xl shadow-xl">
+                    <CalendarIcon className="w-6 h-6" />
+                  </div>
+                  <CardTitle className="text-3xl font-black text-zinc-900 uppercase tracking-tighter">Legacy_Stream</CardTitle>
                 </div>
-                <h3 className="text-gray-900 font-medium text-xl mb-2">The calendar is empty</h3>
-                <p className="text-gray-500 font-normal max-w-[280px]">No company-wide leaves have been marked yet. Add one to see it here.</p>
+                <CardDescription className="text-zinc-400 font-bold text-[11px] uppercase tracking-[0.2em] ml-2">Active and upcoming organizational blocks.</CardDescription>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-gray-50">
-                  <TableRow className="border-gray-100">
-                    <TableHead className="text-gray-500 font-medium text-xs uppercase tracking-widest px-8 py-5">Date</TableHead>
-                    <TableHead className="text-gray-500 font-medium text-xs uppercase tracking-widest">Reason / Occasion</TableHead>
-                    <TableHead className="text-right text-gray-500 font-medium text-xs uppercase tracking-widest px-8">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                  <TableBody>
-                    {leaves.map((leave) => (
-                      <TableRow key={leave._id} className="border-gray-100 hover:bg-gray-50/60 transition-all group">
-                        <TableCell className="px-8 py-6">
-                           <div className="flex flex-col">
-                              <span className="font-normal text-gray-900 text-lg tracking-tight">{leave.date}</span>
-                              <span className="text-[10px] text-black font-medium uppercase tracking-wider">Scheduled Day</span>
-                           </div>
-                        </TableCell>
-                        <TableCell>
-                           <span className="text-gray-600 font-normal">{leave.reason}</span>
-                        </TableCell>
-                        <TableCell className="text-right px-8">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setSelectedLeaveToDelete(leave._id)}
-                            className="text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-full h-12 w-12 transition-all group-hover:scale-110 active:scale-95"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </Button>
-                        </TableCell>
+              <div className="flex items-center gap-4 py-3 px-8 bg-white rounded-full border border-zinc-100 shadow-xl">
+                 <div className="w-2.5 h-2.5 rounded-full bg-[#d30614] animate-pulse"></div>
+                 <span className="text-[10px] font-black text-zinc-900 tracking-[0.3em] uppercase">Registry_Live</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 flex flex-col">
+              {loading ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-40 gap-8">
+                  <Loader size="lg" color="red" />
+                  <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.5em] animate-pulse">Syncing_Records...</span>
+                </div>
+              ) : leaves.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-20 text-center space-y-10 group">
+                  <div className="w-40 h-40 bg-zinc-50 rounded-[3rem] flex items-center justify-center mx-auto shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 animate-in zoom-in-50 duration-1000">
+                    <div className="w-28 h-28 bg-white rounded-[2rem] shadow-xl flex items-center justify-center">
+                       <CalendarIcon className="w-12 h-12 text-zinc-200" />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="text-4xl font-black text-zinc-900 uppercase tracking-tighter">NULL_SIGNALS</h4>
+                    <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
+                      No company-wide leave sequences detected in the current <span className="text-zinc-900">operational window</span>.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-[#fafafa]">
+                      <TableRow className="border-zinc-50">
+                        <TableHead className="text-zinc-400 font-black text-[10px] uppercase tracking-[0.3em] px-14 py-10">EPOCH_SIGNAL</TableHead>
+                        <TableHead className="text-zinc-400 font-black text-[10px] uppercase tracking-[0.3em]">RATIONALE_SEQUENCE</TableHead>
+                        <TableHead className="text-right text-zinc-400 font-black text-[10px] uppercase tracking-[0.3em] px-14">REGISTRY_OPS</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {leaves.map((leave) => (
+                        <TableRow key={leave._id} className="border-zinc-50 hover:bg-zinc-50/50 transition-all duration-700 group">
+                          <TableCell className="px-14 py-12">
+                             <div className="flex items-center gap-6">
+                               <div className="w-14 h-14 bg-zinc-900 text-[#fffe01] rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-12 transition-transform duration-500">
+                                  <CalendarIcon className="w-6 h-6" />
+                               </div>
+                               <div className="flex flex-col gap-1">
+                                  <span className="font-black text-zinc-900 text-2xl tracking-tighter uppercase font-mono">{leave.date}</span>
+                                  <span className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                                     <div className="w-1.5 h-1.5 rounded-full bg-[#d30614]"></div>
+                                     SCHEDULED_DAY
+                                  </span>
+                               </div>
+                             </div>
+                          </TableCell>
+                          <TableCell>
+                             <div className="bg-white border border-zinc-100 p-6 rounded-[2rem] shadow-sm group-hover:shadow-xl transition-all duration-700 max-w-md">
+                                <span className="text-zinc-600 font-bold text-base leading-relaxed italic pr-4">"{leave.reason}"</span>
+                             </div>
+                          </TableCell>
+                          <TableCell className="text-right px-14">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setSelectedLeaveToDelete(leave._id)}
+                              className="text-zinc-100 hover:text-[#d30614] hover:bg-rose-50 rounded-2xl h-16 w-16 transition-all group-hover:scale-110 active:scale-95 shadow-md hover:shadow-xl"
+                            >
+                              <Trash2 className="w-6 h-6" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <ConfirmDialog 
         isOpen={!!selectedLeaveToDelete}
         onClose={() => setSelectedLeaveToDelete(null)}
         onConfirm={confirmRemoveLeave}
-        title="Remove Leave"
-        description="Are you sure you want to remove this company leave? Attendance records for this day will be reverted to normal."
+        title="PURGE_LEAVE_RECORD"
+        description="ARE YOU ABSOLUTELY CERTAIN? REMOVING THIS TEMPORAL BLOCK WILL RE-SYNCHRONIZE ALL EMPLOYEE ATTENDANCE RECORDS FOR THIS EPOCH TO STANDARD OPERATIONAL PARAMETERS."
       />
     </div>
   );

@@ -12,7 +12,11 @@ import {
   CalendarCheck,
   CheckCircle2,
   X,
-  FileText
+  FileText,
+  DollarSign,
+  Download,
+  Users2,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import PaginationControl from '@/components/ui/PaginationControl';
 import Loader from "@/components/ui/Loader";
@@ -97,7 +101,7 @@ const AdminPayrollReport = () => {
           setSelectedEmployee(null);
           setGeneratedSalary(null);
           resetDates();
-       }, 300); // clear after animation
+       }, 300);
     }
   };
 
@@ -126,100 +130,112 @@ const AdminPayrollReport = () => {
     }
   };
 
-  const filteredEmployees = employees.filter(emp => 
-    emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.phoneNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    <div className="p-8 space-y-8 bg-background min-h-screen animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-black font-medium">
-            <Calculator className="w-5 h-5" />
-            <span className="text-xs uppercase tracking-[0.2em]">Salary Engine</span>
-          </div>
-          <h1 className="text-4xl font-medium text-slate-900 tracking-tight">Generate Salary</h1>
-          <p className="text-slate-500 font-medium">Search for an employee and calculate their salary for a specific period.</p>
+    <div className="p-4 md:p-8 lg:p-10 space-y-8 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen pb-32">
+      {/* Header */}
+      <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900 leading-tight">
+            Payroll <span className="text-[#d30614]">Center</span>
+          </h1>
+          <p className="text-gray-500 text-base md:text-lg font-normal">
+            Generate reports, analyze compensation metrics, and manage employee payroll
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+           <div className="relative w-full sm:w-72">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search employees..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-12 bg-white border-gray-200 rounded-xl focus:bg-white text-sm"
+              />
+           </div>
+           
+           <Card className="flex items-center gap-4 bg-white p-2 rounded-xl border border-gray-100 shadow-sm pr-6">
+              <div className="p-3 bg-gray-900 text-[#fffe01] rounded-lg">
+                 <Calculator className="w-5 h-5" />
+              </div>
+              <div>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Summary</span>
+                 <span className="text-sm font-bold text-gray-900">Payroll Generation</span>
+              </div>
+           </Card>
         </div>
       </header>
 
-      <Card className="rounded-[3rem] border-0 shadow-2xl shadow-slate-200/40 bg-white overflow-hidden">
-        <CardHeader className="p-8 border-b border-slate-50 flex flex-col xl:flex-row items-center justify-between gap-6">
-          <div className="space-y-1 w-full xl:w-auto">
-             <CardTitle className="text-2xl font-medium tracking-tight text-slate-900">Employee Select</CardTitle>
-             <CardDescription className="text-slate-500 font-medium">Search by name, ID, email or phone to generate payroll.</CardDescription>
+      {/* Main Table Content */}
+      <Card className="border-gray-100 shadow-sm bg-white rounded-3xl overflow-hidden">
+        <CardHeader className="p-6 md:p-8 border-b border-gray-50 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div>
+             <CardTitle className="text-xl font-bold flex items-center gap-2">
+               <Users2 className="w-5 h-5 text-[#d30614]" /> Employee Registry
+             </CardTitle>
+             <CardDescription className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-1">Managing {pagination.total} personnel records</CardDescription>
           </div>
-          <div className="relative w-full xl:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input 
-              placeholder="Search employee..." 
-              className="pl-11 pr-6 py-3 w-full rounded-2xl border-2 border-slate-100 focus:border-black bg-slate-50 font-medium transition-all shadow-inner"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+          <Button variant="outline" className="rounded-xl border-gray-200">
+             <Download className="w-4 h-4 mr-2" /> Export All
+          </Button>
         </CardHeader>
+        
         <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow className="hover:bg-transparent border-b border-slate-100">
-                <TableHead className="py-6 px-8 text-[10px] font-medium uppercase tracking-widest text-slate-400">Employee Details</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-medium uppercase tracking-widest text-slate-400">Contact</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-medium uppercase tracking-widest text-slate-400">Base Salary</TableHead>
-                <TableHead className="py-6 px-8 text-[10px] font-medium uppercase tracking-widest text-slate-400 text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gray-50/50">
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center text-slate-500">
-                    <Loader size="md" color="red" />
-                  </TableCell>
+                  <TableHead className="pl-8 h-14 text-[10px] uppercase font-bold text-gray-400 tracking-widest">Employee</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Contact Information</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Base Salary</TableHead>
+                  <TableHead className="pr-8 h-14 text-right text-[10px] uppercase font-bold text-gray-400 tracking-widest">Actions</TableHead>
                 </TableRow>
-              ) : employees.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center text-slate-500 font-medium">No employees found.</TableCell>
-                </TableRow>
-              ) : (
-                employees.map((emp) => (
-                  <TableRow key={emp._id} className="hover:bg-slate-50/50 border-b border-slate-50 transition-colors">
-                    <TableCell className="py-6 px-8">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-black font-medium shadow-inner">
-                          {emp.name.charAt(0).toUpperCase()}
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={4} className="h-64 text-center"><Loader color="red" /></TableCell></TableRow>
+                ) : employees.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="h-64 text-center text-gray-400">No employees found in current search</TableCell></TableRow>
+                ) : (
+                  employees.map((emp) => (
+                    <TableRow key={emp._id} className="hover:bg-gray-50/30 transition-all border-gray-50">
+                      <TableCell className="pl-8 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center text-[#fffe01] font-bold text-lg uppercase shadow-sm">
+                            {emp.name.charAt(0)}
+                          </div>
+                          <div className="flex flex-col leading-tight">
+                            <span className="font-bold text-gray-900">{emp.name}</span>
+                            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">{emp.employeeId || 'N/A'}</span>
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-slate-900 tracking-tight">{emp.name}</span>
-                          <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">{emp.employeeId || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-6 px-8">
-                       <div className="flex flex-col">
-                         <span className="font-medium text-slate-700">{emp.email}</span>
-                         <span className="text-xs text-slate-400">{emp.phoneNumber || 'N/A'}</span>
-                       </div>
-                    </TableCell>
-                    <TableCell className="py-6 px-8 font-bold text-slate-600">₹{emp.baseSalary?.toLocaleString() || '0'}</TableCell>
-                    <TableCell className="py-6 px-8 text-right">
-                       <Button 
-                         onClick={() => openGenerateModal(emp)}
-                         className="h-10 rounded-xl bg-black text-[#fffe01] hover:bg-zinc-900 shadow-md px-6 flex items-center gap-2 transition-all font-bold"
-                       >
-                          <Calculator className="w-4 h-4" />
-                          Generate Salary
-                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                      </TableCell>
+                      <TableCell>
+                         <div className="flex flex-col text-xs space-y-0.5">
+                           <span className="font-medium text-gray-600">{emp.email}</span>
+                           <span className="text-gray-400">{emp.phoneNumber || 'No contact'}</span>
+                         </div>
+                      </TableCell>
+                      <TableCell>
+                         <span className="font-bold text-gray-900">₹{emp.baseSalary?.toLocaleString() || '0'}</span>
+                      </TableCell>
+                      <TableCell className="pr-8 text-right">
+                         <Button 
+                           onClick={() => openGenerateModal(emp)}
+                           className="h-10 rounded-xl bg-gray-900 text-[#fffe01] hover:bg-[#d30614] hover:text-white px-6 font-bold text-xs uppercase transition-all"
+                         >
+                            <Calculator className="w-4 h-4 mr-2" />
+                            Generate
+                         </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
-        <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+        <div className="p-8 border-t border-gray-50 bg-gray-50/20">
           <PaginationControl 
             pagination={pagination} 
             onPageChange={handlePageChange} 
@@ -229,173 +245,135 @@ const AdminPayrollReport = () => {
 
       {/* Salary Generation Dialog */}
       <Dialog open={isGenerateOpen} onOpenChange={handleCloseModal}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-white border-slate-200 p-0 rounded-3xl">
-          <div className="bg-slate-50 border-b border-slate-100 p-6 flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-2xl font-medium text-slate-900 tracking-tight">Generate Salary</DialogTitle>
-              <DialogDescription className="text-slate-500 mt-1">
-                Calculate {selectedEmployee?.name}'s salary for a specific duration.
-              </DialogDescription>
+        <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-white p-0 rounded-3xl border-none shadow-2xl animate-in zoom-in-95 duration-300">
+          <DialogHeader className="bg-gray-900 p-8 md:p-12 text-white text-left relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+               <Calculator className="w-48 h-48" />
             </div>
-          </div>
+            <DialogTitle className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-2">Payroll Computation</DialogTitle>
+            <DialogDescription className="text-gray-400 text-xs font-medium uppercase tracking-widest">
+              Generating financial report for <span className="text-white">{selectedEmployee?.name}</span>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="p-8">
+          <div className="p-8 md:p-12 space-y-10">
             {!generatedSalary ? (
-              <form onSubmit={handleGenerateSalary} className="space-y-6">
-                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                   <div className="w-12 h-12 rounded-xl bg-black flex items-center justify-center text-[#fffe01] font-medium text-lg">
+              <form onSubmit={handleGenerateSalary} className="space-y-10">
+                <div className="flex items-center gap-6 bg-gray-50 p-6 rounded-2xl border border-gray-100 italic">
+                   <div className="w-16 h-16 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-900 font-bold text-2xl shadow-sm shrink-0">
                       {selectedEmployee?.name?.charAt(0).toUpperCase()}
                    </div>
-                   <div>
-                     <h3 className="font-bold text-slate-900 text-lg">{selectedEmployee?.name}</h3>
-                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{selectedEmployee?.employeeId}</p>
+                   <div className="space-y-1">
+                     <h3 className="font-bold text-gray-900 text-xl tracking-tight">{selectedEmployee?.name}</h3>
+                     <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">ID: {selectedEmployee?.employeeId} • Base: ₹{selectedEmployee?.baseSalary?.toLocaleString()}</p>
                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400">Start Date</Label>
-                    <Input 
-                      type="date" 
-                      required
-                      value={startDate} 
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="h-12 rounded-xl bg-slate-50 border-slate-200 text-slate-900 font-bold"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Start Date</Label>
+                    <div className="relative">
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                      <Input 
+                        type="date" 
+                        required
+                        value={startDate} 
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="h-12 pl-12 rounded-xl bg-gray-50 border-gray-100 text-sm font-bold focus:bg-white"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400">End Date</Label>
-                    <Input 
-                      type="date" 
-                      required
-                      value={endDate} 
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="h-12 rounded-xl bg-slate-50 border-slate-200 text-slate-900 font-bold"
-                    />
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">End Date</Label>
+                    <div className="relative">
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                      <Input 
+                        type="date" 
+                        required
+                        value={endDate} 
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="h-12 pl-12 rounded-xl bg-gray-50 border-gray-100 text-sm font-bold focus:bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-6 flex justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={() => handleCloseModal(false)} className="rounded-xl h-12 px-6 font-bold text-slate-600 border-slate-200">
+                <div className="flex justify-end gap-4 pt-4 border-t border-gray-50">
+                  <Button type="button" variant="ghost" onClick={() => handleCloseModal(false)} className="rounded-xl font-bold uppercase tracking-widest text-[10px] text-gray-400 hover:text-gray-900">
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={generatingLoading} className="rounded-xl h-12 px-8 bg-black hover:bg-zinc-900 text-[#fffe01] font-bold shadow-lg flex items-center gap-2">
-                    {generatingLoading ? (
-                      <Loader size="sm" color="white" />
-                    ) : (
-                      <Calculator className="w-4 h-4" />
-                    )}
-                    Generate Statement
+                  <Button type="submit" disabled={generatingLoading} className="h-12 rounded-xl px-10 bg-gray-900 text-[#fffe01] hover:bg-[#d30614] hover:text-white font-bold shadow-lg transition-all uppercase tracking-widest text-[10px]">
+                    {generatingLoading ? <Loader size="xs" color="yellow" /> : "Run Computation"}
                   </Button>
                 </div>
               </form>
             ) : (
-              <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+              <div className="space-y-10 animate-in slide-in-from-bottom-5 duration-500">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                   {[
+                     { label: 'Total Span', value: generatedSalary.salaryDetails.totalDays, suffix: ' Days', icon: FileText, color: 'text-gray-500' },
+                     { label: 'Presence', value: generatedSalary.salaryDetails.presentDays, suffix: ' Days', icon: CheckCircle2, color: 'text-emerald-500' },
+                     { label: 'Absence', value: generatedSalary.salaryDetails.totalAbsentDays, suffix: ' Days', icon: X, color: 'text-red-500' },
+                     { label: 'Permissions', value: generatedSalary.salaryDetails.totalPermissionHours, suffix: ' Hrs', icon: Clock, color: 'text-blue-500' },
+                   ].map((item, i) => (
+                     <div key={i} className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">{item.label}</p>
+                        <p className="text-3xl font-bold text-gray-900 tracking-tight">{item.value}<span className="text-xs font-normal text-gray-400 ml-1">{item.suffix}</span></p>
+                     </div>
+                   ))}
+                </div>
+
+                <div className="p-6 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-between">
                    <div className="flex items-center gap-4">
-                     <div className="w-14 h-14 rounded-2xl bg-black flex items-center justify-center text-[#fffe01] font-medium text-2xl shadow-lg">
-                        {generatedSalary.employee.name.charAt(0).toUpperCase()}
-                     </div>
-                     <div>
-                       <h3 className="font-medium text-slate-900 text-2xl tracking-tight">{generatedSalary.employee.name}</h3>
-                       <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{generatedSalary.employee.employeeId} • {generatedSalary.employee.email}</p>
-                     </div>
+                      <TrendingDown className="w-6 h-6 text-red-600" />
+                      <div>
+                        <p className="font-bold text-gray-900">LOP Deductions</p>
+                        <p className="text-xs text-red-600 font-medium uppercase tracking-widest">Downtime analysis</p>
+                      </div>
                    </div>
                    <div className="text-right">
-                     <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Period Selected</p>
-                     <p className="font-bold text-slate-700 bg-slate-100 py-1.5 px-3 rounded-lg text-sm">
-                       {new Date(startDate).toLocaleDateString()} — {new Date(endDate).toLocaleDateString()}
-                     </p>
+                      <span className="text-4xl font-bold text-red-600">{generatedSalary.salaryDetails.singleLopDays}</span>
+                      <span className="text-[10px] font-bold text-red-400 ml-2 uppercase">Days</span>
                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400 mb-1">Total Days</p>
-                     <p className="text-2xl font-medium text-slate-900">{generatedSalary.salaryDetails.totalDays} <span className="text-sm text-slate-400">days</span></p>
-                   </div>
-                   <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100/50">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-emerald-600/70 mb-1">Present</p>
-                     <p className="text-2xl font-medium text-emerald-700">{generatedSalary.salaryDetails.presentDays} <span className="text-sm">days</span></p>
-                   </div>
-                   <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100/50">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-amber-600/70 mb-1">Absent (Raw)</p>
-                     <p className="text-2xl font-medium text-amber-700">{generatedSalary.salaryDetails.totalAbsentDays} <span className="text-sm">days</span></p>
-                   </div>
-                   <div className="bg-cyan-50 p-4 rounded-2xl border border-cyan-100/50">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-cyan-600/70 mb-1">Casual Leave</p>
-                     <p className="text-2xl font-medium text-cyan-700">{generatedSalary.salaryDetails.casualLeaveTaken} <span className="text-sm">taken</span></p>
-                   </div>
-                   <div className="bg-gray-100 p-4 rounded-2xl border border-gray-200/50">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-gray-500 mb-1">Permissions</p>
-                     <p className="text-2xl font-medium text-black">{generatedSalary.salaryDetails.totalPermissionHours} <span className="text-sm">hrs</span></p>
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                   <div className="p-5 rounded-2xl border-2 border-rose-50 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                         <div className="p-2 rounded-lg bg-rose-100 text-rose-600"><TrendingDown className="w-5 h-5"/></div>
-                         <div>
-                           <p className="font-bold text-slate-900">Total LOP Days</p>
-                           <p className="text-xs font-medium text-slate-500">Regular absent deductions</p>
+                <div className="bg-gray-900 p-8 md:p-12 rounded-[2.5rem] text-white relative overflow-hidden">
+                   <div className="relative z-10 space-y-10">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                         <div className="space-y-1">
+                            <p className="text-gray-500 font-bold text-[10px] uppercase tracking-widest">Base Salary</p>
+                            <p className="text-3xl font-bold">₹{generatedSalary.salaryDetails.baseSalary.toLocaleString()}</p>
                          </div>
-                      </div>
-                      <span className="text-2xl font-medium text-rose-600">{generatedSalary.salaryDetails.singleLopDays}</span>
-                   </div>
-                </div>
-
-                <div className="bg-slate-900 p-6 sm:p-8 rounded-[2rem] text-[#fffe01] relative overflow-hidden">
-                   <div className="absolute top-0 right-0 p-8 opacity-10">
-                      <FileText className="w-32 h-32" />
-                   </div>
-                   <div className="relative z-10 space-y-6">
-                      <div className="flex items-center gap-2 text-[#fffe01] font-medium text-sm uppercase tracking-widest">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Final Computation
-                      </div>
-                      
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                         <div>
-                            <p className="text-slate-400 font-medium text-sm mb-1">Base Salary</p>
-                            <p className="text-xl font-bold">₹{generatedSalary.salaryDetails.baseSalary.toLocaleString()}</p>
+                         <div className="space-y-1">
+                            <p className="text-gray-500 font-bold text-[10px] uppercase tracking-widest">Daily Value</p>
+                            <p className="text-3xl font-bold">₹{generatedSalary.salaryDetails.perDaySalary.toLocaleString()}</p>
                          </div>
-                         <div>
-                            <p className="text-slate-400 font-medium text-sm mb-1">Per Day Salary</p>
-                            <p className="text-xl font-bold">₹{generatedSalary.salaryDetails.perDaySalary.toLocaleString()}</p>
-                         </div>
-                         <div>
-                            <p className="text-rose-400 font-medium text-sm mb-1">Total LOP Penalty</p>
-                            <p className="text-xl font-bold text-rose-300">{generatedSalary.salaryDetails.totalLopDaysGenerated} days</p>
+                         <div className="space-y-1">
+                            <p className="text-red-500 font-bold text-[10px] uppercase tracking-widest">LOP Penalty</p>
+                            <p className="text-3xl font-bold text-red-500">{generatedSalary.salaryDetails.totalLopDaysGenerated} Pts</p>
                          </div>
                       </div>
 
-                      <div className="pt-6 border-t border-slate-800 flex items-end justify-between">
-                         <div>
-                             <p className="text-[#fffe01] font-medium uppercase tracking-widest text-xs mb-2">Net Generated Salary</p>
-                            <p className="text-4xl sm:text-5xl font-medium tracking-tighter text-white">
-                               ₹{generatedSalary.salaryDetails.netSalary.toLocaleString()}
-                            </p>
+                      <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                         <div className="space-y-2">
+                             <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Net Generated Compensation</p>
+                             <p className="text-6xl font-bold text-white tracking-tighter">
+                                <span className="text-2xl text-[#fffe01] mr-2">₹</span>{generatedSalary.salaryDetails.netSalary.toLocaleString()}
+                             </p>
                          </div>
+                         <Button onClick={() => setGeneratedSalary(null)} variant="outline" className="rounded-xl border-white/20 text-white hover:bg-white/10 hover:text-white px-8">
+                            Reset View
+                         </Button>
                       </div>
                    </div>
-                </div>
-
-                <div className="flex justify-end">
-                   <Button onClick={() => setGeneratedSalary(null)} variant="outline" className="rounded-xl h-12 px-8 font-bold text-slate-600 border-slate-200">
-                     Recalculate or Change Dates
-                   </Button>
                 </div>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
-      
     </div>
   );
 };
 
 export default AdminPayrollReport;
-
-
