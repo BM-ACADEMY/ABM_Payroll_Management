@@ -20,4 +20,8 @@ router.get('/', [auth, isAdmin], complaintController.getAllComplaints);
 // @desc    Update complaint status (Admin)
 router.put('/:id', [auth, isAdmin], complaintController.updateComplaint);
 
+// @route   DELETE api/complaints/:id
+// @desc    Delete a complaint
+router.delete('/:id', auth, complaintController.deleteComplaint);
+
 module.exports = router;

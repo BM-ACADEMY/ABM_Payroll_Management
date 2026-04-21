@@ -98,3 +98,23 @@ exports.updateComplaint = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
+// @desc    Delete a complaint
+// @route   DELETE /api/complaints/:id
+exports.deleteComplaint = async (req, res) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) return res.status(404).json({ msg: 'Complaint not found' });
+
+    // Verify ownership or Admin status
+    if (complaint.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
+
+    await Complaint.findByIdAndDelete(req.params.id);
+    res.json({ msg: 'Complaint removed' });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === 'ObjectId') return res.status(404).json({ msg: 'Complaint not found' });
+    res.status(500).send('Server error');
+  }
+};

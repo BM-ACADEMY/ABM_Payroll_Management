@@ -136,22 +136,42 @@ exports.lunchIn = async (req, res) => {
     const lunchInTime = parse(now, 'HH:mm', getISTFullDate());
     const duration = (lunchInTime - lunchOutTime) / (1000 * 60);
 
-    // Get schedule snapshot
+    // Get schedule snapshot or fall back to user settings
     const schedule = await Schedule.findOne({ user: req.user.id, date: today });
-    const maxDuration = schedule ? schedule.lunchDuration : (user.timingSettings.lunchDuration || 45);
+    const lunchStartStr = schedule?.lunchStart || user.timingSettings.lunchStart || '13:30';
+    const lunchEndStr = user.timingSettings.lunchEnd || user.timingSettings.lunchEnd || '14:30';
 
-    // Special Lunch Rule: Logout > 14:00 AND Login > 14:30 requires reason
-    const lunchLimitOut = parse('14:00', 'HH:mm', getISTFullDate());
-    const lunchLimitIn = parse('14:30', 'HH:mm', getISTFullDate());
-    const isSpecialReasonRequired = lunchOutTime > lunchLimitOut && lunchInTime > lunchLimitIn;
+    // Calculate maxDuration from the window (lunchEnd - lunchStart)
+    const startTime = parse(lunchStartStr, 'HH:mm', getISTFullDate());
+    const endTime = parse(lunchEndStr, 'HH:mm', getISTFullDate());
+    let maxDuration = (endTime - startTime) / (1000 * 60);
+    
+    // Fallback if window is invalid or 0
+    if (isNaN(maxDuration) || maxDuration <= 0) {
+        maxDuration = schedule ? schedule.lunchDuration : (user.timingSettings.lunchDuration || 45);
+    }
 
-    if (isSpecialReasonRequired && !delayReason) {
-      return res.status(400).json({ msg: 'Reason is required for late lunch (Logout > 2:00 PM and Login > 2:30 PM)' });
+    const scheduleLunchStart = startTime;
+    const scheduleLunchEnd = endTime;
+
+    // Logic: Delay if (Out before Start) OR (In after End) OR (Duration over limit)
+    const isEarlyOut = lunchOutTime < scheduleLunchStart;
+    const isLateIn = lunchInTime > scheduleLunchEnd;
+    const isOverDuration = duration > maxDuration;
+
+    const isDelayOccurred = isEarlyOut || isLateIn || isOverDuration;
+
+    if (isDelayOccurred && !delayReason) {
+      let msg = 'Reason is required for lunch delay: ';
+      if (isEarlyOut) msg += `Started early (before ${lunchStartStr}). `;
+      if (isLateIn) msg += `Finished late (after ${lunchEndStr}). `;
+      if (isOverDuration) msg += `Duration exceeded (${Math.ceil(duration)}m > ${maxDuration}m). `;
+      return res.status(400).json({ msg });
     }
 
     attendance.lunch.in = now;
 
-    if (duration > maxDuration || isSpecialReasonRequired) {
+    if (isDelayOccurred) {
       const extraMinutes = Math.max(0, Math.ceil(duration - maxDuration));
       
       // Create request for lunch delay
@@ -161,18 +181,18 @@ exports.lunchIn = async (req, res) => {
         date: today,
         fromDateTime: lunchOutTime,
         toDateTime: lunchInTime,
-        duration: extraMinutes > 0 ? extraMinutes : duration,
+        duration: isOverDuration ? extraMinutes : duration, // If over duration, track extra. If just window break, track whole duration or 0? 
+        // User says "permission", usually permission is for the time taken.
         totalPermissionTime: `${Math.floor(duration/60).toString().padStart(2, '0')}:${(Math.floor(duration)%60).toString().padStart(2, '0')} hrs`,
-        reason: delayReason || 'Lunch Delay',
+        reason: delayReason || 'Lunch Delay (Boundary/Duration Violation)',
         status: 'pending'
       });
       await newRequest.save();
       
-      // If it's the special case, we'll wait for admin approval before deducting.
-      // If NOT special case (just long lunch), deduct immediately as permission.
-      if (!isSpecialReasonRequired && extraMinutes > 0) {
-          attendance.checkIn.permissionMinutes = (attendance.checkIn.permissionMinutes || 0) + extraMinutes;
-      }
+      // If it's a duration violation but NOT a window break, we might want to deduct immediately.
+      // However, the user wants "Reason" for any delay. So we treat all as pending requests for Admin audit.
+      // But we can deduct the extraMinutes from permission balance if we want to be strict.
+      // For now, following the "Request" pattern for all delays to keep it in Audit Stream.
     }
 
     await attendance.save();

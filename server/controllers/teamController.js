@@ -22,16 +22,17 @@ exports.addTeam = async (req, res) => {
 exports.getTeams = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 5;
-    const skip = (page - 1) * limit;
+    const limit = req.query.nopage === 'true' ? 0 : (parseInt(req.query.limit) || 100);
+    const skip = req.query.nopage === 'true' ? 0 : ((page - 1) * limit);
 
     const totalCount = await Team.countDocuments();
-    const totalPages = Math.ceil(totalCount / limit);
+    const totalPages = limit > 0 ? Math.ceil(totalCount / limit) : 1;
 
-    const teams = await Team.find()
-      .sort({ name: 1 })
-      .skip(skip)
-      .limit(limit);
+    let query = Team.find().sort({ name: 1 });
+    if (limit > 0) {
+      query = query.skip(skip).limit(limit);
+    }
+    const teams = await query;
 
     res.json({
       teams,

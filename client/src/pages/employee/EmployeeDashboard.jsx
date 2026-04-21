@@ -9,37 +9,40 @@ import {
   IndianRupee, 
   CalendarDays, 
   UserCheck2, 
-  Info,
   CheckCircle2,
   AlertCircle,
-  CalendarX,
   Wallet,
   Clock,
   Trophy,
   MessageSquare,
   MapPin,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  Target
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import axios from 'axios';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import Loader from "@/components/ui/Loader";
 
-const COLORS = ['#d30614', '#1f2937', '#f3f4f6']; // On-time, Late, Future (Professional Palette)
+const COLORS = ['#880505', '#fffe01', '#1f2937']; // Crimson, Volt, Dark Gray
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-3 border border-gray-100 rounded-xl shadow-xl">
-        <div className="flex items-center gap-2">
+      <div className="bg-black/90 backdrop-blur-xl border border-white/10 p-3 rounded-xl shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center gap-2 mb-1.5">
           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].fill || payload[0].color }}></div>
-          <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+          <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
             {payload[0].name}
           </p>
         </div>
-        <p className="text-xl font-medium mt-1 text-gray-900">
-          {payload[0].value} <span className="text-[10px] text-gray-400 font-normal uppercase">Days</span>
-        </p>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-black text-[#fffe01] tabular-nums">
+            {payload[0].value}
+          </span>
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Units</span>
+        </div>
       </div>
     );
   }
@@ -104,9 +107,9 @@ const EmployeeDashboard = () => {
     const futureDaysCount = daysInMonth.filter(day => day > now).length;
     
     return [
-      { name: 'On-time Login', value: earlyCount },
-      { name: 'Late Login', value: lateCount },
-      { name: 'Future Days', value: futureDaysCount }
+      { name: 'Logged', value: earlyCount },
+      { name: 'Delayed', value: lateCount },
+      { name: 'Upcoming', value: futureDaysCount }
     ];
   }, [attendanceLogs]);
 
@@ -165,8 +168,8 @@ const EmployeeDashboard = () => {
   const leaveChartData = useMemo(() => {
     if (!balances) return [];
     return [
-      { name: 'Used Leave', value: balances.leave.used },
-      { name: 'Remaining Leave', value: balances.leave.remaining }
+      { name: 'Used', value: balances.leave.used },
+      { name: 'Available', value: balances.leave.remaining }
     ];
   }, [balances]);
 
@@ -183,45 +186,69 @@ const EmployeeDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <Loader size="lg" color="red" />
-        <p className="text-sm font-medium text-gray-400 uppercase tracking-widest">Loading Dashboard...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black gap-6">
+        <div className="relative">
+          <Loader size="lg" color="#fffe01" />
+          <div className="absolute inset-0 bg-[#fffe01]/20 blur-2xl rounded-full animate-pulse"></div>
+        </div>
+        <p className="text-[10px] font-black text-[#fffe01] uppercase tracking-[0.4em] animate-pulse">Initializing Personal Node...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-10 space-y-8 md:space-y-10 animate-in fade-in duration-700 bg-background min-h-screen pb-20">
-      <header className="flex flex-col space-y-2">
-        <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900 leading-tight">
-          Welcome, <span className="text-[#d30614]">{userName}</span>
-        </h1>
-        <p className="text-gray-500 text-base md:text-lg font-normal">
-          Dashboard summary for {format(new Date(), 'MMMM yyyy')}
-        </p>
+    <div className="p-6 md:p-10 space-y-12 bg-slate-50 min-h-screen pb-24 animate-fade-up relative overflow-hidden">
+      {/* Refined Welcome Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5 text-slate-400 mb-1">
+             <div className="w-8 h-[1px] bg-slate-300 rounded-full"></div>
+             <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Employee Portal</span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 leading-none uppercase">
+            Hi, <span className="text-slate-400">{userName}</span>
+          </h1>
+          <p className="text-slate-500 text-sm md:text-base font-medium">
+            Personal performance and telemetry for <span className="text-slate-900 font-bold">{format(new Date(), 'MMMM yyyy')}</span>.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-5 bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
+           <div className="w-12 h-12 rounded-lg bg-[#fffe01] flex items-center justify-center shadow-sm">
+              <Target className="w-6 h-6 text-black" />
+           </div>
+           <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Efficiency Core</p>
+              <p className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
+                {weeklyScores[0]?.totalCredits || 0}<span className="text-xs text-slate-400 ml-1 font-medium italic">/100 pts</span>
+              </p>
+           </div>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Attendance Breakdown */}
-        <Card className="border-gray-100 shadow-sm bg-white rounded-2xl">
-          <CardHeader className="pb-2 border-b border-gray-50">
-            <CardTitle className="text-lg flex items-center gap-2 text-gray-900 font-medium">
-              <CalendarCheck2 className="w-5 h-5 text-[#d30614]" />
-              Attendance
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+        {/* Attendance - Black Card */}
+        <Card className="neat-card">
+          <CardHeader className="pb-4 border-b border-white/5">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 flex items-center gap-3">
+              <CalendarCheck2 className="w-4 h-4 text-[#fffe01]" />
+              Attendance Status
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[200px] w-full relative">
+          <CardContent className="p-8">
+            <div className="h-[240px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={chartData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={5}
+                    innerRadius={75}
+                    outerRadius={95}
+                    paddingAngle={6}
                     dataKey="value"
+                    stroke="none"
+                    animationDuration={1500}
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -230,166 +257,157 @@ const EmployeeDashboard = () => {
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                 <span className="text-2xl font-medium">{attendanceLogs.length}</span>
-                 <span className="text-[9px] text-gray-400 uppercase tracking-wider">Days</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mb-1">
+                 <span className="text-4xl font-bold text-white tracking-tighter tabular-nums">{attendanceLogs.length}</span>
+                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">LOGS</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Salary Summary */}
-        <Card className="border-gray-100 shadow-sm bg-white rounded-2xl md:col-span-2 lg:col-span-1 border-t-4 border-t-[#d30614]">
-          <CardHeader className="pb-4 border-b border-gray-50">
-            <CardTitle className="text-lg flex items-center gap-2 text-gray-900 font-medium">
-              <Wallet className="w-5 h-5 text-[#d30614]" />
-              Monthly Earnings
+        {/* Expected Earnings - Black Card */}
+        <Card className="neat-card">
+          <CardHeader className="pb-6 border-b border-white/5">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 flex items-center gap-3">
+              <Wallet className="w-4 h-4 text-[#fffe01]" />
+              Monthly Settlement
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <div>
-              <div className="text-[10px] text-gray-400 font-normal uppercase tracking-widest">Est. Net Salary</div>
-              <div className="text-4xl font-medium text-gray-900 tracking-tight">
-                ₹{payrollSummary?.estimatedNetSalary?.toLocaleString('en-IN') || '0'}
+          <CardContent className="p-10 space-y-10">
+            <div className="space-y-1">
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Estimated Net</div>
+              <div className="text-5xl font-bold text-[#fffe01] tracking-tighter flex items-start gap-1 tabular-nums">
+                <span className="text-xl mt-1.5 opacity-30 font-medium">₹</span>
+                {payrollSummary?.estimatedNetSalary?.toLocaleString('en-IN') || '0'}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-               <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                  <div className="text-[9px] text-gray-400 font-normal uppercase tracking-widest">Base Salary</div>
-                  <div className="text-base font-medium text-gray-900">₹{payrollSummary?.baseSalary?.toLocaleString('en-IN') || '0'}</div>
+               <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">Base Core</div>
+                  <div className="text-lg font-bold text-white tabular-nums">₹{payrollSummary?.baseSalary?.toLocaleString('en-IN') || '0'}</div>
                </div>
-               <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                  <div className="text-[9px] text-gray-400 font-normal uppercase tracking-widest">LOP Days</div>
-                  <div className="text-base font-medium text-red-600">{payrollSummary?.totalLOPDays || 0}</div>
+               <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <div className="text-[9px] text-red-500 font-bold uppercase tracking-widest mb-1.5">LOP Loss</div>
+                  <div className="text-lg font-bold text-red-500">-{payrollSummary?.totalLOPDays || 0} D</div>
                </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Leave Balance */}
-        <Card className="border-gray-100 shadow-sm bg-white rounded-2xl">
-          <CardHeader className="pb-2 border-b border-gray-50">
-            <CardTitle className="text-lg flex items-center gap-2 text-gray-900 font-medium">
-              <CalendarDays className="w-5 h-5 text-[#d30614]" />
-              Leave Balance
+        {/* Leave Balance - Black Card */}
+        <Card className="neat-card">
+          <CardHeader className="pb-4 border-b border-white/5">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 flex items-center gap-3">
+              <CalendarDays className="w-4 h-4 text-slate-500" />
+              Resource Quota
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[200px] w-full relative">
+          <CardContent className="p-8">
+            <div className="h-[240px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={leaveChartData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={5}
+                    innerRadius={75}
+                    outerRadius={95}
+                    paddingAngle={6}
                     dataKey="value"
+                    stroke="none"
+                    animationDuration={1500}
                   >
                     {leaveChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={entry.name === 'Used' ? '#1f2937' : '#fffe01'} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                 <span className="text-2xl font-medium">{balances.leave.remaining}</span>
-                 <span className="text-[9px] text-gray-400 uppercase tracking-wider">Remaining</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mb-1">
+                 <span className="text-4xl font-bold text-white tracking-tighter tabular-nums">{balances.leave.remaining}</span>
+                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">REMAIN</span>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Benefit Usage Stats */}
-        <div className="md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="border-gray-100 shadow-sm bg-white rounded-2xl overflow-hidden">
-            <CardContent className="p-6 flex items-center gap-6">
-               <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <UserCheck2 className="w-8 h-8" />
-               </div>
-               <div>
-                  <div className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Days Present</div>
-                  <div className="text-3xl font-medium text-gray-900">{payrollSummary?.presentDays || 0}</div>
-               </div>
-            </CardContent>
-          </Card>
-          <Card className="border-gray-100 shadow-sm bg-white rounded-2xl overflow-hidden">
-            <CardContent className="p-6 flex items-center gap-6">
-               <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <CalendarX className="w-8 h-8" />
-               </div>
-               <div>
-                  <div className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">LOP History</div>
-                  <div className="text-3xl font-medium text-gray-900">{payrollSummary?.totalLOPDays || 0}</div>
-               </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
-      {/* BENIFIT PROGRESS */}
-      <Card className="border-gray-100 shadow-sm bg-white rounded-2xl overflow-hidden">
-          <CardHeader className="bg-gray-50/50">
-            <CardTitle className="text-sm font-medium uppercase tracking-widest text-gray-500">Utilization Metrics</CardTitle>
+      {/* Industrial Progress - Black Card */}
+      <Card className="neat-card overflow-hidden">
+          <CardHeader className="bg-white/5 p-6 border-b border-white/5">
+            <CardTitle className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500 text-center">UTILIZATION ANALYTICS</CardTitle>
           </CardHeader>
-          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="font-medium text-gray-700">Casual Leave Status</span>
-                  <span className="font-medium">{balances.leave.remaining} / {balances.leave.total}</span>
+          <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="space-y-5">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Casual Leave Core</span>
+                    <h4 className="text-lg font-bold text-white tracking-tight uppercase">Vacation Node</h4>
+                  </div>
+                  <span className="text-lg font-bold text-white tabular-nums">{balances.leave.remaining} <span className="text-xs opacity-30 font-medium">/ {balances.leave.total}</span></span>
                 </div>
-                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#d30614] transition-all duration-1000" style={{ width: `${(balances.leave.used / balances.leave.total) * 100}%` }}></div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#fffe01] rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,254,1,0.2)]" style={{ width: `${(balances.leave.used / balances.leave.total) * 100}%` }}></div>
                 </div>
             </div>
-            <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="font-medium text-gray-700">Permission Balance</span>
-                  <span className="font-medium">{balances.permission.remaining}h / {balances.permission.total}h</span>
+            <div className="space-y-5">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Authorized Absence</span>
+                    <h4 className="text-lg font-bold text-white tracking-tight uppercase">Permission Bandwidth</h4>
+                  </div>
+                  <span className="text-lg font-bold text-white tabular-nums">{balances.permission.remaining}h <span className="text-xs opacity-30 font-medium">/ {balances.permission.total}h</span></span>
                 </div>
-                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gray-900 transition-all duration-1000" style={{ width: `${(balances.permission.used / balances.permission.total) * 100}%` }}></div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-slate-300 rounded-full transition-all duration-1000 opacity-60" style={{ width: `${(balances.permission.used / balances.permission.total) * 100}%` }}></div>
                 </div>
             </div>
           </CardContent>
       </Card>
 
-      {/* PERFORMANCE CARDS */}
+      {/* Assessment Feed - Dark Cards */}
       {weeklyScores.length > 0 && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-medium text-gray-900 tracking-tight">Weekly Performance</h2>
+        <div className="space-y-8 relative z-10">
+          <div className="flex items-center justify-between px-4">
+            <div className="space-y-1">
+               <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3 uppercase">
+                 <Trophy className="w-6 h-6 text-[#fffe01] drop-shadow-sm" /> Engagement Analytics
+               </h2>
+               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-9">System-verified weekly operational assessments</p>
+            </div>
             <Link to="/dashboard/performance-history">
-              <Button variant="ghost" size="sm" className="text-xs font-medium text-gray-400 hover:text-[#d30614]">
-                History <ChevronRight className="w-4 h-4 ml-1" />
+              <Button variant="outline" size="sm" className="text-[10px] font-bold text-slate-600 hover:text-black hover:bg-[#fffe01] border-slate-200 uppercase tracking-widest px-6 h-10 rounded-xl transition-all shadow-sm">
+                History <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {weeklyScores.map((score, idx) => (
-              <Card key={idx} className="border-gray-100 shadow-sm bg-white rounded-2xl hover:shadow-md transition-shadow">
-                <CardContent className="p-6 space-y-4">
+              <Card key={idx} className="neat-card group">
+                <CardContent className="p-8 space-y-6">
                   <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-lg">{score.team?.name}</h3>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider">Week {format(parseISO(score.weekStartDate), 'MMM dd')}</p>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-xl text-white tracking-tight uppercase group-hover:text-[#fffe01] transition-colors">{score.team?.name}</h3>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">CYCLE: {format(parseISO(score.weekStartDate), 'MMM dd')}</p>
                     </div>
-                    <Badge variant="outline" className={`px-2 py-1 rounded-lg ${score.assessment?.color} border-current bg-transparent text-[10px] uppercase`}>
+                    <Badge className={`px-2.5 py-0.5 rounded text-[9px] font-bold uppercase border-none tracking-widest shadow-lg ${score.assessment?.color} text-black`}>
                       {score.assessment?.title}
                     </Badge>
                   </div>
-                  <div className="space-y-2">
-                    <div className="text-3xl font-bold">{score.totalCredits}<span className="text-xs font-normal text-gray-400 ml-1">/100</span></div>
-                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gray-900 transition-all duration-1000" style={{ width: `${score.totalCredits}%` }}></div>
+                  <div className="space-y-4">
+                    <div className="flex items-baseline gap-2">
+                       <span className="text-5xl font-bold tracking-tighter text-white tabular-nums">{score.totalCredits}</span>
+                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest opacity-40">credits</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-emerald-500 to-[#fffe01] rounded-full transition-all duration-1000" style={{ width: `${score.totalCredits}%` }}></div>
                     </div>
                   </div>
                   {score.feedback && (
-                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex gap-3">
-                      <MessageSquare className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                      <p className="text-xs text-gray-500 italic">{score.feedback}</p>
+                    <div className="p-4 bg-white/5 rounded-xl border border-white/5 flex gap-3 text-slate-400 italic text-[12px] font-medium leading-relaxed group-hover:text-slate-300">
+                      <MessageSquare className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                      <p>"{score.feedback}"</p>
                     </div>
                   )}
                 </CardContent>
@@ -399,63 +417,68 @@ const EmployeeDashboard = () => {
         </div>
       )}
 
-      {/* LOGS TABLE SECTION */}
-      <Card className="border-gray-100 shadow-sm bg-white rounded-2xl overflow-hidden">
-        <CardHeader className="p-6 md:p-8 border-b border-gray-100">
-          <CardTitle className="text-xl md:text-2xl font-medium flex items-center gap-3">
-            <Clock className="w-6 h-6 text-[#d30614]" />
-            Recent Activity Log
-          </CardTitle>
+      {/* Registry Logs - Black Card */}
+      <Card className="neat-card">
+        <CardHeader className="p-8 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/[0.01]">
+          <div className="space-y-1">
+            <CardTitle className="text-xl font-bold flex items-center gap-3 tracking-tight text-white uppercase">
+              <Clock className="w-5 h-5 text-[#fffe01]" />
+              System Registry Logs
+            </CardTitle>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-8">Verified node synchronization records</p>
+          </div>
+          <Link to="/dashboard/logs">
+             <Button variant="outline" size="sm" className="text-[10px] font-bold text-white bg-yellow hover:text-black hover:bg-[#fffe01] border-white/10 uppercase tracking-widest px-6 h-10 rounded-lg transition-all shadow-inner">
+               Full Audit
+             </Button>
+          </Link>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto custom-scrollbar">
             <Table>
-              <TableHeader className="bg-gray-50/50">
-                <TableRow>
-                  <TableHead className="pl-6 h-12 uppercase text-[10px] font-medium tracking-widest text-gray-500">Date</TableHead>
-                  <TableHead className="uppercase text-[10px] font-medium tracking-widest text-gray-500">Login</TableHead>
-                  <TableHead className="uppercase text-[10px] font-medium tracking-widest text-gray-500">Logout</TableHead>
-                  <TableHead className="uppercase text-[10px] font-medium tracking-widest text-gray-500">Permission</TableHead>
-                  <TableHead className="text-right pr-6 uppercase text-[10px] font-medium tracking-widest text-gray-500">Status</TableHead>
+              <TableHeader className="bg-white/[0.05]">
+                <TableRow className="border-white/5">
+                  <TableHead className="pl-10 h-16 uppercase text-[9px] font-bold tracking-widest text-slate-500">Timestamp</TableHead>
+                  <TableHead className="uppercase text-[9px] font-bold tracking-widest text-slate-500 text-center">In</TableHead>
+                  <TableHead className="uppercase text-[9px] font-bold tracking-widest text-slate-500 text-center">Out</TableHead>
+                  <TableHead className="uppercase text-[9px] font-bold tracking-widest text-slate-500 text-center">Delay</TableHead>
+                  <TableHead className="text-right pr-10 uppercase text-[9px] font-bold tracking-widest text-slate-500">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {weeklyLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-gray-400">No recent activity found.</TableCell>
+                    <TableCell colSpan={5} className="text-center py-16 text-slate-600 text-[10px] font-bold uppercase tracking-widest">No node telemetry found</TableCell>
                   </TableRow>
                 ) : (
                   weeklyLogs.map((log, i) => (
-                    <TableRow key={i} className="hover:bg-gray-50 transition-all border-gray-50">
-                      <TableCell className="font-medium text-gray-900 pl-6 py-4">
+                    <TableRow key={i} className="hover:bg-white/[0.03] transition-all border-white/5 group">
+                      <TableCell className="font-mono text-[11px] text-slate-400 pl-10 py-5">
                         {format(parseISO(log.date), 'EEE, MMM dd')}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                           <span className={`px-2 py-1 rounded text-xs font-medium ${log.checkIn?.status === 'late' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}`}>
+                        <div className="flex flex-col items-center gap-1.5">
+                           <span className={`px-3 py-1 rounded text-[11px] font-bold tabular-nums border transition-all ${log.checkIn?.status === 'late' ? 'bg-[#fffe01]/10 text-[#fffe01] border-[#fffe01]/20' : 'bg-white/5 text-slate-300 border-white/10'}`}>
                                {log.checkIn?.time || '--:--'}
                            </span>
-                           {log.checkIn?.location && (
-                             <a href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#d30614]"><MapPin className="w-3.5 h-3.5" /></a>
-                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                           <span className="bg-gray-200 text-gray-900 px-2 py-1 rounded text-xs font-medium">
-                              {log.checkOut?.time || '--:--'}
+                        <div className="flex flex-col items-center gap-1.5">
+                           <span className="bg-white/5 text-slate-300 px-3 py-1 rounded text-[11px] font-bold tabular-nums border border-white/10">
+                               {log.checkOut?.time || '--:--'}
                            </span>
-                           {log.checkOut?.location && (
-                             <a href={`https://www.google.com/maps?q=${log.checkOut.location.lat},${log.checkOut.location.lng}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#d30614]"><MapPin className="w-3.5 h-3.5" /></a>
-                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-gray-500 text-sm">
-                        {log.checkIn?.permissionMinutes ? `${log.checkIn.permissionMinutes} min` : '0'}
+                      <TableCell className="text-center">
+                         <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-lg font-bold text-red-500 tabular-nums">{log.checkIn?.permissionMinutes || 0}</span>
+                            <span className="text-[8px] font-bold text-slate-600 tracking-widest uppercase">min</span>
+                         </div>
                       </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Badge className={`font-medium text-[9px] uppercase ${log.status?.includes('late') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`} variant="outline">
-                          {log.status || 'Verified'}
+                      <TableCell className="text-right pr-10">
+                        <Badge className={`font-bold text-[9px] py-0.5 px-3 rounded uppercase tracking-widest border-none ${log.status?.includes('late') ? 'bg-[#fffe01]/10 text-[#fffe01]' : 'bg-white/5 text-slate-400'}`}>
+                           {log.status || 'Synced'}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -467,38 +490,51 @@ const EmployeeDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* INFO FOOTER */}
-      <Card className="border-none shadow-sm overflow-hidden bg-gray-900 text-white rounded-2xl">
-        <CardContent className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="space-y-3">
-               <div className="flex items-center gap-2 text-white font-medium">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  <h4>Casual Leaves</h4>
-               </div>
-               <p className="text-xs text-gray-400 leading-relaxed">
-                  Monthly limit: <strong>{settings?.casualLeaveLimit ?? 1} day</strong>. Unused days are purged monthly.
-               </p>
-            </div>
-            <div className="space-y-3">
-               <div className="flex items-center gap-2 text-white font-medium">
-                  <Clock className="w-5 h-5 text-amber-400" />
-                  <h4>Permissions</h4>
-               </div>
-               <p className="text-xs text-gray-400 leading-relaxed">
-                  Limit: <strong>{settings?.monthlyPermissionHours ?? 3} hours</strong>. Excess hours trigger LOP tiers.
-               </p>
-            </div>
-            <div className="space-y-3">
-               <div className="flex items-center gap-2 text-white font-medium">
-                  <AlertCircle className="w-5 h-5 text-[#d30614]" />
-                  <h4>Sandwich Policy</h4>
-               </div>
-               <p className="text-xs text-gray-400 leading-relaxed">
-                  Monday/Saturday absences incur double LOP penalty.
-               </p>
-            </div>
-        </CardContent>
-      </Card>
+      {/* Governance Footer - Black Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-10 relative z-10">
+          <div className="neat-card p-8 space-y-4 group transition-all duration-300 overflow-hidden relative">
+             <div className="absolute -bottom-4 -right-4 opacity-[0.03] text-white">
+                <CheckCircle2 className="w-24 h-24" />
+             </div>
+             <div className="w-10 h-10 rounded-lg bg-[#fffe01]/10 text-[#fffe01] flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5" />
+             </div>
+             <div className="space-y-1.5 relative z-10">
+                <h4 className="text-lg font-bold text-white uppercase tracking-tight">Leave Policy</h4>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                   Quota: <strong className="text-white">{settings?.casualLeaveLimit ?? 1} Units</strong> per month. Protocol strictly prohibits carry-over logic.
+                </p>
+             </div>
+          </div>
+          <div className="neat-card p-8 space-y-4 group transition-all duration-300 overflow-hidden relative">
+             <div className="absolute -bottom-4 -right-4 opacity-[0.03] text-white">
+                <Clock className="w-24 h-24" />
+             </div>
+             <div className="w-10 h-10 rounded-lg bg-white/5 text-white flex items-center justify-center">
+                <Clock className="w-5 h-5" />
+             </div>
+             <div className="space-y-1.5 relative z-10">
+                <h4 className="text-lg font-bold text-white uppercase tracking-tight">Permission Bandwidth</h4>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                   Limit: <strong className="text-white">{settings?.monthlyPermissionHours ?? 3} Hours</strong>. Threshold breach triggers LOP automation.
+                </p>
+             </div>
+          </div>
+          <div className="neat-card p-8 space-y-4 group transition-all duration-300 overflow-hidden relative">
+             <div className="absolute -bottom-4 -right-4 opacity-[0.03] text-red-500">
+                <AlertCircle className="w-24 h-24" />
+             </div>
+             <div className="w-10 h-10 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center animate-pulse">
+                <AlertCircle className="w-5 h-5" />
+             </div>
+             <div className="space-y-1.5 relative z-10">
+                <h4 className="text-lg font-bold text-red-500 uppercase tracking-tight">Critical Bypass</h4>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                   Edge absences (Mon-Sat) initiate <strong className="text-red-500 font-bold">Sandwich Logic</strong> automated deductions.
+                </p>
+             </div>
+          </div>
+      </div>
     </div>
   );
 };

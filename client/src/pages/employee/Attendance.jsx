@@ -176,15 +176,29 @@ const Attendance = () => {
           break;
         case 'lunch-in':
           const lunchInNow = new Date();
-          const lunchLimitOut = parse('14:00', 'HH:mm', new Date());
-          const lunchLimitIn = parse('14:30', 'HH:mm', new Date());
           let isLunchSpecialCase = false;
-          if (sessionTimes.lunchOut) {
-            const lunchOutTime = parse(sessionTimes.lunchOut, 'HH:mm', new Date());
-            isLunchSpecialCase = lunchOutTime > lunchLimitOut && lunchInNow > lunchLimitIn;
-          } else {
-            isLunchSpecialCase = lunchInNow > lunchLimitIn;
+
+          if (userTimings) {
+            const lStartStr = userTimings.lunchStart || '13:30';
+            const lEndStr = userTimings.lunchEnd || '14:30';
+            const lStart = parse(lStartStr, 'HH:mm', new Date());
+            const lEnd = parse(lEndStr, 'HH:mm', new Date());
+            const lMaxDuration = (lEnd - lStart) / (1000 * 60);
+
+            let lOutTime;
+            if (sessionTimes.lunchOut) {
+               lOutTime = parse(sessionTimes.lunchOut, 'HH:mm', new Date());
+            } else {
+               // Fallback if lunchOut session time is missing (though it shouldn't be)
+               lOutTime = lStart; 
+            }
+
+            const lDuration = (lunchInNow - lOutTime) / (1000 * 60);
+
+            // Logic: started early OR finished late OR duration exceeded
+            isLunchSpecialCase = (lOutTime < lStart) || (lunchInNow > lEnd) || (lDuration > lMaxDuration);
           }
+
           if (isLunchSpecialCase && !lunchDelayReason) {
             setShowLunchDelayDialog(true);
             setLoading(false);

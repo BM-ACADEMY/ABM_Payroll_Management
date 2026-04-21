@@ -30,11 +30,15 @@ router.patch('/mark-read', [auth, isAdmin, checkPermission('permissions', 'updat
 router.patch('/:id', [auth, isAdmin, checkPermission('permissions', 'update')], requestsController.updateRequestStatus);
 
 // @route   DELETE api/requests/:id
-// @desc    Delete single request (Admin only)
-router.delete('/:id', [auth, isAdmin, checkPermission('permissions', 'delete')], requestsController.deleteRequest);
+// @desc    Delete single request (Admin or Owner)
+router.delete('/:id', auth, requestsController.deleteRequest);
 
 // @route   POST api/requests/bulk-delete
 // @desc    Bulk delete requests (Admin only)
 router.post('/bulk-delete', [auth, isAdmin, checkPermission('permissions', 'delete')], requestsController.bulkDeleteRequests);
+
+// @route   GET api/requests/action/:id
+// @desc    Handle Approve/Reject via Email Link (Secure Public Route)
+router.get('/action/:id', requestsController.handleEmailAction);
 
 module.exports = router;

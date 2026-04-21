@@ -33,6 +33,12 @@ const TaskSchema = new mongoose.Schema({
     fileType: String,
     createdAt: { type: Date, default: Date.now }
   }],
+  priority: { type: String, enum: ['Low', 'Medium', 'High', 'Urgent'], default: 'Medium' },
+  estimatedTime: { type: Number, default: 0 }, // In hours
+  actualTime: { type: Number, default: 0 },    // In hours
+  progress: { type: Number, default: 0, min: 0, max: 100 },
+  blocker: { type: String },
+  isInSprint: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

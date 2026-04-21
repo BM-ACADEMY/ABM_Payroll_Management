@@ -13,7 +13,8 @@ import {
   Loader2, 
   AlertCircle,
   History,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from "lucide-react";
 import axios from 'axios';
 import Loader from "@/components/ui/Loader";
@@ -21,6 +22,7 @@ import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const LeaveRequest = () => {
   const [requests, setRequests] = useState([]);
@@ -32,6 +34,7 @@ const LeaveRequest = () => {
   const [leaveDate, setLeaveDate] = useState(new Date().toISOString().split('T')[0]);
   const [leaveType, setLeaveType] = useState('full');
   const [leaveReason, setLeaveReason] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, id: null });
 
   useEffect(() => {
     fetchMyRequests(1);
@@ -103,6 +106,31 @@ const LeaveRequest = () => {
       });
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleDeleteRequest = async (id) => {
+    setConfirmDelete({ isOpen: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { id } = confirmDelete;
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({
+        title: "Success",
+        description: "Leave application deleted successfully",
+      });
+      setConfirmDelete({ isOpen: false, id: null });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || 'Failed to delete request',
+      });
     }
   };
 
@@ -250,6 +278,19 @@ const LeaveRequest = () => {
                            </span>
                         </div>
                       )}
+                      
+                      {request.status !== 'approved' && (
+                        <div className="flex items-center gap-2">
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             onClick={() => handleDeleteRequest(request._id)}
+                             className="h-9 w-9 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </Button>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="ml-0 sm:ml-[4.5rem] bg-gray-50 border border-gray-100 p-4 md:p-5 rounded-2xl shadow-sm text-gray-600 text-xs md:text-sm leading-relaxed italic">
@@ -280,11 +321,16 @@ const LeaveRequest = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog 
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, id: null })}
+        onConfirm={confirmDeleteAction}
+        title="Cancel Leave Application"
+        description="Are you sure you want to retract this leave request? This action will remove the application from the registry."
+      />
     </div>
-
-
   );
 };
 
 export default LeaveRequest;
-

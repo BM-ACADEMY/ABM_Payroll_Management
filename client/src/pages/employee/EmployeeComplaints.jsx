@@ -7,7 +7,8 @@ import {
   CheckCircle, 
   AlertCircle,
   ShieldCheck,
-  Plus
+  Plus,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
 import PaginationControl from '@/components/ui/PaginationControl';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 const EmployeeComplaints = () => {
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,8 @@ const EmployeeComplaints = () => {
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
+  const [deleteId, setDeleteId] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -81,6 +85,19 @@ const EmployeeComplaints = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/complaints/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({ title: "Deleted", description: "Complaint has been removed." });
+      fetchMyComplaints(pagination.currentPage);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete complaint" });
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch(status) {
       case 'pending': return <Badge className="bg-amber-50 text-amber-600 border-amber-100 font-medium uppercase tracking-widest text-[9px]">Awaiting Review</Badge>;
@@ -90,80 +107,70 @@ const EmployeeComplaints = () => {
     }
   };
 
-    <div className="min-h-screen bg-[#fdfdfd] p-4 md:p-8 lg:p-12 space-y-12 animate-in fade-in duration-1000 pb-32">
+  return (
+    <div className="min-h-screen bg-slate-50 p-6 md:p-10 space-y-8 pb-32">
       {/* Header Section */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-10">
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="h-10 md:h-14 w-2.5 bg-[#d30614] rounded-full shadow-lg shadow-red-100"></div>
-            <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-zinc-900 uppercase leading-[0.9]">
-              Support <span className="text-[#d30614] tracking-tight">Vectors</span>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-1 bg-zinc-900 rounded-full"></div>
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+              Support <span className="text-zinc-500 font-normal underline decoration-zinc-200 underline-offset-8">Center</span>
             </h1>
           </div>
-          <p className="text-zinc-500 text-lg md:text-xl font-medium max-w-2xl leading-relaxed ml-2">
-            Professional <span className="text-zinc-900 font-black">Grievance Management</span> & Official Resolution Registry.
+          <p className="text-zinc-500 text-sm font-medium ml-4">
+            Official grievance registry and resolution history.
           </p>
         </div>
 
         <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
           <DialogTrigger asChild>
-            <Button className="rounded-[2rem] bg-zinc-900 hover:bg-[#d30614] text-[#fffe01] hover:text-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.3)] px-10 h-20 font-black uppercase tracking-[0.3em] text-[11px] gap-4 transition-all hover:-translate-y-2 active:scale-95 group">
-              <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
-              Initialize_Signal
+            <Button className="rounded-xl bg-black text-[#fffe01] hover:bg-zinc-800 px-6 h-12 font-bold uppercase tracking-widest text-[10px] gap-2 shadow-lg transition-all active:scale-95">
+              <Plus className="w-4 h-4" />
+              New Complaint
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-[3.5rem] border-none shadow-3xl p-0 overflow-hidden bg-white sm:max-w-2xl animate-in zoom-in-95 duration-500">
-            <DialogHeader className="p-12 md:p-16 bg-zinc-900 border-b border-white/5 relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-12 opacity-[0.05] pointer-events-none">
-                  <MessageSquare className="w-48 h-48" />
+          <DialogContent className="rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white sm:max-w-md">
+            <DialogHeader className="p-8 bg-zinc-50 border-b border-zinc-100">
+               <div className="flex items-center gap-3">
+                  <div className="p-2 bg-black text-[#fffe01] rounded-lg">
+                     <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <DialogTitle className="text-lg font-semibold text-zinc-900">Lodge Complaint</DialogTitle>
                </div>
-               <div className="space-y-4 relative z-10">
-                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-[#fffe01] text-black rounded-xl">
-                       <MessageSquare className="w-6 h-6" />
-                    </div>
-                    <DialogTitle className="text-3xl font-black uppercase tracking-tighter text-[#fffe01]">New Complaint</DialogTitle>
-                 </div>
-                 <DialogDescription className="text-zinc-500 font-bold text-xs uppercase tracking-widest leading-relaxed">
-                   Synchronize your concerns with the <span className="text-white">Administrative Backbone</span>.
-                 </DialogDescription>
-               </div>
+               <DialogDescription className="text-zinc-500 font-medium text-xs pt-1">
+                 Please provide details of your grievance.
+               </DialogDescription>
             </DialogHeader>
-            <div className="p-12 md:p-16 space-y-12">
-               <div className="space-y-10">
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.4em] ml-2 flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-[#d30614]"></div>
-                       SIGNAL_SUBJECT
-                    </Label>
+            <div className="p-8 space-y-6">
+               <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">Subject</Label>
                     <Input 
-                      placeholder="ENCODE SUBJECT..." 
+                      placeholder="e.g. Technical Issue, HR Inquiry..." 
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
-                      className="rounded-[1.75rem] border-none bg-zinc-50 focus:bg-white focus:ring-0 h-16 font-black text-sm uppercase px-8 shadow-inner transition-all"
+                      className="rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white focus:ring-1 focus:ring-black h-12 font-medium text-sm px-4 transition-all"
                     />
                   </div>
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.4em] ml-2 flex items-center gap-2">
-                       <div className="w-1.5 h-1.5 rounded-full bg-[#fffe01] shadow-[0_0_10px_rgba(255,254,1,0.5)]"></div>
-                       DETAILED_LOG
-                    </Label>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">Details</Label>
                     <Textarea 
-                      placeholder="ENCODE DESCRIPTION..." 
+                      placeholder="Describe the situation..." 
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="min-h-[200px] rounded-[2.5rem] border-none bg-zinc-50 focus:bg-white focus:ring-0 p-10 font-black text-sm transition-all shadow-inner resize-none leading-relaxed"
+                      className="min-h-[150px] rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white focus:ring-1 focus:ring-black p-4 font-medium text-sm transition-all resize-none"
                     />
                   </div>
                </div>
-               <DialogFooter className="pt-4 gap-6 sm:justify-between flex-row">
-                  <Button variant="outline" onClick={() => setShowSubmitDialog(false)} className="rounded-[1.75rem] font-black uppercase text-[10px] tracking-[0.3em] h-16 flex-1 hover:bg-zinc-50 border-zinc-100">ABORT</Button>
+               <DialogFooter className="pt-2 gap-3 sm:justify-end">
+                  <Button variant="ghost" onClick={() => setShowSubmitDialog(false)} className="rounded-xl font-bold uppercase text-[10px] tracking-widest h-12 px-6">Cancel</Button>
                   <Button 
                     onClick={handleSubmit}
                     disabled={!subject || !description || loading}
-                    className="rounded-[2rem] bg-zinc-900 hover:bg-[#fffe01] text-white hover:text-black font-black uppercase text-[10px] tracking-[0.3em] h-20 flex-1 shadow-2xl transition-all"
+                    className="rounded-xl bg-black text-[#fffe01] hover:bg-zinc-800 font-bold uppercase text-[10px] tracking-widest h-12 px-8 shadow-xl"
                   >
-                    {loading ? "SYNCING..." : "TRANSMIT"}
+                    {loading ? "Sending..." : "Submit"}
                   </Button>
                </DialogFooter>
             </div>
@@ -171,100 +178,104 @@ const EmployeeComplaints = () => {
         </Dialog>
       </header>
 
-      <div className="grid grid-cols-1 gap-10">
+      <div className="grid grid-cols-1 gap-6">
         {complaints.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-20 py-40 bg-white shadow-3xl shadow-zinc-200/50 rounded-[4rem] group border border-zinc-50">
-            <div className="w-48 h-48 rounded-[3.5rem] bg-zinc-50 flex items-center justify-center mb-10 shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 animate-in zoom-in-95">
-              <div className="w-32 h-32 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center">
-                 <MessageSquare className="w-14 h-14 text-zinc-100" />
-              </div>
+          <div className="flex flex-col items-center justify-center p-12 py-24 bg-white shadow-sm rounded-3xl border border-zinc-100">
+            <div className="w-20 h-20 bg-zinc-50 rounded-2xl flex items-center justify-center mb-6">
+               <MessageSquare className="w-8 h-8 text-zinc-300" />
             </div>
-            <div className="space-y-4 text-center">
-              <h3 className="text-4xl font-black text-zinc-900 tracking-tighter uppercase leading-none">Record_History_Vacant</h3>
-              <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
-                 No active or archived grievances detected in the <span className="text-zinc-900">resolution lattice</span>.
+            <div className="space-y-2 text-center">
+              <h3 className="text-xl font-semibold text-zinc-900 tracking-tight">No Complaints Found</h3>
+              <p className="text-zinc-500 font-medium text-xs max-w-xs mx-auto">
+                 History is currently clear. Any grievances filed will appear here.
               </p>
             </div>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-12">
+            <div className="grid grid-cols-1 gap-8">
               {complaints.map((c) => (
-                <Card key={c._id} className="rounded-[3.5rem] border-none shadow-3xl shadow-zinc-200/50 bg-white overflow-hidden hover:scale-[1.01] transition-all duration-700 group">
-                  <div className="p-12 md:p-16 space-y-10 relative">
-                    <div className="absolute top-0 right-0 p-12 opacity-[0.02] group-hover:scale-125 transition-transform duration-1000 pointer-events-none">
-                       <MessageSquare className="w-64 h-64" />
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
-                       <div className="flex flex-col md:flex-row md:items-center gap-6">
-                          <div className="p-5 bg-zinc-900 text-[#fffe01] rounded-[1.75rem] shadow-2xl transition-transform group-hover:rotate-12 duration-500 shrink-0">
-                             <MessageSquare className="w-8 h-8" />
+                <Card key={c._id} className="rounded-3xl border-zinc-100 shadow-sm bg-white overflow-hidden hover:shadow-md transition-all duration-300">
+                  <div className="p-8 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+                       <div className="flex items-start gap-4">
+                          <div className="p-3 bg-zinc-900 text-[#fffe01] rounded-xl shadow-lg shrink-0">
+                             <MessageSquare className="w-5 h-5" />
                           </div>
-                          <div className="space-y-3">
-                             <div className="flex flex-wrap items-center gap-5">
+                          <div className="space-y-1">
+                             <div className="flex flex-wrap items-center gap-3 mb-2">
                                 {getStatusBadge(c.status)}
-                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.4em] font-mono">
-                                  {format(new Date(c.createdAt), 'MMM dd, yyyy')}
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                  {format(new Date(c.createdAt), 'MMMM dd, yyyy')}
                                 </span>
                              </div>
-                             <h3 className="text-3xl font-black text-zinc-900 tracking-tighter uppercase leading-none">{c.subject}</h3>
+                             <h3 className="text-xl font-semibold text-zinc-900 tracking-tight">{c.subject}</h3>
                           </div>
                        </div>
-                       <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-[1.5rem] pr-8 shadow-inner shrink-0 self-start sm:self-auto">
-                          <div className="w-2.5 h-2.5 rounded-full bg-[#d30614] animate-pulse"></div>
-                          <span className="text-[9px] font-black text-zinc-900 uppercase tracking-widest font-mono">Registry_ID: #0x{c._id.slice(-6).toUpperCase()}</span>
+                       <div className="flex items-center gap-3 self-start sm:self-auto">
+                          <div className="flex items-center gap-2 bg-zinc-50 px-3 py-1.5 rounded-lg border border-zinc-100 shrink-0">
+                             <div className="w-1.5 h-1.5 rounded-full bg-[#d30614]"></div>
+                             <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">ID: {c._id.slice(-6).toUpperCase()}</span>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => { setDeleteId(c._id); setIsDeleteDialogOpen(true); }}
+                            className="h-8 w-8 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Delete Complaint"
+                          >
+                             <Trash2 className="w-4 h-4" />
+                          </Button>
                        </div>
                     </div>
 
-                    <div className="bg-[#fcfcfc] p-10 md:p-12 rounded-[2.5rem] border border-zinc-100 shadow-inner group-hover:bg-white transition-all duration-700 relative overflow-hidden">
-                       <div className="absolute top-0 left-0 w-2.5 h-full bg-zinc-100"></div>
-                       <p className="text-zinc-500 font-bold text-lg md:text-xl leading-relaxed relative z-10 italic">"{c.description}"</p>
+                    <div className="bg-zinc-50/50 p-6 rounded-2xl border border-zinc-100 relative">
+                       <p className="text-zinc-600 font-medium text-sm leading-relaxed italic">"{c.description}"</p>
                     </div>
 
                     {c.adminResponse ? (
-                      <div className="bg-zinc-900 p-10 md:p-14 rounded-[3rem] border border-white/5 relative group/res shadow-22xl">
-                        <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover/res:scale-110 group-hover/res:rotate-12 transition-transform duration-700">
-                           <ShieldCheck className="w-32 h-32 text-white" />
-                        </div>
-                        <div className="flex flex-col md:flex-row items-start gap-8 relative z-10">
-                           <div className="w-16 h-16 rounded-[1.5rem] bg-[#fffe01] flex items-center justify-center text-black shrink-0 shadow-2xl animate-in slide-in-from-left-4 duration-1000">
-                              <ShieldCheck className="w-10 h-10" />
+                      <div className="bg-zinc-900 p-8 rounded-2xl relative border-none shadow-xl">
+                        <div className="flex items-start gap-4 relative z-10">
+                           <div className="w-10 h-10 rounded-xl bg-[#fffe01] flex items-center justify-center text-black shrink-0">
+                              <ShieldCheck className="w-5 h-5" />
                            </div>
-                           <div className="space-y-6">
-                              <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500 font-mono">OFFICIAL_RESOLUTION</span>
-                                <div className="h-px w-20 bg-zinc-800"></div>
+                           <div className="space-y-3">
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Official Response</span>
+                                <div className="h-[1px] w-12 bg-zinc-800"></div>
                               </div>
-                              <p className="text-white font-black text-xl md:text-2xl tracking-tighter leading-tight uppercase">"{c.adminResponse}"</p>
-                              <div className="flex items-center gap-3 py-2 px-6 bg-white/5 rounded-xl border border-white/5 inline-flex">
-                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                                 <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.3em]">Verified_by_Advisory_Board</span>
+                              <p className="text-white font-medium text-sm leading-relaxed">"{c.adminResponse}"</p>
+                              <div className="flex items-center gap-2 pt-1">
+                                 <div className="w-1 h-1 rounded-full bg-emerald-500"></div>
+                                 <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest">Verified Resolution</span>
                               </div>
                            </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-6 py-6 px-10 bg-amber-50/50 rounded-[2rem] border border-amber-100/50 inline-flex group-hover:scale-105 transition-transform duration-700">
-                         <div className="relative">
-                            <Clock className="w-6 h-6 text-amber-500 animate-spin transition-all duration-3000" />
-                         </div>
-                         <div className="space-y-1">
-                            <span className="text-[10px] font-black text-amber-400 uppercase tracking-[0.4em] block">PROTOCOL_PULSE</span>
-                            <span className="text-sm font-black text-amber-600 uppercase tracking-tighter">Awaiting_Administrative_Handshake</span>
-                         </div>
+                      <div className="flex items-center gap-3 py-3 px-5 bg-amber-50 rounded-xl border border-amber-100 inline-flex">
+                          <Clock className="w-4 h-4 text-amber-500" />
+                          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Awaiting Review</span>
                       </div>
                     )}
                   </div>
                 </Card>
               ))}
             </div>
-            <div className="flex justify-center pt-12">
+            <div className="flex justify-center pt-8">
               <PaginationControl pagination={pagination} onPageChange={handlePageChange} />
             </div>
           </>
         )}
       </div>
+
+      <ConfirmDialog 
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={() => handleDelete(deleteId)}
+        title="Confirm Deletion"
+        description="Are you sure you want to delete this complaint? This operation is permanent and cannot be undone."
+      />
     </div>
   );
 };

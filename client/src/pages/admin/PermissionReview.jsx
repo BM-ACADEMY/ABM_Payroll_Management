@@ -255,92 +255,82 @@ const PermissionReview = () => {
     }
   };
 
-    <div className="min-h-screen bg-[#fdfdfd] p-4 md:p-8 lg:p-12 space-y-12 animate-in fade-in duration-1000">
+  return (
+    <div className="min-h-screen bg-slate-50 p-6 md:p-10 space-y-8 pb-32">
       {/* Header Section */}
-      <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="h-10 md:h-14 w-2.5 bg-[#d30614] rounded-full shadow-lg shadow-red-100"></div>
-            <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-zinc-900 uppercase leading-[0.9]">
-              Request <span className="text-[#d30614] tracking-tight">Audit</span>
-            </h1>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-1 bg-zinc-900 rounded-full"></div>
+            <h1 className="text-2xl font-semibold text-zinc-900 tracking-tight">Request Audit</h1>
           </div>
-          <p className="text-zinc-500 text-lg md:text-xl font-medium max-w-2xl leading-relaxed ml-2">
-            Professional <span className="text-zinc-900 font-black">Governance Backbone</span> & Operational Authorization Registry.
+          <p className="text-zinc-500 text-sm font-medium ml-4">
+             Governance & Operational Authorization Registry
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-           <div className="relative group w-full sm:w-80">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-zinc-400 group-focus-within:text-black transition-colors" />
+        <div className="flex items-center gap-4">
+           <div className="relative group w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <Input
-                placeholder="PROBE REPOSITORY..."
+                placeholder="Search requests..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-16 h-20 bg-white border-zinc-100 rounded-[2rem] shadow-xl text-sm font-black uppercase tracking-widest focus:ring-4 focus:ring-zinc-100/50 transition-all"
+                className="pl-9 h-10 bg-white border-zinc-200 rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 transition-all"
               />
            </div>
-           
-           <div className="flex items-center gap-4 bg-white p-3 rounded-[2rem] border border-zinc-100 shadow-xl pr-8">
-              <div className="p-4 bg-zinc-900 text-[#fffe01] rounded-2xl shadow-xl">
-                 <FileText className="w-8 h-8" />
-              </div>
-              <div className="hidden sm:block">
-                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em] mb-1 block">ACTIVE_QUOTA</span>
-                 <span className="text-xl font-black text-zinc-900 uppercase tracking-tight">Governance_Archive</span>
-              </div>
+           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-zinc-200 shadow-sm">
+              <FileText className="w-4 h-4 text-zinc-400" />
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Archive</span>
            </div>
         </div>
       </header>
 
-      {/* ACTION BAR */}
-      <div className="flex flex-wrap items-center gap-6">
+      <div className="flex flex-wrap items-center gap-4">
         {selectedIds.length > 0 && (
           <Button
             onClick={handleBulkDelete}
             disabled={actionLoading}
-            className="rounded-[1.75rem] bg-[#d30614] hover:bg-black text-white hover:text-[#fffe01] shadow-[0_20px_50px_-12px_rgba(211,6,20,0.3)] h-16 px-10 font-black uppercase tracking-[0.3em] text-[10px] gap-4 transition-all hover:-translate-y-2 active:scale-95 animate-in slide-in-from-left-4"
+            variant="destructive"
+            className="rounded-xl h-10 px-6 font-semibold text-xs gap-2 shadow-sm"
           >
-            <Trash2 className="w-5 h-5" />
-            Purge_Context ({selectedIds.length})
+            <Trash2 className="w-4 h-4" />
+            Delete Selected ({selectedIds.length})
           </Button>
         )}
         <Button
           variant="outline"
           onClick={markAllAsRead}
-          className="rounded-[1.75rem] border-zinc-100 bg-white hover:bg-zinc-50 text-zinc-400 hover:text-black shadow-xl h-16 px-10 font-black uppercase tracking-[0.3em] text-[10px] gap-4 transition-all hover:-translate-y-1"
+          className="rounded-xl border-zinc-200 bg-white h-10 px-6 font-semibold text-xs gap-2 shadow-sm"
         >
-          <CheckSquare className="w-5 h-5" />
-          Archive_Signified
+          <CheckSquare className="w-4 h-4" />
+          Mark All Read
         </Button>
       </div>
 
-      {/* Audit Stream */}
-      <Card className="border-none shadow-3xl shadow-zinc-200/50 rounded-[3.5rem] bg-white overflow-hidden min-h-[800px] flex flex-col">
-        <CardHeader className="p-10 md:p-14 border-b border-zinc-50 bg-[#f8f8f8]/50 flex flex-col sm:flex-row items-center justify-between gap-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-5">
-               <div className="p-4 bg-zinc-900 text-[#fffe01] rounded-2xl shadow-xl">
-                 <Clock className="w-6 h-6" />
-               </div>
-               <div>
-                  <CardTitle className="text-3xl font-black text-zinc-900 uppercase tracking-tighter">Audit_Stream</CardTitle>
-                  <CardDescription className="text-zinc-400 font-bold text-xs uppercase tracking-[0.3em] ml-2 mt-2 leading-relaxed">
-                    Real-time <span className="text-zinc-900">governance telemetry</span> synchronization active.
-                  </CardDescription>
-               </div>
+      <Card className="border-zinc-100 shadow-sm rounded-3xl bg-white overflow-hidden flex flex-col">
+        <CardHeader className="p-8 border-b border-zinc-50 bg-zinc-50/30 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-zinc-900 text-[#fffe01] rounded-xl">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-semibold text-zinc-900 tracking-tight">Audit Stream</CardTitle>
+              <CardDescription className="text-zinc-500 font-medium text-[10px] uppercase tracking-wider">
+                Real-time governance telemetry
+              </CardDescription>
             </div>
           </div>
           {filteredRequests.length > 0 && (
-            <div className="flex items-center gap-5 bg-white p-4 px-10 rounded-full border border-zinc-100 shadow-xl group cursor-pointer hover:bg-zinc-900 transition-all duration-500" onClick={toggleAll}>
+            <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-xl border border-zinc-200 shadow-sm group cursor-pointer hover:bg-zinc-50 transition-all" onClick={toggleAll}>
               <Checkbox 
                 id="select-all" 
                 checked={selectedIds.length === filteredRequests.length && filteredRequests.length > 0}
                 onCheckedChange={toggleAll}
-                className="w-6 h-6 rounded-lg border-zinc-200 data-[state=checked]:bg-[#fffe01] data-[state=checked]:text-black"
+                className="w-4 h-4 rounded border-zinc-300"
               />
-              <Label htmlFor="select-all" className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 cursor-pointer group-hover:text-[#fffe01] transition-colors">
-                Select Entire Context
+              <Label htmlFor="select-all" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 cursor-pointer">
+                Select All
               </Label>
             </div>
           )}
@@ -357,86 +347,81 @@ const PermissionReview = () => {
               <span className="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500 animate-pulse">Executing_Governance_Command...</span>
             </div>
           ) : filteredRequests.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-20 py-40 text-center space-y-10 group">
-              <div className="w-48 h-48 rounded-[3.5rem] bg-zinc-50 flex items-center justify-center mx-auto shadow-inner group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 animate-in zoom-in-95">
-                <div className="w-32 h-32 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center">
-                   <AlertCircle className="w-14 h-14 text-zinc-100" />
-                </div>
+            <div className="flex-1 flex flex-col items-center justify-center p-12 py-24 text-center space-y-6">
+              <div className="w-20 h-20 bg-zinc-50 rounded-2xl flex items-center justify-center mb-4">
+                 <AlertCircle className="w-8 h-8 text-zinc-200" />
               </div>
-              <div className="space-y-4 text-center">
-                <h3 className="text-4xl font-black text-zinc-900 tracking-tighter uppercase leading-none">Zero_Anomalies_Detected</h3>
-                <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
-                   Operational vectors are currently <span className="text-zinc-900">fully authorized</span> and synchronized.
+              <div className="space-y-2 text-center">
+                <h3 className="text-xl font-semibold text-zinc-900 tracking-tight">No Requests Found</h3>
+                <p className="text-zinc-500 font-medium text-xs max-w-xs mx-auto">
+                   Operational vectors are currently fully authorized and synchronized.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="divide-y divide-zinc-50">
+            <div className="divide-y divide-zinc-100">
               {filteredRequests.map((req) => (
-                <div key={req._id} className={`p-10 md:p-14 hover:bg-zinc-50/50 transition-all group flex flex-col xl:flex-row gap-12 xl:items-center relative border-l-8 border-l-transparent duration-700 ${selectedIds.includes(req._id) ? 'bg-[#fffe01]/5 border-l-black' : 'hover:border-l-zinc-100'}`}>
+                <div key={req._id} className={`p-8 hover:bg-zinc-50/50 transition-all group flex flex-col xl:flex-row gap-8 xl:items-center relative ${selectedIds.includes(req._id) ? 'bg-zinc-50' : ''}`}>
                   
-                  <div className="flex items-center gap-10">
-                    <div className="scale-150">
-                      <Checkbox 
-                        checked={selectedIds.includes(req._id)}
-                        onCheckedChange={() => toggleSelect(req._id)}
-                        className="rounded-lg border-zinc-200 data-[state=checked]:bg-black data-[state=checked]:text-[#fffe01]"
-                      />
-                    </div>
+                  <div className="flex items-center gap-6">
+                    <Checkbox 
+                      checked={selectedIds.includes(req._id)}
+                      onCheckedChange={() => toggleSelect(req._id)}
+                      className="w-4 h-4 rounded border-zinc-300"
+                    />
                     
-                    <div className="flex items-center gap-8">
-                       <div className="w-20 h-20 rounded-[2.5rem] bg-zinc-900 flex items-center justify-center shadow-2xl transition-transform group-hover:rotate-12 duration-500 shrink-0 border border-white/5">
-                          <User className="w-10 h-10 text-[#fffe01]" />
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center shrink-0">
+                          <User className="w-6 h-6 text-[#fffe01]" />
                        </div>
-                       <div className="space-y-3 min-w-[200px]">
-                          <div className="flex flex-wrap items-center gap-4">
-                             <h4 className="text-2xl font-black text-zinc-900 tracking-tighter uppercase leading-none truncate max-w-[240px]">
-                               {req.user?.name || 'IDENTITY_UNKNOWN'}
+                       <div className="space-y-1 min-w-[160px]">
+                          <div className="flex flex-wrap items-center gap-2">
+                             <h4 className="text-base font-semibold text-zinc-900 tracking-tight truncate max-w-[200px]">
+                               {req.user?.name || 'Unknown User'}
                              </h4>
                              {getTypeBadge(req.type)}
                           </div>
-                          <div className="flex items-center gap-3">
-                             <div className="w-2 h-2 rounded-full bg-zinc-200"></div>
-                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] font-mono">{req.user?.employeeId || 'ID_NULL'}</span>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{req.user?.employeeId || 'ID_NULL'}</span>
                           </div>
                        </div>
                     </div>
                   </div>
 
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div className="bg-white border border-zinc-100 p-8 rounded-[2.5rem] shadow-xl space-y-4 group-hover:scale-105 transition-transform duration-500">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="bg-white border border-zinc-100 p-6 rounded-2xl shadow-sm space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.4em] flex items-center gap-3 font-mono">
-                              <CalendarIcon className="w-4 h-4 text-[#d30614]" /> Chronology
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                              <CalendarIcon className="w-3.5 h-3.5 text-zinc-400" /> Date & Duration
                             </span>
                              {getStatusBadge(req.status)}
                           </div>
-                          <p className="text-lg font-black text-zinc-900 uppercase tracking-tighter font-mono">
-                            {format(new Date(req.appliedOn), 'MMM dd')} <span className="text-zinc-300 mx-2">•</span> 
-                            {req.type === 'leave' ? `${req.duration}D_MAG` : req.totalPermissionTime || 'PERM_SIGNAL'}
-                            {req.date && req.type !== 'leave' && <span className="ml-4 text-[10px] text-zinc-400 bg-zinc-100 px-3 py-1 rounded-lg">[{req.date}]</span>}
-                         </p>
+                          <p className="text-sm font-semibold text-zinc-900">
+                            {format(new Date(req.appliedOn), 'MMMM dd, yyyy')} <span className="text-zinc-200 mx-2">|</span> 
+                            {req.type === 'leave' ? `${req.duration} Days` : req.totalPermissionTime || 'Permission'}
+                            {req.date && req.type !== 'leave' && <span className="ml-2 text-[10px] text-zinc-400 font-medium">({req.date})</span>}
+                          </p>
                        </div>
-                      <div className="bg-white border border-zinc-100 p-8 rounded-[2.5rem] shadow-xl space-y-4 group-hover:scale-105 transition-transform duration-500">
-                         <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.4em] flex items-center gap-3 font-mono">
-                           <MessageSquare className="w-4 h-4 text-zinc-900" /> Operational_Rationale
+                      <div className="bg-white border border-zinc-100 p-6 rounded-2xl shadow-sm space-y-3">
+                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                           <MessageSquare className="w-3.5 h-3.5 text-zinc-400" /> Reason
                          </span>
-                         <p className="text-sm font-bold text-zinc-500 line-clamp-2 leading-relaxed italic pr-6 pb-2">
+                         <p className="text-xs font-medium text-zinc-600 line-clamp-2 italic leading-relaxed">
                            "{req.reason}"
                          </p>
                       </div>
                   </div>
 
-                  <div className="flex flex-row xl:flex-col gap-4 shrink-0 pt-6 xl:pt-0">
+                  <div className="flex flex-row xl:flex-col gap-3 shrink-0">
                     {req.status === 'pending' ? (
                       <>
                         <Button
                           onClick={() => handleStatusUpdate(req._id, 'approved')}
                           disabled={actionLoading}
-                          className="flex-1 h-20 xl:w-56 bg-zinc-900 hover:bg-[#d30614] text-[#fffe01] hover:text-white rounded-[1.75rem] shadow-2xl font-black uppercase tracking-[0.4em] text-[10px] flex items-center justify-center gap-4 transition-all hover:-translate-y-1 active:scale-95"
+                          className="flex-1 h-12 xl:w-48 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] flex items-center justify-center gap-2 shadow-sm"
                         >
-                          <CheckCircle2 className="w-5 h-5" />
-                          Commit_Auth
+                          <CheckCircle2 className="w-4 h-4" />
+                          Approve
                         </Button>
                         <Button
                           variant="outline"
@@ -445,18 +430,18 @@ const PermissionReview = () => {
                             setIsRejectOpen(true);
                           }}
                           disabled={actionLoading}
-                          className="flex-1 h-20 xl:w-56 border-zinc-100 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-[1.75rem] font-black uppercase tracking-[0.4em] text-[10px] gap-4 transition-all hover:-translate-y-1"
+                          className="flex-1 h-12 xl:w-48 border-zinc-200 text-zinc-500 hover:text-black hover:bg-zinc-50 rounded-xl font-bold uppercase tracking-wider text-[10px] gap-2"
                         >
-                          <XCircle className="w-5 h-5" />
-                          Dismiss_Req
+                          <XCircle className="w-4 h-4" />
+                          Reject
                         </Button>
                       </>
                     ) : (
-                       <div className="flex flex-col md:flex-row xl:flex-col gap-4 items-stretch w-full xl:w-56">
+                       <div className="flex flex-col md:flex-row xl:flex-col gap-3 items-stretch w-full xl:w-48">
                           {req.status === 'rejected' && req.rejectedReason && (
-                            <div className="p-6 bg-[#d30614]/5 border border-[#d30614]/10 rounded-[2rem] shadow-inner animate-in slide-in-from-top-4">
-                              <span className="text-[9px] font-black text-[#d30614] uppercase block mb-2 tracking-[0.3em] font-mono">REJECTION_LOG:</span>
-                              <p className="text-[11px] text-[#d30614] font-black leading-relaxed uppercase tracking-tighter">"{req.rejectedReason}"</p>
+                            <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl">
+                              <span className="text-[9px] font-bold text-rose-600 uppercase block mb-1 tracking-wider">Reason:</span>
+                              <p className="text-[10px] text-rose-700 font-medium leading-relaxed italic">"{req.rejectedReason}"</p>
                             </div>
                           )}
                           {req.status === 'approved' ? (
@@ -467,19 +452,19 @@ const PermissionReview = () => {
                                 setIsRejectOpen(true);
                               }}
                               disabled={actionLoading}
-                              className="h-16 border-zinc-50 text-zinc-300 hover:text-[#d30614] hover:bg-[#d30614]/5 rounded-2xl font-black uppercase tracking-[0.3em] text-[9px] transition-all"
+                              className="h-10 border-zinc-100 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl font-bold uppercase tracking-wider text-[9px]"
                             >
-                              <XCircle className="w-4 h-4 mr-3" />
-                              Void_Sequence
+                              <XCircle className="w-3.5 h-3.5 mr-2" />
+                              Dismiss
                             </Button>
                           ) : (
                             <Button
                               onClick={() => handleStatusUpdate(req._id, 'approved')}
                               disabled={actionLoading}
-                              className="h-16 bg-zinc-900 text-[#fffe01] hover:bg-black rounded-2xl font-black uppercase tracking-[0.3em] text-[9px] shadow-2xl"
+                              className="h-10 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl font-bold uppercase tracking-wider text-[9px] shadow-sm"
                             >
-                              <CheckCircle2 className="w-4 h-4 mr-3" />
-                              Authorize_Signal
+                              <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                              Approve
                             </Button>
                           )}
                        </div>
@@ -489,14 +474,15 @@ const PermissionReview = () => {
                       size="icon"
                       onClick={() => handleDeleteRecord(req._id)}
                       disabled={actionLoading}
-                      className="text-zinc-100 hover:text-[#d30614] hover:bg-rose-50 rounded-[1.5rem] h-16 w-16 transition-all opacity-0 group-hover:opacity-100 hidden xl:flex items-center justify-center shadow-xl hover:scale-110"
+                      className="text-zinc-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-10 w-10 transition-all opacity-0 group-hover:opacity-100 hidden xl:flex items-center justify-center"
                     >
-                      <Trash2 className="w-6 h-6" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
               ))}
             </div>
+
           )}
           <div className="mt-auto p-10 md:p-14 border-t border-zinc-50 bg-[#fcfcfc]/50">
             <PaginationControl 
@@ -509,49 +495,59 @@ const PermissionReview = () => {
 
       {/* Rejection Dialog */}
       <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-2xl rounded-[3.5rem] bg-white border-0 shadow-3xl p-0 overflow-hidden animate-in zoom-in-95 duration-500">
-          <div className="bg-zinc-900 p-12 md:p-16 text-white relative">
-            <div className="absolute top-0 right-0 p-12 opacity-[0.05] pointer-events-none">
-               <XCircle className="w-48 h-48" />
-            </div>
-            <DialogTitle className="text-4xl font-black tracking-tighter mb-4 uppercase">Rejection Verdict</DialogTitle>
-            <DialogDescription className="text-zinc-500 text-xs font-black uppercase tracking-[0.4em] leading-relaxed">
-              Provide formal authorization context for the <span className="text-[#d30614]">dismissal sequence</span>.
+        <DialogContent className="rounded-3xl bg-white border-0 shadow-xl p-0 overflow-hidden sm:max-w-md">
+          <div className="bg-rose-600 p-8 text-white">
+            <DialogTitle className="text-xl font-semibold tracking-tight uppercase">Rejection Verdict</DialogTitle>
+            <DialogDescription className="text-rose-100 text-[10px] font-bold uppercase tracking-wider mt-2">
+              Provide authorization context for dismissal.
             </DialogDescription>
           </div>
-          <div className="p-12 md:p-16 space-y-10">
-            <div className="space-y-4">
-              <Label htmlFor="rejectedReason" className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 ml-2 flex items-center gap-2">
-                 <div className="w-1.5 h-1.5 rounded-full bg-[#d30614]"></div>
-                 RATIONALE_SPECIFICATION
+          <div className="p-8 space-y-6">
+            <div className="space-y-3">
+              <Label htmlFor="rejectedReason" className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">
+                 Dismissal Rationale
               </Label>
               <textarea
                 id="rejectedReason"
-                placeholder="ENCODE DISMISSAL RATIONALE..."
+                placeholder="Enter reason for rejection..."
                 value={rejectedReason}
                 onChange={(e) => setRejectedReason(e.target.value)}
-                className="w-full min-h-[220px] bg-zinc-50 border-none rounded-[2.5rem] p-10 text-sm font-black text-zinc-900 uppercase tracking-tight focus:bg-white focus:ring-0 transition-all resize-none shadow-inner leading-relaxed"
+                className="w-full min-h-[120px] bg-zinc-50 border border-zinc-100 rounded-2xl p-6 text-sm font-medium text-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-200 transition-all resize-none shadow-inner"
               />
             </div>
+            <div className="flex flex-row gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => setIsRejectOpen(false)}
+                className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-[10px] text-zinc-400 hover:text-black transition-all"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={!rejectedReason || actionLoading}
+                onClick={() => handleStatusUpdate(selectedId, 'rejected', rejectedReason)}
+                className="flex-1 h-12 bg-rose-600 text-white hover:bg-rose-700 rounded-xl font-bold uppercase tracking-wider text-[10px] shadow-lg transition-all"
+              >
+                Submit Rejection
+              </Button>
+            </div>
           </div>
-          <DialogFooter className="p-12 md:p-16 pt-0 flex-row gap-6 ">
-            <Button
-              variant="ghost"
-              onClick={() => setIsRejectOpen(false)}
-              className="flex-1 h-20 rounded-[1.75rem] font-black uppercase tracking-[0.3em] text-[10px] text-zinc-400 hover:text-black hover:bg-zinc-50 transition-all"
-            >
-              Abort_Verdict
-            </Button>
-            <Button
-              disabled={!rejectedReason || actionLoading}
-              onClick={() => handleStatusUpdate(selectedId, 'rejected', rejectedReason)}
-              className="flex-1 h-20 bg-zinc-900 text-[#fffe01] hover:bg-[#d30614] hover:text-white rounded-[2rem] font-black uppercase tracking-[0.3em] text-[10px] shadow-3xl hover:-translate-y-1 active:scale-95 transition-all"
-            >
-              Commit_Denial
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog 
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ ...deleteDialog, isOpen: false })}
+        onConfirm={() => {
+          if (deleteDialog.type === 'SINGLE') {
+            confirmDelete(deleteDialog.data);
+          } else {
+            confirmBulkDelete();
+          }
+        }}
+        title={deleteDialog.title}
+        description={deleteDialog.description}
+      />
     </div>
   );
 };

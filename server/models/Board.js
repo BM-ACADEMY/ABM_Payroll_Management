@@ -7,6 +7,9 @@ const BoardSchema = new mongoose.Schema({
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   type: { type: String, enum: ['regular', 'daily', 'weekly'], default: 'regular' },
+  status: { type: String, enum: ['Active', 'On Hold', 'Completed', 'Archived'], default: 'Active' },
+  startDate: { type: Date },
+  endDate: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
