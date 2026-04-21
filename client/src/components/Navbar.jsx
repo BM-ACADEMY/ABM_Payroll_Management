@@ -1,16 +1,18 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { LogOut, Bell, Search, LayoutGrid, Users2, UserCheck2, Banknote, Settings2, ChevronRight, FileText, Menu, CalendarDays, CalendarCheck2, ShieldCheck, MessageSquareWarning } from "lucide-react";
+import { LogOut, Bell, Search, LayoutGrid, Users2, UserCheck2, Banknote, Settings2, ChevronRight, FileText, Menu, CalendarDays, CalendarCheck2, ShieldCheck, MessageSquareWarning, Trash2, CheckCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import socket from '@/services/socket';
 
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarCollapsed }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -19,29 +21,25 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifUnread, setNotifUnread] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, id: null, isUnread: false });
 
   useEffect(() => {
-    // Socket handled via shared service
     socket.on('notification', (data) => {
-      // 1. Common system notifications (like work off)
       if (data.type === 'work_off') {
         toast({
-          title: "Important Update",
+          title: "System Update",
           description: data.message,
-          variant: "default",
-          className: "bg-black text-[#fffe01] border-none rounded-2xl shadow-2xl"
+          className: "bg-black text-white border-none rounded-xl shadow-2xl"
         });
         fetchNotifUnread();
       }
       
-      // 2. Direct notifications (like mentions)
       const currentUserId = sessionStorage.getItem('userId') || (user?.id);
       if (data.userId === currentUserId) {
         toast({
           title: "New Alert",
           description: data.message,
-          variant: "default",
-          className: "bg-black text-[#fffe01] border-none rounded-2xl shadow-2xl"
+          className: "bg-black text-[#fffe01] border-none rounded-xl shadow-2xl"
         });
         fetchNotifUnread();
       }
@@ -49,21 +47,15 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
 
     fetchNotifUnread();
 
-    if (user?.role?.name === 'admin') {
+    if (user?.role?.name === 'admin' || user?.role?.name === 'subadmin') {
       fetchUnreadCount();
-
-      socket.on('new_request', () => {
-        fetchUnreadCount();
-      });
-
-      socket.on('requests_read', () => {
-        setUnreadCount(0);
-      });
+      socket.on('new_request', () => fetchUnreadCount());
+      socket.on('requests_read', () => setUnreadCount(0));
     }
 
     return () => {
       socket.off('notification');
-      if (user?.role?.name === 'admin') {
+      if (user?.role?.name === 'admin' || user?.role?.name === 'subadmin') {
         socket.off('new_request');
         socket.off('requests_read');
       }
@@ -79,7 +71,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
       });
       setNotifUnread(res.data.count);
     } catch (err) {
-      console.error("Error fetching notif unread:", err);
+      console.error("Error:", err);
     }
   };
 
@@ -91,24 +83,62 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
         headers: { 'x-auth-token': token }
       });
       setNotifications(res.data);
-      if (showNotifications) {
-        // Mark all as read when opening if they hasn't been already
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/read-all`, {}, {
-          headers: { 'x-auth-token': token }
-        });
-        setNotifUnread(0);
-      }
     } catch (err) {
-      console.error("Error fetching notifications:", err);
+      console.error("Error:", err);
     } finally {
       setNotifLoading(false);
     }
   };
 
-  const toggleNotifications = () => {
-    if (!showNotifications) {
-      fetchNotifications();
+  const handleMarkAsRead = async (id) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/${id}/read`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setNotifUnread(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Error:", err);
     }
+  };
+
+  const handleDeleteNotification = async (id, isUnread) => {
+    setConfirmDelete({ isOpen: true, id, isUnread });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { id, isUnread } = confirmDelete;
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/notifications/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setNotifications(prev => prev.filter(n => n._id !== id));
+      if (isUnread) {
+        setNotifUnread(prev => Math.max(0, prev - 1));
+      }
+      setConfirmDelete({ isOpen: false, id: null, isUnread: false });
+    } catch (err) {
+      console.error("Error:", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/read-all`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setNotifUnread(0);
+    } catch (err) {
+      console.error("Error:", err);
+    }
+  };
+
+  const toggleNotifications = () => {
+    if (!showNotifications) fetchNotifications();
     setShowNotifications(!showNotifications);
   };
 
@@ -120,7 +150,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
       });
       setUnreadCount(res.data.count);
     } catch (err) {
-      console.error("Error fetching unread count:", err);
+      console.error("Error:", err);
     }
   };
 
@@ -134,24 +164,21 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     { name: 'Overview', path: '/admin', icon: LayoutGrid },
     { name: 'Employees', path: '/admin/employees', icon: Users2 },
     { name: 'Attendance', path: '/admin/attendance', icon: CalendarCheck2 },
-    { name: 'Permission Review', path: '/admin/permissions', icon: ShieldCheck },
-    { name: 'Leave Calendar', path: '/admin/leave-calendar', icon: CalendarDays },
+    { name: 'Review', path: '/admin/permissions', icon: ShieldCheck },
+    { name: 'Calendar', path: '/admin/leave-calendar', icon: CalendarDays },
     { name: 'Payroll', path: '/admin/payroll', icon: Banknote },
     { name: 'Settings', path: '/admin/settings', icon: Settings2 }
   ];
 
   const employeeLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutGrid },
-    { name: 'Attendance Logs', path: '/dashboard/logs', icon: CalendarCheck2 },
+    { name: 'Attendance', path: '/dashboard/logs', icon: CalendarCheck2 },
     { name: 'Earnings', path: '/dashboard/earnings', icon: Banknote },
-    { name: 'Permissions', path: '/dashboard/permissions', icon: ShieldCheck }
+    { name: 'Review', path: '/dashboard/permissions', icon: ShieldCheck }
   ];
 
-  const links = user?.role?.name === 'admin' ? adminLinks : employeeLinks;
-
-  const filteredLinks = links.filter(link =>
-    link.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const links = ['admin', 'subadmin'].includes(user?.role?.name) ? adminLinks : employeeLinks;
+  const filteredLinks = links.filter(link => link.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleNavigate = (path) => {
     navigate(path);
@@ -159,62 +186,67 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     setIsOpen(false);
   };
 
+  const [showSearch, setShowSearch] = useState(false);
+
   return (
-    <nav
-      className="h-16 border-b border-gray-200 bg-white/95 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between transition-all duration-300 ease-in-out"
-    >
+    <nav className="h-16 border-b border-slate-100 bg-white/90 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between transition-all duration-300">
       <div className="flex items-center gap-4 flex-1">
-        {isMobile && (
+        {(isMobile || showSearch) && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="text-gray-500 hover:bg-gray-100"
+            onClick={() => {
+              if (showSearch) {
+                setShowSearch(false);
+                setSearchTerm('');
+              } else {
+                setIsSidebarCollapsed(!isSidebarCollapsed);
+              }
+            }}
+            className="text-slate-500 hover:bg-slate-50 rounded-lg"
           >
-            <Menu className="w-6 h-6" />
+            {showSearch ? <ChevronRight className="w-5 h-5 rotate-180" /> : <Menu className="w-5 h-5" />}
           </Button>
         )}
 
-        <div className="relative w-full max-w-md hidden sm:block">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-black transition-colors" />
+        <div className={`relative w-full max-w-sm ${showSearch ? 'block' : 'hidden sm:block'}`}>
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Search pages..."
+              placeholder="Search platform..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setIsOpen(true);
               }}
               onFocus={() => setIsOpen(true)}
-              className="bg-gray-50 border-gray-200 pl-10 h-10 text-gray-900 placeholder:text-gray-400 focus:bg-white focus:ring-1 focus:ring-black transition-all shadow-sm w-full rounded-xl"
+              className="bg-slate-50 border-slate-100 pl-10 h-9 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-1 focus:ring-[#fffe01] transition-all rounded-lg select-none"
             />
           </div>
 
           {isOpen && searchTerm && (
             <>
               <div className="fixed inset-0 z-[-1]" onClick={() => setIsOpen(false)}></div>
-              <div className="absolute top-full left-0 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-100 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
                 {filteredLinks.length > 0 ? (
-                  <div className="p-2">
-                    <p className="px-3 py-2 text-[10px] font-medium text-gray-400 uppercase tracking-wider">Quick Navigation</p>
+                  <div className="p-1.5">
+                    <p className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Navigation</p>
                     {filteredLinks.map((link, i) => (
                       <button
                         key={i}
                         onClick={() => handleNavigate(link.path)}
-                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-black transition-all group"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-slate-600 hover:text-slate-900 group transition-all"
                       >
                         <div className="flex items-center gap-3">
-                          <link.icon className="w-4 h-4 text-gray-400 group-hover:text-black" />
-                          <span className="text-sm font-normal">{link.name}</span>
+                          <link.icon className="w-4 h-4 text-slate-400 group-hover:text-[#fffe01]" />
+                          <span className="text-xs font-semibold">{link.name}</span>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-300 opacity-0 group-hover:opacity-100 transition-all" />
+                        <ChevronRight className="w-3 h-3 text-slate-300 group-hover:translate-x-0.5 transition-all" />
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-8 text-center">
-                    <p className="text-sm text-gray-400 font-normal">No pages found matching "{searchTerm}"</p>
-                  </div>
+                  <div className="p-8 text-center text-xs text-slate-400">No results found</div>
                 )}
               </div>
             </>
@@ -222,35 +254,42 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        {user?.role?.name === 'admin' && (
+      <div className={`flex items-center gap-2 md:gap-3 ${showSearch ? 'hidden' : 'flex'}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowSearch(true)}
+          className="text-slate-500 hover:bg-slate-50 sm:hidden rounded-lg"
+        >
+          <Search className="w-5 h-5" />
+        </Button>
+
+        {(['admin', 'subadmin'].includes(user?.role?.name)) && (
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/admin/permissions')}
-            className="text-gray-500 hover:text-black hover:bg-gray-100 relative"
-            title="Admin Requests"
+            className="text-slate-500 hover:bg-slate-50 relative rounded-lg"
           >
             <ShieldCheck className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-[#fffe01] rounded-full border-2 border-white text-[8px] font-medium text-black flex items-center justify-center animate-bounce">
+              <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-[#fffe01] rounded-full border-2 border-white text-[7px] font-bold text-black flex items-center justify-center shadow-sm">
                 {unreadCount}
               </span>
             )}
           </Button>
         )}
 
-        {/* User Notifications */}
         <div className="relative">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleNotifications}
-            className="text-gray-500 hover:text-black hover:bg-gray-100 relative"
+            className="text-slate-500 hover:bg-slate-50 relative rounded-lg"
           >
             <Bell className="w-5 h-5" />
             {notifUnread > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-black rounded-full border-2 border-white text-[8px] font-medium text-[#fffe01] flex items-center justify-center">
+              <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-[#fffe01] rounded-full border-2 border-white text-[7px] font-bold text-black flex items-center justify-center shadow-sm">
                 {notifUnread}
               </span>
             )}
@@ -259,58 +298,97 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
           {showNotifications && (
             <>
               <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotifications(false)}></div>
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-black">Notifications</h3>
-                  {notifUnread > 0 && <span className="text-[10px] text-gray-400 font-medium">{notifUnread} New</span>}
+              <div className="absolute top-full right-0 mt-2 w-[85vw] sm:w-80 bg-white border border-slate-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1">
+                <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Security Notifications</h3>
+                  <Badge variant="secondary" className="text-[9px] font-bold bg-[#fffe01] text-black px-1.5 py-0 rounded">{notifUnread} NEW</Badge>
                 </div>
-                <div className="max-h-[400px] overflow-y-auto">
+                <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
                   {notifLoading ? (
-                    <div className="p-8 text-center text-xs text-gray-400 uppercase tracking-widest animate-pulse">Loading Alerts...</div>
+                    <div className="p-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Gathering stream...</div>
                   ) : notifications.length > 0 ? (
                     notifications.map((n, i) => (
-                      <div key={i} className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-[#fffe01]/5' : ''}`}>
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-[#fffe01]' : 'bg-gray-200'}`}></div>
-                          <div className="space-y-1">
-                            <p className="text-xs font-medium text-black leading-snug">{n.title}</p>
-                            <p className="text-[11px] text-gray-500 font-normal leading-relaxed">{n.message}</p>
-                            <p className="text-[9px] text-gray-400 font-normal pt-1">{new Date(n.createdAt).toLocaleDateString()} at {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      <div key={i} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors group/notif ${!n.isRead ? 'bg-[#fffe01]/10' : ''}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-[#fffe01]' : 'bg-slate-200'}`}></div>
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-semibold text-slate-900 leading-tight">{n.title}</p>
+                              <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{n.message}</p>
+                              <p className="text-[9px] text-slate-400 font-bold uppercase pt-1 tracking-tighter">{format(new Date(n.createdAt), 'MMM dd, HH:mm')}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 opacity-0 group-hover/notif:opacity-100 transition-opacity">
+                            {!n.isRead && (
+                               <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 onClick={(e) => { e.stopPropagation(); handleMarkAsRead(n._id); }}
+                                 className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                                 title="Mark as read"
+                               >
+                                 <CheckCheck className="w-3.5 h-3.5" />
+                               </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n._id, !n.isRead); }}
+                              className="h-8 w-8 text-rose-500 hover:bg-rose-50 rounded-lg"
+                              title="Delete notification"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="p-12 text-center">
-                      <p className="text-xs text-gray-400 font-normal">All clear! No alerts.</p>
-                    </div>
+                    <div className="p-12 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">No active notifications</div>
                   )}
                 </div>
-                <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                <div className="p-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-center gap-2">
                    <button 
-                     onClick={() => navigate(user?.role?.name === 'admin' ? '/admin' : '/dashboard')} 
-                     className="text-[10px] font-bold text-black uppercase tracking-widest hover:underline"
+                     onClick={handleMarkAllRead} 
+                     className="text-[9px] font-bold text-emerald-600 uppercase tracking-[0.2em] hover:bg-emerald-50 px-4 py-1.5 rounded-full transition-all"
                    >
-                     View Control Center
+                     Clear All Read
+                   </button>
+                   <button 
+                     onClick={() => navigate((['admin', 'subadmin'].includes(user?.role?.name)) ? '/admin' : '/dashboard')} 
+                     className="text-[9px] font-bold text-slate-900 uppercase tracking-[0.2em] hover:bg-[#fffe01] hover:text-black px-4 py-1.5 rounded-full transition-all"
+                   >
+                     Portal
                    </button>
                 </div>
               </div>
             </>
           )}
         </div>
-        <div className="h-6 w-[1px] bg-gray-200 mx-2"></div>
+        
+        <div className="h-4 w-[1px] bg-slate-200 mx-1"></div>
+        
         <Button
           variant="ghost"
           onClick={handleLogout}
-          className="text-gray-500 hover:text-black hover:bg-gray-100 flex items-center gap-2 font-normal text-sm rounded-xl px-4 py-2"
+          className="text-slate-500 hover:text-slate-900 hover:bg-slate-50 flex items-center gap-2 font-medium text-xs rounded-lg px-2 sm:px-4 py-2"
         >
           <LogOut className="w-4 h-4" />
-          Logout
+          <span className="hidden sm:inline">Sign Out</span>
         </Button>
       </div>
+
+      <ConfirmDialog 
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, id: null, isUnread: false })}
+        onConfirm={confirmDeleteAction}
+        title="Remove Notification"
+        description="Are you sure you want to discard this record? This action cannot be reversed."
+      />
     </nav>
   );
 };
 
 export default Navbar;
+
 

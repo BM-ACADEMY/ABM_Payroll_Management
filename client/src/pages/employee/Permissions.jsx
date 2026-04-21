@@ -13,7 +13,9 @@ import {
   CheckCircle2, 
   XCircle,
   Loader2,
-  Timer
+  Timer,
+  History,
+  Trash2
 } from "lucide-react";
 import axios from 'axios';
 import Loader from "@/components/ui/Loader";
@@ -21,7 +23,7 @@ import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
-
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const Permissions = () => {
   const [requests, setRequests] = useState([]);
@@ -35,6 +37,7 @@ const Permissions = () => {
     toDateTime: '',
     reason: ''
   });
+  const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, id: null });
 
   useEffect(() => {
     fetchMyRequests(1);
@@ -61,9 +64,6 @@ const Permissions = () => {
     setLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      // We pass a custom query to exclude leaves if the backend supports it, 
-      // otherwise we just fetch all and hope for the best or update the backend.
-      // Standardizing to page-based fetching.
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/my-requests?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
@@ -119,6 +119,31 @@ const Permissions = () => {
     }
   };
 
+  const handleDeleteRequest = async (id) => {
+    setConfirmDelete({ isOpen: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { id } = confirmDelete;
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({
+        title: "Success",
+        description: "Request deleted successfully",
+      });
+      setConfirmDelete({ isOpen: false, id: null });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || 'Failed to delete request',
+      });
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'approved':
@@ -132,93 +157,77 @@ const Permissions = () => {
 
   const getTypeBadge = (type) => {
     switch (type) {
-      case 'leave': return <Badge className="bg-black text-[#fffe01] border-0 font-medium uppercase text-[9px] tracking-widest">Leave</Badge>;
-      case 'permission': return <Badge className="bg-black text-[#fffe01] border-0 font-medium uppercase text-[9px] tracking-widest">Permission</Badge>;
-      case 'lunch_delay': return <Badge className="bg-amber-500 text-white border-0 font-medium uppercase text-[9px] tracking-widest">Lunch Delay</Badge>;
-      case 'late_login': return <Badge className="bg-rose-500 text-white border-0 font-medium uppercase text-[9px] tracking-widest">Late Login</Badge>;
-      case 'early_logout_permission': return <Badge className="bg-orange-500 text-white border-0 font-medium uppercase text-[9px] tracking-widest">Early Logout</Badge>;
-      default: return <Badge className="bg-gray-500 text-white border-0 font-medium uppercase text-[9px] tracking-widest">{type}</Badge>;
+      case 'leave': return <Badge className="bg-zinc-100 text-zinc-900 border-0 font-medium uppercase text-[9px] tracking-widest">Leave</Badge>;
+      case 'permission': return <Badge className="bg-zinc-900 text-[#fffe01] border-0 font-medium uppercase text-[9px] tracking-widest">Permission</Badge>;
+      default: return <Badge className="bg-gray-100 text-gray-600 border-0 font-medium uppercase text-[9px] tracking-widest">{type}</Badge>;
     }
   };
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <header className="space-y-1">
-        <div className="flex items-center gap-2 text-black font-medium mb-2">
-          <div className="w-8 h-8 rounded-lg bg-[#fffe01]/10 flex items-center justify-center">
-            <Send className="w-4 h-4 text-black" />
-          </div>
-          <span className="text-xs tracking-widest uppercase">Request Center</span>
-        </div>
-        <h1 className="text-4xl font-medium tracking-tight text-gray-900">
-          Permission <span className="text-[#d30614]">Requests</span>
+        <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-gray-900">
+          Permission <span className="text-[#d30614]">Request Center</span>
         </h1>
-        <p className="text-gray-500 font-normal">Apply for short-term permissions or track your log records.</p>
+        <p className="text-sm md:text-base text-gray-500 font-normal">Request temporary absence or delay and track status.</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         {/* Request Form */}
-        <Card className="lg:col-span-5 border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden h-fit">
-          <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/30">
-            <CardTitle className="text-lg font-medium flex items-center gap-2 text-gray-900">
-              <FileText className="w-5 h-5 text-black" />
-              New Permission Request
+        <Card className="lg:col-span-5 border-0 shadow-lg rounded-2xl bg-black text-[#fffe01] overflow-hidden h-fit">
+          <CardHeader className="p-6 md:p-8 pb-4 border-b border-zinc-800">
+            <CardTitle className="text-xl font-medium flex items-center gap-2">
+              <Send className="w-5 h-5 text-[#fffe01]" />
+              New Request
             </CardTitle>
-            <CardDescription className="font-normal">Please provide accurate details for review.</CardDescription>
+            <CardDescription className="text-zinc-400 font-normal text-xs md:text-sm">Submit your hourly permission request for approval.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
-
-              <div className="space-y-2">
-                <Label htmlFor="fromDateTime" className="text-gray-600 font-medium text-xs uppercase tracking-wider ml-1">From (Date & Time)</Label>
-                <Input
-                  id="fromDateTime"
-                  name="fromDateTime"
-                  type="datetime-local"
-                  value={formData.fromDateTime}
-                  onChange={handleChange}
-                  required
-                  className="bg-gray-50 border-gray-200 text-gray-900 h-12 rounded-xl focus:ring-[#d30614]"
-                />
+          <CardContent className="pt-6 md:pt-8 px-6 md:px-8 pb-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-medium uppercase tracking-widest ml-1 text-zinc-400">Start Time</Label>
+                  <Input 
+                    type="datetime-local" 
+                    name="fromDateTime"
+                    value={formData.fromDateTime}
+                    onChange={handleChange}
+                    required
+                    className="rounded-2xl border-0 bg-zinc-900 text-[#fffe01] placeholder:text-zinc-500 h-14 font-normal focus:ring-2 focus:ring-[#d30614] transition-all shadow-inner"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-medium uppercase tracking-widest ml-1 text-zinc-400">End Time</Label>
+                  <Input 
+                    type="datetime-local" 
+                    name="toDateTime"
+                    value={formData.toDateTime}
+                    onChange={handleChange}
+                    required
+                    className="rounded-2xl border-0 bg-zinc-900 text-[#fffe01] placeholder:text-zinc-500 h-14 font-normal focus:ring-2 focus:ring-[#d30614] transition-all shadow-inner"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="toDateTime" className="text-gray-600 font-medium text-xs uppercase tracking-wider ml-1">To (Date & Time)</Label>
-                <Input
-                  id="toDateTime"
-                  name="toDateTime"
-                  type="datetime-local"
-                  value={formData.toDateTime}
-                  onChange={handleChange}
-                  required
-                  className="bg-gray-50 border-gray-200 text-gray-900 h-12 rounded-xl focus:ring-[#d30614]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="reason" className="text-gray-600 font-medium text-xs uppercase tracking-wider ml-1">Reason for Permission</Label>
-                <textarea
-                  id="reason"
-                  name="reason"
-                  rows="4"
-                  value={formData.reason}
-                  onChange={handleChange}
-                  required
-                  placeholder="E.g. Personal emergency, Medical appointment..."
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 p-4 rounded-xl focus:ring-2 focus:ring-[#d30614] focus:border-black resize-none font-normal placeholder:text-gray-300 text-sm transition-all"
-                />
+                 <Label className="text-[10px] font-medium uppercase tracking-widest ml-1 text-zinc-400">Reason for Request</Label>
+                 <textarea 
+                   id="reason"
+                   name="reason"
+                   placeholder="Describe why you need this permission..."
+                   value={formData.reason}
+                   onChange={handleChange}
+                   required
+                   className="w-full min-h-[140px] rounded-2xl border-0 bg-zinc-900 text-[#fffe01] placeholder:text-zinc-600 p-6 font-normal transition-all focus:ring-2 focus:ring-[#d30614] shadow-inner resize-none"
+                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={formLoading}
-                className="w-full py-7 bg-black hover:bg-gray-900 text-[#fffe01] font-medium text-sm uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-[0.98]"
+                className="w-full h-16 bg-[#fffe01] hover:bg-black hover:text-[#fffe01] text-black font-medium text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95"
               >
-                {formLoading ? (
-                  <Loader size="sm" color="white" />
-                ) : (
-                  <>SUBMIT REQUEST</>
-                )}
+                {formLoading ? <Loader size="sm" color="white" /> : 'Transmit Request'}
               </Button>
             </form>
           </CardContent>
@@ -226,12 +235,14 @@ const Permissions = () => {
 
         {/* Request History */}
         <Card className="lg:col-span-7 border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden">
-          <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/30">
-            <CardTitle className="text-lg font-medium flex items-center gap-2 text-gray-900">
-              <Clock className="w-5 h-5 text-black" />
-              Request History
-            </CardTitle>
-            <CardDescription className="font-normal">Track your previous and pending permissions.</CardDescription>
+          <CardHeader className="p-6 md:p-8 pb-4 border-b border-gray-100 bg-gray-50/30 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg font-medium flex items-center gap-2 text-gray-900">
+                <History className="w-5 h-5 text-black" />
+                Application History
+              </CardTitle>
+              <CardDescription className="font-normal text-xs md:text-sm">Recent status updates and logs.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
@@ -239,80 +250,102 @@ const Permissions = () => {
                 <Loader size="md" color="red" />
               </div>
             ) : requests.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
-                  <FileText className="w-8 h-8 text-gray-300" />
+              <div className="p-12 md:p-20 text-center space-y-4">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <AlertCircle className="w-8 h-8 md:w-10 md:h-10 text-gray-300" />
                 </div>
-                <p className="text-gray-400 font-normal">No requests found yet.</p>
+                <h4 className="text-gray-900 font-medium uppercase text-[10px] md:text-xs tracking-widest">No Applications Found</h4>
+                <p className="text-gray-400 text-xs md:text-sm font-normal">Your permission history will appear here once you submit a request.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {requests.map((request) => (
-                  <div key={request._id} className="p-6 hover:bg-gray-50/60 transition-colors group">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                           <span className="text-sm font-medium text-gray-900 uppercase">
-                             {request.date ? format(new Date(request.date), 'MMM dd, yyyy') : format(new Date(request.appliedOn), 'MMM dd, yyyy')}
-                           </span>
-                           {getTypeBadge(request.type)}
-                           {getStatusBadge(request.status)}
-                           {request.status !== 'pending' && request.verifyByAdminUserId?.name && (
-                             <span className="text-[10px] font-normal text-gray-400">
-                               Verified by {request.verifyByAdminUserId.name}
-                             </span>
-                           )}
+                  <div key={request._id} className="p-6 md:p-8 hover:bg-gray-50/60 transition-colors group relative">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 ${request.type === 'permission' ? 'bg-[#fffe01]/10 text-black' : 'bg-gray-50 text-gray-600'}`}>
+                           <Clock className="w-5 h-5 md:w-6 md:h-6" />
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 font-normal">
-                          <Timer className="w-3 h-3" />
-                          {request.type === 'leave' ? `${request.duration} Day(s)` : (
-                            <>
-                              {request.fromDateTime ? format(new Date(request.fromDateTime), 'hh:mm a') : '00:00'} - 
-                              {request.toDateTime ? format(new Date(request.toDateTime), 'hh:mm a') : '00:00'}
-                            </>
-                          )}
-                          {request.totalPermissionTime && (
-                            <span className="ml-2 px-2 py-0.5 bg-gray-100 text-black rounded-md border border-gray-200 font-medium">
-                              {request.totalPermissionTime}
-                            </span>
-                          )}
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                             <span className="text-sm md:text-base font-medium text-gray-900">
+                               {request.date ? format(new Date(request.date), 'MMMM dd, yyyy') : format(new Date(request.appliedOn), 'MMMM dd, yyyy')}
+                             </span>
+                             {getStatusBadge(request.status)}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-[9px] md:text-[10px] font-medium text-zinc-400 uppercase tracking-widest">
+                             {getTypeBadge(request.type)}
+                             <span className="hidden sm:inline">•</span>
+                             <span className="flex items-center gap-1">
+                               <Timer className="w-3 h-3" />
+                               {request.fromDateTime ? format(new Date(request.fromDateTime), 'HH:mm') : '00:00'} - 
+                               {request.toDateTime ? format(new Date(request.toDateTime), 'HH:mm') : '00:00'}
+                             </span>
+                          </div>
                         </div>
                       </div>
-                      {request.isApproved && (
-                        <div className="bg-emerald-50 p-2 rounded-lg">
-                           <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      
+                      {request.status !== 'pending' && request.verifyByAdminUserId?.name && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
+                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                           <span className="text-[10px] font-normal text-gray-500">
+                             Verified by {request.verifyByAdminUserId.name}
+                           </span>
+                        </div>
+                      )}
+
+                      {request.status !== 'approved' && (
+                        <div className="flex items-center gap-2">
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             onClick={() => handleDeleteRequest(request._id)}
+                             className="h-9 w-9 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </Button>
                         </div>
                       )}
                     </div>
                     
-                    <p className="text-sm text-gray-600 font-normal mb-4 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100 shadow-sm">
-                      {request.reason}
-                    </p>
+                    <div className="ml-0 sm:ml-[4.5rem] bg-gray-50 border border-gray-100 p-4 md:p-5 rounded-2xl shadow-sm text-gray-600 text-xs md:text-sm leading-relaxed italic">
+                      "{request.reason}"
+                    </div>
 
                     {request.status === 'rejected' && request.rejectedReason && (
-                      <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-600 font-normal">
-                        <span className="uppercase text-[9px] block mb-1 opacity-70">
-                          {request.verifyByAdminUserId?.name ? `Verified by ${request.verifyByAdminUserId.name}` : 'Admin Remark'}
-                        </span>
-                        {request.rejectedReason}
+                      <div className="ml-0 sm:ml-[4.5rem] mt-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-xs text-rose-600 font-normal flex items-start gap-3">
+                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                        <div>
+                          <span className="uppercase text-[9px] block mb-1 opacity-70 tracking-tighter">
+                            Administrator Feedback
+                          </span>
+                          {request.rejectedReason}
+                        </div>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             )}
-          <div className="px-6 border-t border-gray-100 bg-gray-50/10">
-            <PaginationControl 
-              pagination={pagination} 
-              onPageChange={handlePageChange} 
-            />
-          </div>
-        </CardContent>
+            <div className="px-6 border-t border-gray-100 bg-gray-50/10">
+              <PaginationControl 
+                pagination={pagination} 
+                onPageChange={handlePageChange} 
+              />
+            </div>
+          </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog 
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, id: null })}
+        onConfirm={confirmDeleteAction}
+        title="Cancel Request"
+        description="Are you sure you want to retract this application? This action will remove the request from the administration queue."
+      />
     </div>
   );
 };
 
 export default Permissions;
-

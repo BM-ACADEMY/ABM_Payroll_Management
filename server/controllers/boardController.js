@@ -7,6 +7,8 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const mongoose = require('mongoose');
 const Role = require('../models/Role');
+const emailService = require('../services/emailService');
+const { format } = require('date-fns');
 
 // --- Board Operations ---
 
@@ -34,6 +36,59 @@ exports.getSpecialBoard = async (req, res) => {
       }
     }
     
+    if (type === 'weekly') {
+      const boards = await Board.find({ team: teamId, type: 'regular' }).populate('team', 'name').lean();
+      const boardIds = boards.map(b => b._id);
+      
+      const tasks = await Task.find({ 
+        board: { $in: boardIds }, 
+        isInSprint: true 
+      })
+      .populate('assignees', 'name email')
+      .sort('position')
+      .lean();
+
+      // Get all comments for these tasks
+      const taskIds = tasks.map(t => t._id);
+      const comments = await Comment.find({ task: { $in: taskIds } });
+
+      const tasksWithCounts = tasks.map(task => {
+        const taskComments = comments.filter(c => c.task.toString() === task._id.toString());
+        const mentionCount = taskComments.filter(c => 
+          c.mentions?.some(m => m.user.toString() === req.user.id && !m.isRead)
+        ).length;
+
+        return {
+          ...task,
+          commentCount: taskComments.length,
+          mentionCount
+        };
+      });
+
+      // Map boards to a "list" structure for the frontend
+      const virtualLists = boards.map(b => ({
+        _id: b._id,
+        title: b.title,
+        board: b._id,
+        isBoardColumn: true
+      }));
+
+      // Mock populated board for frontend consistency
+      const mockPopulatedBoard = {
+        _id: 'weekly-aggregated',
+        title: 'Weekly Board',
+        description: 'Aggregated view of all board sprints',
+        team: await Team.findById(teamId).select('name'),
+        type: 'weekly'
+      };
+
+      return res.json({ 
+        board: mockPopulatedBoard, 
+        lists: virtualLists, 
+        tasks: tasksWithCounts 
+      });
+    }
+
     let board = await Board.findOne({ team: teamId, type });
     
     if (!board) {
@@ -178,12 +233,31 @@ exports.getBoardsByTeam = async (req, res) => {
     // Filter out special tactical boards from the general project list
     query.type = { $nin: ['daily', 'weekly'] };
     
-    const boards = await Board.find(query).populate('team', 'name');
+    const boards = await Board.find(query).populate('team', 'name').lean();
     
-    // Auto-create "Upcoming Projects" if no regular boards exist - REMOVED for manual control
-
+    // Aggregation for progress tracking
+    const boardsWithStats = await Promise.all(boards.map(async (board) => {
+      // Pre-calculate blocked list id to avoid await inside the pipeline object
+      const blockedList = await List.findOne({ board: board._id, title: /blocked/i });
+      const stats = await Task.aggregate([
+        { $match: { board: board._id, parentTask: null } },
+        { $group: {
+            _id: null,
+            total: { $sum: 1 },
+            completed: { $sum: { $cond: [{ $eq: ["$isCompleted", true] }, 1, 0] } },
+            blocked: { $sum: { $cond: [{ $eq: ["$list", blockedList?._id || null] }, 1, 0] } }
+        }}
+      ]);
+      
+      const boardStats = stats[0] || { total: 0, completed: 0, blocked: 0 };
+      return { 
+        ...board, 
+        stats: boardStats,
+        progress: boardStats.total > 0 ? Math.round((boardStats.completed / boardStats.total) * 100) : 0
+      };
+    }));
     
-    res.json(boards);
+    res.json(boardsWithStats);
   } catch (err) {
     console.error('Create Task Error:', err);
     res.status(500).json({ msg: 'Server Error', error: err.message });
@@ -402,6 +476,24 @@ exports.createTask = async (req, res) => {
       req.io.to(boardId).emit('board_updated', { type: 'TASK_CREATED', boardId });
     }
 
+    // --- Task Assignment Emails ---
+    if (assignees && assignees.length > 0) {
+      const board = await Board.findById(boardId);
+      const admin = await User.findById(req.user.id);
+      const assignedUsers = await User.find({ _id: { $in: assignees } });
+
+      for (const aUser of assignedUsers) {
+        await emailService.sendTaskAssignmentEmail(aUser.email, {
+          title: task.title,
+          boardName: board.title,
+          adminName: admin.name,
+          dueDate: task.deadline,
+          priority: task.priority,
+          description: task.description
+        });
+      }
+    }
+
     res.json(task);
   } catch (err) {
     console.error('Create Task Error:', err);
@@ -414,15 +506,33 @@ exports.updateTask = async (req, res) => {
     const oldTask = await Task.findById(req.params.id);
     if (!oldTask) return res.status(404).json({ msg: 'Task not found' });
 
+    // If moving to a different board, ensure we assign a valid list from the target board
+    if (req.body.board && req.body.board.toString() !== oldTask.board.toString()) {
+      const targetBoardLists = await List.find({ board: req.body.board }).sort('position');
+      if (targetBoardLists.length > 0) {
+        req.body.list = targetBoardLists[0]._id;
+      } else {
+        // Auto-create a list if the target board has none
+        const newList = new List({ title: 'Backlog', board: req.body.board, position: 0 });
+        await newList.save();
+        req.body.list = newList._id;
+      }
+    }
+
     const task = await Task.findByIdAndUpdate(req.params.id, { ...req.body, updatedAt: Date.now() }, { new: true });
     
     // Log History for major changes
     let actions = [];
     let details = "";
-    if (req.body.list && req.body.list !== (oldTask.list._id || oldTask.list).toString()) {
+    if (req.body.list && req.body.list !== (oldTask.list?._id || oldTask.list)?.toString()) {
        const newList = await List.findById(req.body.list);
        actions.push('MOVED');
        details = `moved this card to ${newList?.title}`;
+    }
+    if (req.body.board && req.body.board.toString() !== oldTask.board.toString()) {
+       const newBoard = await Board.findById(req.body.board);
+       actions.push('MOVED');
+       details = `moved this card to board ${newBoard?.title}`;
     }
     if (req.body.isCompleted !== undefined && req.body.isCompleted !== oldTask.isCompleted) {
        actions.push(req.body.isCompleted ? 'COMPLETED' : 'REOPENED');
@@ -508,6 +618,33 @@ exports.updateTask = async (req, res) => {
 
     if (req.io) {
       req.io.to(task.board.toString()).emit('board_updated', { type: 'TASK_UPDATED', boardId: task.board, taskId: task._id });
+      // Notify the old board that the task is gone (if board changed)
+      if (req.body.board && req.body.board.toString() !== oldTask.board.toString()) {
+        req.io.to(oldTask.board.toString()).emit('board_updated', { type: 'TASK_DELETED', boardId: oldTask.board.toString(), taskId: task._id });
+      }
+    }
+
+    // --- Task Assignment Emails for NEW assignees ---
+    if (req.body.assignees) {
+      const oldAssigneeIds = oldTask.assignees.map(id => id.toString());
+      const newAssigneeIds = req.body.assignees.filter(id => !oldAssigneeIds.includes(id.toString()));
+
+      if (newAssigneeIds.length > 0) {
+        const board = await Board.findById(task.board);
+        const admin = await User.findById(req.user.id);
+        const newAssignedUsers = await User.find({ _id: { $in: newAssigneeIds } });
+
+        for (const aUser of newAssignedUsers) {
+          await emailService.sendTaskAssignmentEmail(aUser.email, {
+            title: task.title,
+            boardName: board.title,
+            adminName: admin.name,
+            dueDate: task.deadline,
+            priority: task.priority,
+            description: task.description
+          });
+        }
+      }
     }
 
     res.json(task);
@@ -910,8 +1047,30 @@ exports.getSharedBoards = async (req, res) => {
       type: { $nin: ['daily', 'weekly'] }
     };
 
-    const boards = await Board.find(query).populate('team', 'name');
-    res.json(boards);
+    const boards = await Board.find(query).populate('team', 'name').lean();
+    
+    const boardsWithStats = await Promise.all(boards.map(async (board) => {
+      // Pre-calculate blocked list id to avoid await inside the pipeline object
+      const blockedList = await List.findOne({ board: board._id, title: /blocked/i });
+      const stats = await Task.aggregate([
+        { $match: { board: board._id, parentTask: null } },
+        { $group: {
+            _id: null,
+            total: { $sum: 1 },
+            completed: { $sum: { $cond: [{ $eq: ["$isCompleted", true] }, 1, 0] } },
+            blocked: { $sum: { $cond: [{ $eq: ["$list", blockedList?._id || null] }, 1, 0] } }
+        }}
+      ]);
+      
+      const boardStats = stats[0] || { total: 0, completed: 0, blocked: 0 };
+      return { 
+        ...board, 
+        stats: boardStats,
+        progress: boardStats.total > 0 ? Math.round((boardStats.completed / boardStats.total) * 100) : 0
+      };
+    }));
+
+    res.json(boardsWithStats);
   } catch (err) {
     console.error('getSharedBoards Error:', err.message);
     res.status(500).json({ error: err.message, stack: process.env.NODE_ENV === 'development' ? err.stack : undefined });

@@ -1,60 +1,56 @@
 import * as React from "react"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { AlertCircle, Trash2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const ConfirmDialog = ({ 
   isOpen, 
   onClose, 
   onConfirm, 
   title = "Are you sure?", 
-  description = "This action cannot be undone.",
+  description = "This action cannot be undone and will permanently delete the data.",
   confirmText = "Delete",
   cancelText = "Cancel",
   variant = "destructive" 
 }) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] border-none shadow-2xl rounded-[32px] bg-white p-8">
-        <DialogHeader className="flex flex-col items-center text-center">
-          <div className={`w-16 h-16 rounded-3xl ${variant === 'destructive' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'} flex items-center justify-center mb-6`}>
-            {variant === 'destructive' ? <Trash2 className="w-8 h-8" /> : <AlertCircle className="w-8 h-8" />}
-          </div>
-          <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">
-            {title}
-          </DialogTitle>
-          <DialogDescription className="text-zinc-500 font-medium mt-2 leading-relaxed">
+    <AlertDialog open={isOpen} onOpenChange={onClose}>
+      <AlertDialogContent className="sm:max-w-[425px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
+        <div className="bg-zinc-900 p-8 text-[#fffe01]">
+          <AlertDialogTitle className="text-xl font-black uppercase tracking-tighter">{title}</AlertDialogTitle>
+        </div>
+        <div className="p-8 space-y-6">
+          <AlertDialogDescription className="text-zinc-500 font-bold text-sm leading-relaxed">
             {description}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-8 sm:justify-center">
-          <Button 
-            variant="ghost" 
-            onClick={onClose}
-            className="flex-1 rounded-2xl h-14 font-black text-xs tracking-widest text-zinc-400 hover:text-zinc-900 hover:bg-zinc-50 transition-all uppercase"
-          >
-            {cancelText}
-          </Button>
-          <Button 
-            variant={variant === 'destructive' ? 'destructive' : 'default'}
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className={`flex-1 rounded-2xl h-14 font-black text-xs tracking-widest uppercase shadow-xl active:scale-95 transition-all ${variant !== 'destructive' ? 'bg-black text-[#fffe01] hover:bg-zinc-800' : ''}`}
-          >
-            {confirmText}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogDescription>
+          <AlertDialogFooter className="gap-3 sm:gap-0 sm:flex-row mt-6">
+            <AlertDialogCancel className="rounded-xl h-12 border-zinc-200 font-bold text-zinc-400 hover:text-zinc-900 transition-all">
+              {cancelText}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onConfirm();
+                onClose();
+              }}
+              className={`rounded-xl h-12 font-black uppercase tracking-widest text-[10px] transition-all px-8 ${
+                variant === 'destructive' 
+                  ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-100' 
+                  : 'bg-zinc-900 hover:bg-black text-[#fffe01] shadow-lg shadow-zinc-100'
+              }`}
+            >
+              {confirmText}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

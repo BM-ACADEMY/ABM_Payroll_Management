@@ -165,170 +165,306 @@ const TimeHistory = () => {
   }, [logs]);
 
   return (
-    <div className="p-4 md:p-10 space-y-8 animate-in fade-in duration-700 bg-background min-h-screen">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
+    <div className="p-4 md:p-10 space-y-8 md:space-y-12 animate-in fade-in duration-700 bg-background min-h-screen pb-24">
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 pb-2">
+        <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-1.5 bg-[#fffe01] rounded-full"></div>
-            <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-gray-900">
-              Time Tracker <span className="text-zinc-400">History</span>
-            </h1>
+             <div className="p-2 bg-[#fffe01] rounded-xl shadow-sm">
+                <History className="w-5 h-5 text-black" />
+             </div>
+             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Activity Vectors</span>
           </div>
-          <p className="text-gray-500 text-sm md:text-base font-normal">
-            {userRole === 'admin' ? 'Monitor all employee task durations and activities' : 'Track your personal task history and productivity'}
+          <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900 leading-tight">
+            Time Tracker <span className="text-zinc-400">History</span>
+          </h1>
+          <p className="text-gray-500 font-normal max-w-2xl text-sm md:text-base leading-relaxed">
+            {userRole === 'admin' ? 'Strategic monitoring of global organizational operational velocity.' : 'Analytical review of personal productivity metrics and tactical execution logs.'}
           </p>
         </div>
       </header>
 
-      <Card className="bg-white border-gray-100 shadow-sm rounded-2xl overflow-hidden">
-        <div className="bg-zinc-50/50 p-4 border-b border-gray-100 flex items-center gap-2">
-          <Filter className="w-4 h-4 text-zinc-400" />
-          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-            {userRole === 'admin' ? 'Admin Filters' : 'History Filters'}
+      <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden group">
+        <div className="h-2 bg-black w-1/4 group-hover:w-full transition-all duration-1000"></div>
+        <div className="px-8 md:px-12 py-6 border-b border-zinc-50 flex items-center gap-4">
+          <div className="p-2 bg-zinc-50 rounded-lg group-hover:bg-[#fffe01] group-hover:text-black transition-all">
+            <Filter className="w-4 h-4" />
+          </div>
+          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">
+            {userRole === 'admin' ? 'Operational Filters' : 'History Scope'}
           </span>
         </div>
-        <CardContent className="p-6">
-          <div className={`grid grid-cols-1 ${userRole === 'admin' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
+        <CardContent className="p-8 md:p-12">
+          <div className={`grid grid-cols-1 ${userRole === 'admin' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-8 md:gap-12`}>
             {userRole === 'admin' && (
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-500">Employee Name</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Personnel Identifier</label>
+                <div className="relative group/input">
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within/input:text-black transition-colors" />
                   <Input
-                    placeholder="Filter by name..."
+                    placeholder="Search personnel..."
                     value={adminNameSearch}
                     onChange={(e) => setAdminNameSearch(e.target.value)}
-                    className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:ring-[#fffe01]"
+                    className="pl-14 h-16 bg-zinc-50 border-2 border-zinc-50 rounded-2xl font-bold focus:bg-white focus:border-black transition-all shadow-inner"
                   />
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-500">Start Date</label>
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Timeline Start</label>
               <Input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-11 bg-gray-50 border-gray-100 rounded-xl focus:ring-[#fffe01]"
+                className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-2xl font-bold focus:bg-white focus:border-black transition-all shadow-inner px-8"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-500">End Date</label>
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Timeline End</label>
               <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 bg-gray-50 border-gray-100 rounded-xl focus:ring-[#fffe01]"
+                className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-2xl font-bold focus:bg-white focus:border-black transition-all shadow-inner px-8"
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-
-
-      <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-medium italic text-gray-900">Activity Journal</h2>
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="space-y-12">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
+          <h2 className="text-2xl font-black text-zinc-900 tracking-tighter italic">Activity Journal</h2>
+          <div className="relative group/search w-full max-w-md">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within/search:text-black transition-colors" />
             <Input
-              placeholder="Search task..."
+              placeholder="Search tactical vector..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-white border-gray-200 pl-10 h-10 text-gray-900 focus-visible:ring-[#fffe01] shadow-sm rounded-xl"
+              className="bg-white border-2 border-zinc-100 pl-14 h-14 text-zinc-900 focus-visible:ring-0 focus:border-black shadow-xl shadow-zinc-200/40 rounded-2xl font-bold"
             />
           </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-24">
+          <div className="flex flex-col justify-center items-center py-32 space-y-4">
             <Loader size="lg" color="red" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 animate-pulse">Synchronizing Logs...</p>
           </div>
         ) : groupedLogs.length === 0 ? (
-          <div className="text-center py-24 bg-white border border-gray-100 rounded-3xl text-gray-400 font-medium">
-            No activity logs found for this period.
+          <div className="text-center py-32 bg-white border-2 border-dashed border-zinc-100 rounded-[3rem] shadow-inner">
+             <div className="w-20 h-20 bg-zinc-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-zinc-200">
+                <Clock className="w-10 h-10" />
+             </div>
+             <h3 className="text-xl font-black text-zinc-900">Registry Empty</h3>
+             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-2">No activity vectors established for this scope.</p>
           </div>
         ) : (
-          <Card className="bg-white border-gray-200 shadow-sm overflow-hidden rounded-2xl">
-            <CardContent className="p-0">
-              <div className="space-y-10 p-6">
-                {groupedLogs.map((group) => (
-                  <div key={group.date.toISOString()} className="space-y-4">
-                    <div className="flex items-center gap-4 px-2">
-                      <div className="bg-[#fffe01] text-black px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">
-                        {format(group.date, 'EEEE, MMM dd, yyyy')}
-                      </div>
-                      <div className="h-[1px] flex-1 bg-gray-100"></div>
-                      <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                        Total: {formatDuration(group.totalDuration)}
-                      </div>
-                    </div>
+          <div className="space-y-16">
+            {groupedLogs.map((group) => (
+              <section key={group.date.toISOString()} className="space-y-8 animate-in slide-in-from-left duration-500">
+                <div className="flex items-center gap-6 px-4">
+                  <div className="bg-black text-[#fffe01] px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl">
+                    {format(group.date, 'EEEE, MMM dd, yyyy')}
+                  </div>
+                  <div className="h-[2px] flex-1 bg-zinc-100 rounded-full opacity-50"></div>
+                  <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 px-4 py-2 rounded-full border border-zinc-100">
+                    Velocity: {formatDuration(group.totalDuration)}
+                  </div>
+                </div>
 
+                {/* Card view for mobile */}
+                <div className="grid grid-cols-1 gap-6 lg:hidden">
+                  {group.items.map((log) => (
+                    <Card key={log._id} className="border-0 shadow-xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden group">
+                      <CardContent className="p-8 space-y-6">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <h3 className="text-xl font-black tracking-tighter text-zinc-900 group-hover:text-[#d30614] transition-colors">{log.taskName}</h3>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">TACTICAL VECTOR</p>
+                          </div>
+                          <Badge variant="outline" className={`rounded-xl px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border-2 ${log.label === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                              log.label === 'holded' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                log.label === 'qc' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                  'bg-amber-50 text-amber-600 border-amber-100'
+                            }`}>
+                            {log.label || log.status}
+                          </Badge>
+                        </div>
+
+                        {userRole === 'admin' && (
+                          <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-2xl border-2 border-white shadow-sm">
+                            <div className="w-10 h-10 rounded-xl bg-black text-[#fffe01] flex items-center justify-center text-xs font-black shadow-lg">
+                              {log.user?.name?.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-zinc-900 leading-none mb-1">{log.user?.name || 'Unknown'}</p>
+                              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">{log.user?.employeeId || 'ID PENDING'}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 bg-zinc-50 rounded-[1.5rem] border border-white">
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Duration</p>
+                            <p className="text-lg font-black tracking-tighter">
+                               {log.status === 'running' ? (
+                                <span className="text-emerald-500 animate-pulse">ACTIVE</span>
+                               ) : formatDuration(log.duration)}
+                            </p>
+                          </div>
+                          <div className="p-4 bg-zinc-50 rounded-[1.5rem] border border-white">
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Timeline</p>
+                            <div className="flex items-center gap-2 text-xs font-bold text-zinc-900">
+                               <span>{formatLogTime(log.startTime)}</span>
+                               <ChevronRight className="w-3 h-3 text-zinc-300" />
+                               <span>{log.endTime ? formatLogTime(log.endTime) : 'NOW'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => toggleRow(log._id)}
+                          className="w-full h-12 rounded-[1.5rem] border-2 border-zinc-50 hover:bg-zinc-50 hover:border-zinc-100 text-[10px] font-black uppercase tracking-widest gap-2 group/btn"
+                        >
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-500 ${expandedRows.has(log._id) ? 'rotate-180 text-[#d30614]' : ''}`} />
+                          {expandedRows.has(log._id) ? 'Retract Logs' : 'Sync Detailed Metrics'}
+                        </Button>
+
+                        {expandedRows.has(log._id) && (
+                          <div className="pt-4 space-y-8 animate-in slide-in-from-top-4 duration-500">
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-3">
+                                <Timer className="w-4 h-4 text-zinc-400" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Tactical Sessions</span>
+                              </div>
+                              <div className="space-y-3">
+                                {log.activityLog?.filter(a => a.type === 'play').length > 0 ? (
+                                  log.activityLog.filter(a => a.type === 'play').map((activity, idx) => (
+                                    <div key={idx} className="p-4 rounded-2xl border-2 border-emerald-50 bg-emerald-50/10 shadow-sm flex items-center justify-between group/sess">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                        <div>
+                                          <p className="text-[10px] font-black text-zinc-900 uppercase">Session {idx + 1}</p>
+                                          <p className="text-[9px] font-bold text-zinc-400 uppercase">{formatLogTime(activity.startTime)} - {activity.endTime ? formatLogTime(activity.endTime) : 'ACTIVE'}</p>
+                                        </div>
+                                      </div>
+                                      <span className="text-xs font-black text-emerald-600 font-mono">{activity.duration ? formatDuration(activity.duration) : '---'}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="py-8 text-center text-[10px] font-bold text-zinc-300 uppercase tracking-widest bg-zinc-50 rounded-[1.5rem] border-2 border-dashed border-zinc-100">Zero active captures</div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                               <div className="flex items-center gap-3">
+                                  <MessageSquare className="w-4 h-4 text-zinc-400" />
+                                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Debriefing Logs</span>
+                               </div>
+                               <div className="space-y-4">
+                                 {log.comments?.map((comment, idx) => (
+                                   <div key={idx} className="bg-zinc-50/50 p-5 rounded-2xl border-2 border-white shadow-sm space-y-3 group/comm">
+                                      <div className="flex justify-between items-center">
+                                        <p className="text-[10px] font-black text-[#d30614] uppercase tracking-widest">{comment.author}</p>
+                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">{format(new Date(comment.createdAt), 'MMM dd, hh:mm a')}</p>
+                                      </div>
+                                      <div className="text-xs font-bold text-zinc-700 leading-relaxed italic"><MarkdownRenderer content={comment.text} /></div>
+                                   </div>
+                                 ))}
+                                 <div className="flex gap-3 bg-white p-3 rounded-2xl border-2 border-zinc-100 shadow-xl">
+                                    <Input
+                                      value={newComments[log._id] || ''}
+                                      onChange={(e) => setNewComments(prev => ({ ...prev, [log._id]: e.target.value }))}
+                                      placeholder="Execute comment..."
+                                      className="h-12 border-none bg-zinc-50 rounded-xl text-xs font-bold focus:bg-zinc-50"
+                                    />
+                                    <Button
+                                      size="icon"
+                                      onClick={() => handleAddComment(log._id, newComments[log._id])}
+                                      className="h-12 w-12 bg-black text-[#fffe01] rounded-xl hover:scale-105 transition-all shadow-xl"
+                                    >
+                                      <Send className="w-4 h-4" />
+                                    </Button>
+                                 </div>
+                               </div>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Table view for desktop */}
+                <div className="hidden lg:block bg-white border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] overflow-hidden">
                     <Table>
-                      <TableHeader className="bg-zinc-50/50">
-                        <TableRow className="border-gray-100 hover:bg-transparent">
-                          <TableHead className="w-[40px] px-4"></TableHead>
-                          {userRole === 'admin' && <TableHead className="text-gray-500 font-medium px-6 text-[10px] uppercase tracking-wider">Employee</TableHead>}
-                          <TableHead className="text-gray-500 font-medium px-6 text-[10px] uppercase tracking-wider">Task Details</TableHead>
-                          <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-wider">Timeline</TableHead>
-                          <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-wider">Duration</TableHead>
-                          <TableHead className="text-gray-500 font-medium text-center px-6 text-[10px] uppercase tracking-wider">Status</TableHead>
+                      <TableHeader className="bg-zinc-900 border-none">
+                        <TableRow className="border-none hover:bg-transparent">
+                          <TableHead className="w-[80px] px-8"></TableHead>
+                          {userRole === 'admin' && <TableHead className="text-[#fffe01]/60 font-black px-8 py-6 text-[10px] uppercase tracking-[0.2em]">Personnel</TableHead>}
+                          <TableHead className="text-[#fffe01]/60 font-black px-8 py-6 text-[10px] uppercase tracking-[0.2em]">Tactical Vector</TableHead>
+                          <TableHead className="text-[#fffe01]/60 font-black px-8 py-6 text-[10px] uppercase tracking-[0.2em]">Deployment Scope</TableHead>
+                          <TableHead className="text-[#fffe01]/60 font-black px-8 py-6 text-[10px] uppercase tracking-[0.2em]">Velocity</TableHead>
+                          <TableHead className="text-[#fffe01]/60 font-black px-8 py-6 text-[10px] uppercase tracking-[0.2em] text-center">Protocol</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {group.items.map((log) => (
                           <Fragment key={log._id}>
                             <TableRow
-                              className={`border-gray-50 hover:bg-zinc-50/50 transition-colors cursor-pointer ${expandedRows.has(log._id) ? 'bg-zinc-50/80' : ''}`}
+                              className={`border-zinc-50 hover:bg-zinc-50/50 transition-all cursor-pointer group ${expandedRows.has(log._id) ? 'bg-zinc-50/80 shadow-inner' : ''}`}
                               onClick={() => toggleRow(log._id)}
                             >
-                              <TableCell className="px-4">
-                                <div className={`p-1.5 rounded-lg transition-transform w-fit ${expandedRows.has(log._id) ? 'rotate-180 bg-[#fffe01] text-black' : 'bg-zinc-100 text-zinc-400'}`}>
-                                  <ChevronDown className="w-3 h-3" />
+                              <TableCell className="px-8 py-6">
+                                <div className={`p-2.5 rounded-xl transition-all duration-500 w-fit ${expandedRows.has(log._id) ? 'rotate-180 bg-[#fffe01] text-black shadow-lg scale-110' : 'bg-zinc-100 text-zinc-300 group-hover:text-black group-hover:bg-[#fffe01]'}`}>
+                                  <ChevronDown className="w-4 h-4" />
                                 </div>
                               </TableCell>
                               {userRole === 'admin' && (
-                                <TableCell className="px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-black text-[#fffe01] flex items-center justify-center text-[10px] font-bold shadow-sm">
+                                <TableCell className="px-8 py-6">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-[#fffe01] flex items-center justify-center text-xs font-black shadow-xl ring-4 ring-white group-hover:scale-110 transition-transform">
                                       {log.user?.name?.charAt(0)}
                                     </div>
                                     <div className="flex flex-col">
-                                      <span className="font-bold text-gray-900 text-xs tracking-tight">{log.user?.name || 'Unknown'}</span>
-                                      <span className="text-[9px] text-zinc-400 font-medium">{log.user?.employeeId || 'ID Pending'}</span>
+                                      <span className="font-black text-zinc-900 text-sm tracking-tight">{log.user?.name || 'Unknown'}</span>
+                                      <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{log.user?.employeeId || 'ID PENDING'}</span>
                                     </div>
                                   </div>
                                 </TableCell>
                               )}
-                              <TableCell className="px-6 py-4">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="font-bold text-gray-800 text-sm tracking-tight">{log.taskName}</span>
-                                  <span className="text-[10px] text-zinc-400 font-medium italic">General Task</span>
+                              <TableCell className="px-8 py-6">
+                                <div className="flex flex-col gap-1">
+                                  <span className="font-black text-zinc-800 text-base tracking-tighter group-hover:text-[#d30614] transition-colors">{log.taskName}</span>
+                                  <span className="text-[9px] text-zinc-400 font-black uppercase tracking-[0.2em] italic opacity-60">TACTICAL EXECUTION</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="py-4">
-                                <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
-                                  <div className="bg-zinc-100 px-2 py-0.5 rounded-md">{formatLogTime(log.startTime)}</div>
-                                  <ChevronRight className="w-3 h-3 text-zinc-300" />
-                                  <div className="bg-zinc-100 px-2 py-0.5 rounded-md">
-                                    {log.endTime ? formatLogTime(log.endTime) : '---'}
-                                  </div>
+                              <TableCell className="px-8 py-6">
+                                <div className="flex items-center gap-3 text-[11px] font-black text-zinc-900 bg-zinc-50/80 px-4 py-2 rounded-xl border border-zinc-100 w-fit">
+                                  <span className="bg-white px-2 py-1 rounded-lg shadow-sm border border-zinc-100">{formatLogTime(log.startTime)}</span>
+                                  <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
+                                  <span className="bg-white px-2 py-1 rounded-lg shadow-sm border border-zinc-100 italic">
+                                    {log.endTime ? formatLogTime(log.endTime) : 'ACTIVE.CAP'}
+                                  </span>
                                 </div>
                               </TableCell>
-                              <TableCell className="py-4 font-mono text-sm font-black text-gray-900">
+                              <TableCell className="px-8 py-6 font-mono text-lg font-black text-zinc-900">
                                 {log.status === 'running' ? (
-                                  <div className="flex items-center gap-1.5 text-emerald-500">
-                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></div>
-                                    Tracking...
+                                  <div className="flex items-center gap-3 text-emerald-500 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 w-fit shadow-sm">
+                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div>
+                                    <span className="text-[10px] tracking-[0.3em] font-black uppercase">Active Capturing</span>
                                   </div>
-                                ) : formatDuration(log.duration)}
+                                ) : (
+                                  <span className="bg-zinc-50 px-4 py-2 rounded-xl border border-zinc-100 shadow-inner">{formatDuration(log.duration)}</span>
+                                )}
                               </TableCell>
-                              <TableCell className="text-center px-6 py-4">
-                                <Badge variant="outline" className={`rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter ${log.label === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                    log.label === 'holded' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                      log.label === 'qc' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                                        'bg-amber-50 text-amber-600 border-amber-100'
+                              <TableCell className="text-center px-8 py-6">
+                                <Badge variant="outline" className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 shadow-sm transition-all hover:scale-105 ${log.label === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-50' :
+                                    log.label === 'holded' ? 'bg-rose-50 text-rose-600 border-rose-100 shadow-rose-50' :
+                                      log.label === 'qc' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 shadow-indigo-50' :
+                                        'bg-amber-50 text-amber-600 border-amber-100 shadow-amber-50'
                                   }`}>
                                   {log.label || log.status}
                                 </Badge>
@@ -339,108 +475,115 @@ const TimeHistory = () => {
                             {expandedRows.has(log._id) && (
                               <TableRow className="bg-zinc-50/40 border-none hover:bg-zinc-50/40">
                                 <TableCell colSpan={userRole === 'admin' ? 6 : 5} className="p-0">
-                                  <div className="px-12 py-4 border-l-2 border-[#fffe01] ml-8 mb-4 space-y-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <MessageSquare className="w-3.5 h-3.5 text-zinc-400" />
-                                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Comment History</span>
-                                    </div>
-
+                                  <div className="px-20 py-12 border-l-8 border-[#fffe01] ml-16 mb-12 space-y-12 animate-in slide-in-from-top-4 transition-all duration-700">
+                                    
                                     {/* Timeline Section */}
-                                    <div className="space-y-4">
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <Timer className="w-3.5 h-3.5 text-zinc-400" />
-                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Active Work sessions</span>
+                                    <div className="space-y-8">
+                                      <div className="flex items-center gap-4">
+                                        <div className="p-2.5 bg-black rounded-xl">
+                                          <Timer className="w-5 h-5 text-[#fffe01]" />
+                                        </div>
+                                        <span className="text-sm font-black uppercase tracking-[0.3em] text-zinc-400">Captured Operational Segments</span>
                                       </div>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                         {log.activityLog?.filter(a => a.type === 'play').length > 0 ? (
                                           log.activityLog.filter(a => a.type === 'play').map((activity, idx) => (
-                                            <div key={idx} className="p-3 rounded-xl border border-emerald-100 bg-emerald-50/30 shadow-sm flex flex-col gap-1 transition-all">
+                                            <div key={idx} className="p-6 rounded-[2rem] border-2 border-white bg-white shadow-xl shadow-zinc-200/40 flex flex-col gap-4 hover:-translate-y-2 transition-all group/sess">
                                               <div className="flex items-center justify-between">
-                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter bg-emerald-100 text-emerald-700 border-emerald-200">
-                                                  Active Session {idx + 1}
+                                                <Badge className="text-[9px] font-black uppercase tracking-widest bg-[#fffe01] text-black border-none px-3 py-1 rounded-full shadow-lg">
+                                                  SEGMENT {idx + 1}
                                                 </Badge>
-                                                <span className="text-[9px] font-mono font-bold text-zinc-500">
-                                                  {activity.duration ? formatDuration(activity.duration) : '---'}
+                                                <span className="text-xs font-mono font-black text-[#d30614]">
+                                                  {activity.duration ? formatDuration(activity.duration) : 'O.INC'}
                                                 </span>
                                               </div>
-                                              <div className="flex items-center gap-2 text-[10px] text-zinc-600 mt-1">
-                                                <span className="font-medium">{formatLogTime(activity.startTime)}</span>
-                                                <ChevronRight className="w-2.5 h-2.5 text-zinc-300" />
-                                                <span className="font-medium">{activity.endTime ? formatLogTime(activity.endTime) : 'Ongoing'}</span>
+                                              <div className="flex items-center gap-3 text-[11px] font-bold text-zinc-500 bg-zinc-50 p-3 rounded-2xl border border-zinc-100">
+                                                <span>{formatLogTime(activity.startTime)}</span>
+                                                <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
+                                                <span className="italic">{activity.endTime ? formatLogTime(activity.endTime) : 'ACTIVE'}</span>
                                               </div>
                                             </div>
                                           ))
                                         ) : (
-                                          <div className="col-span-full py-4 text-center text-xs text-zinc-400 italic bg-zinc-100/50 rounded-xl">
-                                            No detailed work sessions recorded.
+                                          <div className="col-span-full py-12 text-center text-[10px] font-black uppercase tracking-[0.4em] text-zinc-300 bg-white border-2 border-dashed border-zinc-100 rounded-[2rem] shadow-inner font-bold">
+                                            No granular activity captures established
                                           </div>
                                         )}
                                       </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                      {log.comments?.length > 0 ? (
-                                        log.comments.map((comment, idx) => (
-                                          <div key={idx} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-1 ease-in duration-200 hover:shadow-md group/comment relative">
-                                            <div className="flex items-center justify-between">
-                                              <span className="text-[10px] font-bold text-[#facc15]">{comment.author}</span>
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-[9px] text-zinc-400">{format(new Date(comment.createdAt), 'MMM dd, hh:mm a')}</span>
-                                                {((userName === comment.author) || (userRole === 'admin')) && !editingCommentId && (
-                                                  <div className="flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
-                                                    <button onClick={(e) => { e.stopPropagation(); setEditingCommentId(comment._id); setEditValue(comment.text); }} className="text-zinc-400 hover:text-blue-500">
-                                                      <Pencil className="w-3 h-3" />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteComment(log._id, comment._id); }} className="text-zinc-400 hover:text-red-500">
-                                                      <Trash2 className="w-3 h-3" />
-                                                    </button>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
-                                            {editingCommentId === comment._id ? (
-                                              <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-                                                <Input
-                                                  value={editValue}
-                                                  onChange={(e) => setEditValue(e.target.value)}
-                                                  className="h-8 text-xs focus:ring-[#fffe01]"
-                                                  autoFocus
-                                                />
-                                                <Button size="sm" className="h-8 bg-[#fffe01] text-black" onClick={() => handleUpdateComment(log._id, comment._id, editValue)}>
-                                                  <Check className="w-3.5 h-3.5" />
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-8 text-zinc-400" onClick={() => setEditingCommentId(null)}>
-                                                  <X className="w-3.5 h-3.5" />
-                                                </Button>
-                                              </div>
-                                            ) : (
-                                              <div className="text-xs text-gray-700 leading-normal"><MarkdownRenderer content={comment.text} /></div>
-                                            )}
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <div className="col-span-full py-4 text-center text-xs text-zinc-400 italic bg-zinc-100/50 rounded-xl">
-                                          No comments logged for this task.
+                                    <div className="space-y-8">
+                                      <div className="flex items-center gap-4">
+                                        <div className="p-2.5 bg-zinc-900 rounded-xl">
+                                          <MessageSquare className="w-5 h-5 text-[#fffe01]" />
                                         </div>
-                                      )}
+                                        <span className="text-sm font-black uppercase tracking-[0.3em] text-zinc-400">Tactical Debriefing Logs</span>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {log.comments?.length > 0 ? (
+                                          log.comments.map((comment, idx) => (
+                                            <div key={idx} className="bg-white p-7 rounded-[2rem] border-2 border-zinc-50 shadow-xl shadow-zinc-200/40 flex flex-col gap-4 group/comment relative hover:border-[#fffe01] transition-all duration-500">
+                                              <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] font-black text-[#d30614] uppercase tracking-widest">{comment.author}</span>
+                                                <div className="flex items-center gap-3">
+                                                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{format(new Date(comment.createdAt), 'MMM dd, hh:mm a')}</span>
+                                                  {((userName === comment.author) || (userRole === 'admin')) && !editingCommentId && (
+                                                    <div className="flex items-center gap-1.5 opacity-0 group-hover/comment:opacity-100 transition-all scale-90 group-hover:scale-100">
+                                                      <button onClick={(e) => { e.stopPropagation(); setEditingCommentId(comment._id); setEditValue(comment.text); }} className="p-2 text-zinc-400 hover:text-black hover:bg-zinc-100 rounded-xl transition-all">
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                      </button>
+                                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteComment(log._id, comment._id); }} className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                      </button>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              {editingCommentId === comment._id ? (
+                                                <div className="flex gap-3 pt-2" onClick={(e) => e.stopPropagation()}>
+                                                  <Input
+                                                    value={editValue}
+                                                    onChange={(e) => setEditValue(e.target.value)}
+                                                    className="h-12 bg-zinc-50 rounded-[1rem] border-2 border-zinc-100 text-xs font-bold"
+                                                    autoFocus
+                                                  />
+                                                  <Button size="sm" className="h-12 w-12 bg-black text-[#fffe01] rounded-xl shadow-xl" onClick={() => handleUpdateComment(log._id, comment._id, editValue)}>
+                                                    <Check className="w-4 h-4" />
+                                                  </Button>
+                                                  <Button size="sm" variant="ghost" className="h-12 w-12 text-zinc-400 rounded-xl" onClick={() => setEditingCommentId(null)}>
+                                                    <X className="w-4 h-4" />
+                                                  </Button>
+                                                </div>
+                                              ) : (
+                                                <div className="text-sm font-bold text-zinc-700 leading-relaxed italic"><MarkdownRenderer content={comment.text} /></div>
+                                              )}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="col-span-full py-12 text-center text-[10px] font-black uppercase tracking-[0.4em] text-zinc-300 bg-white border-2 border-dashed border-zinc-100 rounded-[2rem] shadow-inner font-bold">
+                                            Zero tactical debriefs established
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
 
                                     {/* Add New Comment Section */}
-                                    <div className="flex gap-2 max-w-2xl bg-white p-2 rounded-xl border border-gray-100 shadow-sm mt-4">
+                                    <div className="flex gap-4 max-w-4xl bg-white p-4 rounded-[2.5rem] border-2 border-zinc-50 shadow-2xl relative group/inputbox">
+                                      <div className="absolute inset-0 bg-[#fffe01]/5 rounded-[2.5rem] opacity-0 group-hover/inputbox:opacity-100 transition-opacity"></div>
                                       <Input
                                         value={newComments[log._id] || ''}
                                         onChange={(e) => setNewComments(prev => ({ ...prev, [log._id]: e.target.value }))}
-                                        placeholder="Write a new comment..."
-                                        className="h-10 text-xs bg-zinc-50 border-none focus-visible:ring-0 shadow-none px-4"
+                                        placeholder="Initialize new tactical capture..."
+                                        className="h-16 text-sm font-black bg-zinc-50/50 border-none focus-visible:ring-0 shadow-inner px-8 rounded-[1.5rem] relative z-10"
                                         onKeyPress={(e) => e.key === 'Enter' && handleAddComment(log._id, newComments[log._id])}
                                       />
                                       <Button
-                                        size="icon"
                                         onClick={() => handleAddComment(log._id, newComments[log._id])}
                                         disabled={!newComments[log._id]?.trim()}
-                                        className="h-10 w-10 min-w-[40px] bg-black hover:bg-[#fffe01] hover:text-black text-white transition-all rounded-lg"
+                                        className="h-16 px-10 bg-black text-[#fffe01] font-black uppercase tracking-[0.2em] rounded-[1.5rem] hover:scale-[1.02] shadow-2xl transition-all relative z-10 group/sendbtn"
                                       >
-                                        <Send className="w-4 h-4" />
+                                        <Send className="w-5 h-5 mr-3 group-hover/sendbtn:translate-x-1 transition-transform" />
+                                        EXECUTE
                                       </Button>
                                     </div>
                                   </div>
@@ -451,17 +594,16 @@ const TimeHistory = () => {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
-                ))}
-              </div>
-              <div className="px-6 py-4 border-t border-gray-100 bg-zinc-50/50">
-                <PaginationControl
-                  pagination={pagination}
-                  onPageChange={handlePageChange}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </section>
+            ))}
+            <div className="pt-12 px-6 flex justify-center">
+              <PaginationControl
+                pagination={pagination}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

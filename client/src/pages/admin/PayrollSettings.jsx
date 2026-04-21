@@ -94,22 +94,22 @@ const PayrollSettings = () => {
   }
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700 pb-20">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-black font-medium mb-2">
-            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-              <Settings className="w-4 h-4" />
+    <div className="p-4 md:p-10 space-y-6 md:space-y-10 animate-in fade-in duration-700 bg-background min-h-screen pb-24">
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 pb-2">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 text-black">
+            <div className="p-2 bg-[#fffe01] rounded-xl shadow-sm">
+              <Settings className="w-5 h-5 text-black" />
             </div>
-            <span className="text-xs tracking-widest uppercase">System Config</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">System Parameters</span>
           </div>
-          <h1 className="text-4xl font-medium tracking-tight text-gray-900">
-            Payroll <span className="text-[#d30614]">Settings</span>
+          <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900 leading-tight">
+            Payroll <span className="text-[#d30614]">Architecture</span>
           </h1>
-          <p className="text-gray-500 font-medium">Manage global limits and salary rate calculation rules.</p>
+          <p className="text-gray-500 font-normal max-w-2xl text-sm md:text-base leading-relaxed">Configure global computational logic, operational limits, and financial disbursement protocols.</p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex items-center gap-4 w-full xl:w-auto">
           {isEditing ? (
             <Button 
               variant="outline" 
@@ -117,138 +117,199 @@ const PayrollSettings = () => {
                 setSettings(originalSettings);
                 setIsEditing(false);
               }}
-              className="h-14 px-8 rounded-2xl font-medium tracking-widest uppercase text-xs border-2 border-slate-100 hover:bg-slate-50 flex items-center gap-2"
+              className="flex-1 sm:flex-none h-14 md:h-16 px-8 rounded-2xl font-black uppercase tracking-widest text-[11px] border-2 border-zinc-100 text-zinc-400 hover:text-black hover:border-black transition-all"
             >
-              <X className="w-4 h-4" />
-              Cancel Changes
+              <X className="w-4 h-4 mr-3" />
+              Discard edits
             </Button>
           ) : (
             <Button 
               onClick={() => setIsEditing(true)}
-              className="h-14 px-8 rounded-2xl font-medium tracking-widest uppercase text-xs bg-black hover:bg-zinc-900 text-[#fffe01] shadow-lg flex items-center gap-2"
+              className="flex-1 sm:flex-none h-14 md:h-16 px-10 rounded-2xl font-black uppercase tracking-widest text-[11px] bg-black hover:bg-zinc-800 text-[#fffe01] shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
             >
               <Pencil className="w-4 h-4" />
-              Edit Settings
+              Modify Protocol
             </Button>
           )}
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="xl:col-span-2 space-y-8">
           <form onSubmit={handleSubmit} className="space-y-8">
-            <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2rem] bg-white overflow-hidden">
-              <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
-                <CardTitle className="text-lg font-medium flex items-center gap-2 text-slate-800">
-                  <Clock className="w-5 h-5 text-black" />
-                  Permission & Leave Limits
+            <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden">
+              <CardHeader className="p-6 md:p-10 pb-6 border-b border-zinc-50 bg-zinc-50/30">
+                <CardTitle className="text-2xl font-bold flex items-center gap-4 text-zinc-900 tracking-tight">
+                  <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-lg">
+                    <Clock className="w-5 h-5 text-[#fffe01]" />
+                  </div>
+                  Allowance Thresholds
                 </CardTitle>
-                <CardDescription className="font-medium">Define monthly allowances for employees.</CardDescription>
+                <CardDescription className="font-bold text-zinc-400 uppercase tracking-widest text-[10px] mt-1 pl-14">Temporal boundary specifications for personnel</CardDescription>
               </CardHeader>
-              <CardContent className="p-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
-                      Monthly Permission Hours
-                    </Label>
-                    <div className="relative group">
-                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
-                      <Input
-                        type="number"
-                        name="monthlyPermissionHours"
-                        value={settings.monthlyPermissionHours}
-                        onChange={handleChange}
-                        step="0.5"
-                        disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
-                      />
+              <CardContent className="p-6 md:p-10 space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Tier 1 Permission Limit (HRS)
+                      </Label>
+                      <div className="relative group">
+                        <Clock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
+                        <Input
+                          type="number"
+                          name="monthlyPermissionHours"
+                          value={settings.monthlyPermissionHours}
+                          onChange={handleChange}
+                          step="0.5"
+                          disabled={!isEditing}
+                          className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
+                        />
+                      </div>
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Maximum bandwidth before primary deduction.</p>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium ml-1">Maximum allowed permission hours per month.</p>
-                  </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
-                      Casual Leave Limit
-                    </Label>
-                    <div className="relative group">
-                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
-                      <Input
-                        type="number"
-                        name="casualLeaveLimit"
-                        value={settings.casualLeaveLimit}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
-                      />
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Tier 1 LOP Deduction (Percent)
+                      </Label>
+                      <div className="relative group">
+                        <TrendingDown className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
+                        <Input
+                          type="number"
+                          name="permissionTier1Deduction"
+                          value={settings.permissionTier1Deduction}
+                          onChange={handleChange}
+                          step="0.1"
+                          disabled={!isEditing}
+                          className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
+                        />
+                      </div>
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Compensational reduction upon limit violation.</p>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium ml-1">Number of casual leaves granted per month.</p>
-                  </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
-                      Monthly Working Days
-                    </Label>
-                    <div className="relative group">
-                      <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
-                      <Input
-                        type="number"
-                        name="monthlyWorkingDays"
-                        value={settings.monthlyWorkingDays}
-                        onChange={handleChange}
-                        disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
-                      />
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Tier 2 Permission Ceiling (HRS)
+                      </Label>
+                      <div className="relative group">
+                        <Clock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
+                        <Input
+                          type="number"
+                          name="permissionTier2Limit"
+                          value={settings.permissionTier2Limit}
+                          onChange={handleChange}
+                          step="0.5"
+                          disabled={!isEditing}
+                          className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
+                        />
+                      </div>
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Secondary threshold for critical violations.</p>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium ml-1">Fixed days used for per-day salary calculation (e.g., 30).</p>
-                  </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Tier 2 Critical Deduction (Days)
+                      </Label>
+                      <div className="relative group">
+                        <TrendingDown className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
+                        <Input
+                          type="number"
+                          name="permissionTier2Deduction"
+                          value={settings.permissionTier2Deduction}
+                          onChange={handleChange}
+                          step="0.1"
+                          disabled={!isEditing}
+                          className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
+                        />
+                      </div>
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Severe unit reduction for Tier 2 violations.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Casual Privilege Limit
+                      </Label>
+                      <div className="relative group">
+                        <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
+                        <Input
+                          type="number"
+                          name="casualLeaveLimit"
+                          value={settings.casualLeaveLimit}
+                          onChange={handleChange}
+                          disabled={!isEditing}
+                          className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
+                        />
+                      </div>
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Allocated monthly leave authorization units.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Base Operational Cycle (Days)
+                      </Label>
+                      <div className="relative group">
+                        <Briefcase className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
+                        <Input
+                          type="number"
+                          name="monthlyWorkingDays"
+                          value={settings.monthlyWorkingDays}
+                          onChange={handleChange}
+                          disabled={!isEditing}
+                          className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
+                        />
+                      </div>
+                      <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Standardized divisor for per-unit salary computation.</p>
+                    </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2rem] bg-white overflow-hidden">
-              <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
-                <CardTitle className="text-lg font-medium flex items-center gap-2 text-slate-800">
-                  <Calendar className="w-5 h-5 text-black" />
-                  Weekend Configuration
+            <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden">
+              <CardHeader className="p-6 md:p-10 pb-6 border-b border-zinc-50 bg-zinc-50/30">
+                <CardTitle className="text-2xl font-bold flex items-center gap-4 text-zinc-900 tracking-tight">
+                  <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-lg">
+                    <Calendar className="w-5 h-5 text-[#fffe01]" />
+                  </div>
+                  Cycle Modification
                 </CardTitle>
-                <CardDescription className="font-medium">Define how Saturdays are treated in the system.</CardDescription>
+                <CardDescription className="font-bold text-zinc-400 uppercase tracking-widest text-[10px] mt-1 pl-14">Weekend operational status protocol</CardDescription>
               </CardHeader>
-              <CardContent className="p-8">
-                <div className="space-y-4">
-                  <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
-                    Saturday Work Rule
+              <CardContent className="p-6 md:p-10">
+                <div className="space-y-6">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                    Saturday Protocol Definition
                   </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                      { id: 'holiday', label: 'Holiday', icon: Home, desc: 'Non-working day' },
-                      { id: 'half-day', label: 'Half Day', icon: Clock, desc: '4 hours session' },
-                      { id: 'full-day', label: 'Full Day', icon: Calendar, desc: 'Normal working day' }
+                      { id: 'holiday', label: 'Operational Rest', icon: Home, desc: 'Zero engagement cycle' },
+                      { id: 'half-day', label: 'Partial Deployment', icon: Clock, desc: '0.5 operational shift' },
+                      { id: 'full-day', label: 'Full Deployment', icon: Calendar, desc: 'Standard shift protocol' }
                     ].map((rule) => (
                       <div 
                         key={rule.id}
                         onClick={() => isEditing && setSettings({ ...settings, saturdayRule: rule.id })}
-                        className={`relative p-5 rounded-2xl border-2 transition-all cursor-pointer group ${
+                        className={`relative p-8 rounded-[2rem] border-2 transition-all cursor-pointer group flex flex-col items-center text-center gap-4 ${
                           settings.saturdayRule === rule.id 
-                            ? 'border-black bg-gray-50' 
-                            : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'
+                            ? 'border-black bg-zinc-900 text-white shadow-2xl -translate-y-2' 
+                            : 'border-zinc-100 bg-zinc-50/50 hover:border-zinc-300 text-zinc-800'
                         } ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
                       >
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className={`p-2 rounded-lg ${
-                            settings.saturdayRule === rule.id ? 'bg-black text-[#fffe01]' : 'bg-white text-slate-400'
-                          }`}>
-                            <rule.icon className="w-4 h-4" />
-                          </div>
-                          <span className={`font-medium transition-colors ${
-                            settings.saturdayRule === rule.id ? 'text-black' : 'text-slate-600'
-                          }`}>
+                        <div className={`p-4 rounded-2xl shadow-lg transition-transform group-hover:scale-110 ${
+                          settings.saturdayRule === rule.id ? 'bg-[#fffe01] text-black' : 'bg-white text-zinc-400'
+                        }`}>
+                          <rule.icon className="w-6 h-6" />
+                        </div>
+                        <div className="space-y-1">
+                          <span className={`font-black uppercase tracking-wider text-xs transition-colors`}>
                             {rule.label}
                           </span>
+                          <p className={`text-[10px] font-bold uppercase transition-colors ${
+                            settings.saturdayRule === rule.id ? 'text-zinc-500' : 'text-zinc-400'
+                          }`}>{rule.desc}</p>
                         </div>
-                        <p className="text-[10px] text-slate-400 font-medium">{rule.desc}</p>
                         {settings.saturdayRule === rule.id && (
-                          <div className="absolute top-4 right-4 text-black">
-                            <CheckCircle2 className="w-5 h-5" />
+                          <div className="absolute top-4 right-4 text-[#fffe01]">
+                            <CheckCircle2 className="w-6 h-6" />
                           </div>
                         )}
                       </div>
@@ -258,22 +319,24 @@ const PayrollSettings = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[2rem] bg-white overflow-hidden">
-              <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
-                <CardTitle className="text-lg font-medium flex items-center gap-2 text-slate-800">
-                  <TrendingUp className="w-5 h-5 text-black" />
-                  Salary Rate Multipliers
+            <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden">
+              <CardHeader className="p-6 md:p-10 pb-6 border-b border-zinc-50 bg-zinc-50/30">
+                <CardTitle className="text-2xl font-bold flex items-center gap-4 text-zinc-900 tracking-tight">
+                  <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-lg">
+                    <TrendingUp className="w-5 h-5 text-[#fffe01]" />
+                  </div>
+                  Coefficient Mapping
                 </CardTitle>
-                <CardDescription className="font-medium">Configure calculation rules for attendance types.</CardDescription>
+                <CardDescription className="font-bold text-zinc-400 uppercase tracking-widest text-[10px] mt-1 pl-14">Algorithmic multipliers for financial synthesis</CardDescription>
               </CardHeader>
-              <CardContent className="p-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <CardContent className="p-6 md:p-10 space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
                   <div className="space-y-3">
-                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
-                      Half-Day Salary Multiplier
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                      Partial Day Coefficient
                     </Label>
                     <div className="relative group">
-                      <TrendingDown className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
+                      <TrendingDown className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
                       <Input
                         type="number"
                         name="halfDaySalaryRateLimit"
@@ -281,18 +344,18 @@ const PayrollSettings = () => {
                         onChange={handleChange}
                         step="0.01"
                         disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
                       />
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium ml-1">Multiplier applied to basic salary for half-days.</p>
+                    <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Multiplier for partial operational cycles.</p>
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-xs font-medium uppercase tracking-widest text-slate-400 ml-1">
-                      Full-Day Salary Multiplier
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                      Full Cycle Coefficient
                     </Label>
                     <div className="relative group">
-                      <TrendingUp className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-black transition-colors" />
+                      <TrendingUp className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300 group-focus-within:text-black transition-colors" />
                       <Input
                         type="number"
                         name="fullDaySalaryRateLimit"
@@ -300,10 +363,10 @@ const PayrollSettings = () => {
                         onChange={handleChange}
                         step="0.01"
                         disabled={!isEditing}
-                        className="pl-12 h-14 bg-slate-50 border-slate-200 rounded-2xl font-medium text-slate-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="pl-14 h-14 md:h-16 bg-zinc-50 border-zinc-100 rounded-2xl font-black text-zinc-900 text-lg shadow-inner focus-visible:ring-black"
                       />
                     </div>
-                    <p className="text-[10px] text-slate-400 font-medium ml-1">Default multiplier for regular working days.</p>
+                    <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider ml-1">Denominator multiplier for standard deployment.</p>
                   </div>
                 </div>
               </CardContent>
@@ -313,47 +376,55 @@ const PayrollSettings = () => {
               <Button 
                 type="submit" 
                 disabled={saveLoading}
-                className="w-full h-16 bg-black hover:bg-zinc-900 text-[#fffe01] rounded-[1.5rem] font-medium text-lg shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] animate-in slide-in-from-bottom-4 duration-500"
+                className="w-full h-16 md:h-20 bg-black hover:bg-zinc-800 text-[#fffe01] rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl shadow-zinc-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] animate-in slide-in-from-bottom-8 duration-700 flex items-center justify-center gap-4"
               >
                 {saveLoading ? (
-                  <Loader size="md" color="black" />
+                  <Loader size="md" color="white" />
                 ) : (
-                  <Save className="w-6 h-6 mr-2" />
+                  <Save className="w-6 h-6" />
                 )}
-                Save Global Settings
+                {saveLoading ? 'ARCHIVING...' : 'Sync Global Architecture'}
               </Button>
             )}
           </form>
         </div>
 
         <div className="space-y-8">
-          <Card className="border-0 shadow-lg rounded-[2rem] bg-black text-[#fffe01] overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                Usage Note
+          <Card className="border-0 shadow-2xl shadow-zinc-900/20 rounded-[2.5rem] bg-zinc-900 text-white overflow-hidden relative group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#fffe01]/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-[#fffe01]/20 transition-all duration-1000"></div>
+            <CardHeader className="p-8 pb-4">
+              <CardTitle className="flex items-center gap-4 text-xl font-black uppercase tracking-tight">
+                <AlertCircle className="w-6 h-6 text-[#fffe01]" />
+                Critical Directive
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                Changes made here will affect <strong>all future payroll calculations</strong> across the entire system.
+            <CardContent className="p-8 pt-4 space-y-6">
+              <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest leading-relaxed">
+                Modifications to these parameters will immediately refactor <strong>all cross-system payroll computations</strong> for future operational cycles.
               </p>
-              <p className="text-zinc-400 text-sm font-medium leading-relaxed">
-                Ensure multipliers are mathematically correct to avoid incorrect salary disbursements.
-              </p>
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest leading-relaxed">
+                  Mathematical integrity is paramount. Multiplier errors may cause critical financial disbursement anomalies.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
           {message.text && (
-            <div className={`p-6 rounded-[2rem] flex items-center gap-4 transition-all animate-in slide-in-from-top-4 ${
-              message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+            <div className={`p-8 rounded-[2.5rem] flex items-center gap-5 transition-all animate-in slide-in-from-top-6 shadow-xl ${
+              message.type === 'success' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-[#d30614] text-white shadow-[#d30614]/20'
             }`}>
-              {message.type === 'success' ? (
-                <CheckCircle2 className="w-6 h-6 shrink-0" />
-              ) : (
-                <AlertCircle className="w-6 h-6 shrink-0" />
-              )}
-              <p className="font-bold">{message.text}</p>
+              <div className="bg-white/20 p-3 rounded-2xl">
+                {message.type === 'success' ? (
+                  <CheckCircle2 className="w-6 h-6" />
+                ) : (
+                  <AlertCircle className="w-6 h-6" />
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Status Notification</p>
+                <p className="font-black uppercase tracking-tight text-lg leading-tight">{message.text}</p>
+              </div>
             </div>
           )}
         </div>

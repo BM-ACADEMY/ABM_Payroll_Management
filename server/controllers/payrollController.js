@@ -134,17 +134,17 @@ exports.getMonthlyReport = async (req, res) => {
       const totalRejectedHours = totalRejectedMinutes / 60;
       
       let permissionLopDays = 0;
-      if (totalAcceptedHours > 5) {
-        permissionLopDays += 1.0;
-      } else if (totalAcceptedHours > 3) {
-        permissionLopDays += 0.5;
+      if (totalAcceptedHours > globalSettings.permissionTier2Limit) {
+        permissionLopDays += globalSettings.permissionTier2Deduction;
+      } else if (totalAcceptedHours > (globalSettings.monthlyPermissionHours || globalSettings.permissionTier1Limit)) {
+        permissionLopDays += globalSettings.permissionTier1Deduction;
       }
 
       if (totalRejectedHours > 0) {
-        if (totalRejectedHours < 3) {
-          permissionLopDays += 0.5;
+        if (totalRejectedHours < (globalSettings.monthlyPermissionHours || globalSettings.permissionTier1Limit)) {
+          permissionLopDays += globalSettings.permissionTier1Deduction;
         } else {
-          permissionLopDays += 1.0;
+          permissionLopDays += globalSettings.permissionTier2Deduction;
         }
       }
       
@@ -291,19 +291,19 @@ exports.getMySummary = async (req, res) => {
     
     let permissionLopDays = 0;
     
-    // Accepted Permission Rule: > 3h = 0.5, > 5h = 1.0
-    if (totalAcceptedHours > 5) {
-      permissionLopDays += 1.0;
-    } else if (totalAcceptedHours > 3) {
-      permissionLopDays += 0.5;
+    // Accepted Permission Rule
+    if (totalAcceptedHours > globalSettings.permissionTier2Limit) {
+      permissionLopDays += globalSettings.permissionTier2Deduction;
+    } else if (totalAcceptedHours > (globalSettings.monthlyPermissionHours || globalSettings.permissionTier1Limit)) {
+      permissionLopDays += globalSettings.permissionTier1Deduction;
     }
 
-    // Rejected Permission Rule: < 3h = 0.5, < 5h = 1.0
+    // Rejected Permission Rule
     if (totalRejectedHours > 0) {
-      if (totalRejectedHours < 3) {
-        permissionLopDays += 0.5;
+      if (totalRejectedHours < (globalSettings.monthlyPermissionHours || globalSettings.permissionTier1Limit)) {
+        permissionLopDays += globalSettings.permissionTier1Deduction;
       } else {
-        permissionLopDays += 1.0;
+        permissionLopDays += globalSettings.permissionTier2Deduction;
       }
     }
     
@@ -461,19 +461,19 @@ exports.generateIndividualSalary = async (req, res) => {
     
     let permissionLopDays = 0;
     
-    // Accepted Permission Rule: > 3h = 0.5, > 5h = 1.0
-    if (totalAcceptedHours > 5) {
-      permissionLopDays += 1.0;
-    } else if (totalAcceptedHours > 3) {
-      permissionLopDays += 0.5;
+    // Accepted Permission Rule
+    if (totalAcceptedHours > globalSettings.permissionTier2Limit) {
+      permissionLopDays += globalSettings.permissionTier2Deduction;
+    } else if (totalAcceptedHours > (globalSettings.monthlyPermissionHours || globalSettings.permissionTier1Limit)) {
+      permissionLopDays += globalSettings.permissionTier1Deduction;
     }
 
-    // Rejected Permission Rule: < 3h = 0.5, < 5h = 1.0
+    // Rejected Permission Rule
     if (totalRejectedHours > 0) {
-      if (totalRejectedHours < 3) {
-        permissionLopDays += 0.5;
+      if (totalRejectedHours < (globalSettings.monthlyPermissionHours || globalSettings.permissionTier1Limit)) {
+        permissionLopDays += globalSettings.permissionTier1Deduction;
       } else {
-        permissionLopDays += 1.0;
+        permissionLopDays += globalSettings.permissionTier2Deduction;
       }
     }
     

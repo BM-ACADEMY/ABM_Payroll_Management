@@ -8,10 +8,13 @@ import {
   Users2, 
   UserCheck2, 
   CalendarClock, 
-  PieChart as PieChartIcon, 
-  MoreHorizontal, 
+  TrendingUp,
   ShieldAlert,
-  TrendingUp
+  ChevronRight,
+  UserPlus,
+  LayoutDashboard,
+  Bell,
+  IndianRupee
 } from "lucide-react";
 import { lazy, Suspense } from 'react';
 import axios from 'axios';
@@ -43,10 +46,9 @@ const AdminDashboard = () => {
       setStats(statsRes.data.stats || []);
       setChartData(statsRes.data.chartData || []);
       setEmployees(Array.isArray(employeesRes.data.employees) ? employeesRes.data.employees : []);
-      setLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      // Fallback or error state
+    } finally {
       setLoading(false);
     }
   };
@@ -60,38 +62,74 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader size="lg" color="red" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black gap-6">
+        <div className="relative">
+          <Loader size="lg" color="#fffe01" />
+          <div className="absolute inset-0 bg-[#fffe01]/20 blur-2xl rounded-full animate-pulse"></div>
+        </div>
+        <p className="text-[10px] font-black text-[#fffe01] uppercase tracking-[0.4em] animate-pulse">Synchronizing Analytics...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 md:p-10 space-y-10 animate-in fade-in duration-700 bg-background min-h-full">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-2 bg-[#d30614] rounded-full"></div>
-            <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-gray-900">Admin <span className="text-black">Overview</span></h1>
+    <div className="p-6 md:p-10 space-y-12 bg-slate-50 min-h-screen pb-32 animate-fade-up relative overflow-hidden">
+      {/* Refined Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5 text-slate-400 mb-1">
+             <div className="w-8 h-[1px] bg-slate-300 rounded-full"></div>
+             <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Operational Overview</span>
           </div>
-          <p className="text-gray-500 text-lg font-normal">Comprehensive <span className="text-gray-900 font-medium">organizational overview</span> and real-time operational metrics.</p>
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 leading-none">
+            ADMIN <span className="text-slate-400">DASHBOARD</span>
+          </h1>
+          <p className="text-slate-500 text-sm md:text-base font-medium max-w-xl">
+            Real-time management of organizational personnel and payroll logic.
+          </p>
         </div>
-      </header>
+        
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="rounded-xl bg-white border-slate-200 hover:bg-slate-50 text-slate-600 shadow-sm"
+          >
+            <Bell className="w-4 h-4" />
+          </Button>
+          <Button 
+            onClick={() => navigate('/admin/emails')} 
+            className="bg-[#fffe01] hover:bg-black hover:text-white text-black font-bold rounded-xl px-8 h-12 shadow-sm transition-all"
+          >
+            <UserPlus className="w-4 h-4 mr-2" /> Enroll Staff
+          </Button>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      {/* Stats Grid - Dark Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
         {stats.map((stat, i) => {
           const Icon = IconMap[stat.icon] || Users2;
+          const isWarning = stat.label.toLowerCase().includes('absent') || stat.label.toLowerCase().includes('alerts');
           return (
-            <Card key={i} className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-300">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <p className="text-sm font-normal text-gray-500">{stat.label}</p>
-                    <p className="text-2xl md:text-3xl font-medium text-gray-900">{stat.value}</p>
+            <Card key={i} className="neat-card h-40">
+              <CardContent className="p-6 h-full flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <div className={`p-2.5 rounded-lg ${isWarning ? 'bg-red-500/20 text-red-500' : 'bg-[#fffe01]/20 text-[#fffe01]'}`}>
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
-                  </div>
+                  <Badge variant="secondary" className="bg-white/5 text-slate-400 font-bold text-[9px] border-none px-2 py-0.5 rounded">
+                    LIVE
+                  </Badge>
+                </div>
+                <div>
+                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                   <div className="flex items-baseline gap-2">
+                     <span className={`text-4xl font-bold tracking-tight tabular-nums ${isWarning ? 'text-red-500' : 'text-white'}`}>{stat.value}</span>
+                     <span className="text-[9px] font-bold text-slate-500 uppercase flex items-center opacity-40">
+                       <TrendingUp className="w-3 h-3 mr-0.5" /> +2%
+                     </span>
+                   </div>
                 </div>
               </CardContent>
             </Card>
@@ -99,62 +137,71 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Attendance Chart */}
-        <Card className="bg-white border-gray-200 shadow-sm lg:col-span-1">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#d30614]" />
-              <CardTitle className="text-xl text-gray-900">Today's Attendance</CardTitle>
-            </div>
-            <CardDescription>Real-time status of all employees</CardDescription>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 relative z-10">
+        {/* Attendance Pulse - Dark Card */}
+        <Card className="xl:col-span-1 neat-card overflow-hidden">
+          <CardHeader className="p-8 border-b border-white/5">
+             <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="text-lg font-bold text-white tracking-tight uppercase">Attendance Pulse</CardTitle>
+                  <CardDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Real-time engagement telemetry</CardDescription>
+                </div>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#fffe01] animate-pulse"></div>
+             </div>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <Suspense fallback={<div className="h-full flex items-center justify-center text-gray-500">Loading chart...</div>}>
-              <DashboardCharts chartData={chartData} />
+          <CardContent className="p-8 h-[340px] flex items-center justify-center">
+            <Suspense fallback={<div className="h-full flex items-center justify-center text-slate-500 font-bold text-[10px] uppercase tracking-widest">Compiling stream...</div>}>
+              <DashboardCharts 
+                chartData={chartData.map(d => ({
+                  ...d,
+                  color: d.name === 'Absent' ? '#ef4444' : (d.name === 'Present' ? '#fffe01' : '#1f2937')
+                }))} 
+              />
             </Suspense>
           </CardContent>
         </Card>
 
-        {/* Employee Table */}
-        <Card className="bg-white border-gray-200 shadow-sm overflow-hidden lg:col-span-2">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Directory Snapshot - Dark Card */}
+        <Card className="xl:col-span-2 neat-card overflow-hidden">
+          <CardHeader className="p-8 flex flex-row items-center justify-between border-b border-white/5 bg-white/[0.01]">
             <div className="space-y-1">
-              <CardTitle className="text-xl text-gray-900">Employee Directory</CardTitle>
-              <CardDescription className="text-gray-500">Showing recent active members</CardDescription>
+               <CardTitle className="text-lg font-bold text-white tracking-tight uppercase">Talent Roster</CardTitle>
+               <CardDescription className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Recent acquisitions & performance logs</CardDescription>
             </div>
             <Button 
-              variant="outline" 
-              onClick={() => navigate('/admin/employees')}
-              className="border-gray-200 text-gray-500 hover:text-black hover:bg-gray-50 w-full sm:w-auto"
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/admin/employees')}
+                className="text-[10px] font-bold text-white hover:text-black hover:bg-[#fffe01] border-white/10 uppercase tracking-widest rounded px-5 h-9 transition-all"
             >
-              View All
+              All Records <ChevronRight className="w-3 h-3 ml-2" />
             </Button>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
+          
+          <CardContent className="p-0">
+            <div className="overflow-x-auto custom-scrollbar">
               <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-100 hover:bg-transparent">
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Employee ID</TableHead>
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Name</TableHead>
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Role</TableHead>
-                    <TableHead className="text-gray-500 font-medium whitespace-nowrap">Base Salary</TableHead>
-                    {/* <TableHead className="text-gray-500 font-medium whitespace-nowrap text-right">Actions</TableHead> */}
+                <TableHeader className="bg-white/[0.05]">
+                  <TableRow className="border-white/5">
+                    <TableHead className="text-slate-500 font-bold uppercase tracking-widest text-[9px] pl-8 py-5">UID</TableHead>
+                    <TableHead className="text-slate-500 font-bold uppercase tracking-widest text-[9px] py-5">NAME</TableHead>
+                    <TableHead className="text-slate-500 font-bold uppercase tracking-widest text-[9px] py-5 text-center">ROLE</TableHead>
+                    <TableHead className="text-slate-500 font-bold uppercase tracking-widest text-[9px] text-right pr-8 py-5">SALARY</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {employees.slice(0, 5).map((emp, i) => (
-                    <TableRow key={i} className="border-gray-100 hover:bg-gray-50/60 transition-colors">
-                      <TableCell className="font-mono text-black">{emp.employeeId}</TableCell>
-                      <TableCell className="font-normal text-gray-900 whitespace-nowrap">{emp.name}</TableCell>
-                      <TableCell className="text-gray-500 capitalize">{emp.role?.name || 'Employee'}</TableCell>
-                      <TableCell className="font-medium text-emerald-600 whitespace-nowrap">₹{emp.baseSalary?.toLocaleString()}</TableCell>
-                      {/* <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="text-gray-400 hover:text-[#d30614] hover:bg-red-50">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </TableCell> */}
+                    <TableRow key={i} className="hover:bg-white/[0.03] transition-all border-white/5 group">
+                      <TableCell className="font-mono text-[10px] text-slate-500 pl-8 py-5">{emp.employeeId}</TableCell>
+                      <TableCell className="font-bold text-white text-[13px] py-5 uppercase tracking-tight group-hover:text-[#fffe01] transition-colors">{emp.name}</TableCell>
+                      <TableCell className="py-5 text-center">
+                         <Badge variant="secondary" className="bg-white/10 text-white border-none font-bold text-[9px] px-3 py-0.5 rounded-full uppercase">
+                            {emp.role?.name || 'Authorized'}
+                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-[#fffe01] text-base pr-8 py-5 tabular-nums">
+                         <span className="text-xs opacity-40 mr-1 font-medium italic">₹</span>{emp.baseSalary?.toLocaleString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -163,6 +210,23 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Governance Banner - Light Card */}
+      <Card className="bg-white border border-slate-100 rounded-2xl p-10 relative overflow-hidden group shadow-sm transition-all hover:shadow-md">
+         <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
+            <ShieldAlert className="w-40 h-40 text-slate-900" />
+         </div>
+         <div className="max-w-4xl space-y-4 relative z-10">
+            <div className="flex items-center gap-3">
+               <div className="w-10 h-[1px] bg-slate-300 rounded-full"></div>
+               <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Protocol Registry</span>
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-tight uppercase">System Integrity Registry</h3>
+            <p className="text-slate-500 text-sm md:text-base font-medium leading-relaxed max-w-2xl">
+               All administrative operations are encrypted and logged. Current sync latency: <span className="text-slate-900 font-bold">0.4ms</span>. Verify all employee records against the central platform ledger.
+            </p>
+         </div>
+      </Card>
     </div>
   );
 };

@@ -13,7 +13,8 @@ import {
   Loader2, 
   AlertCircle,
   History,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from "lucide-react";
 import axios from 'axios';
 import Loader from "@/components/ui/Loader";
@@ -21,6 +22,7 @@ import { format } from 'date-fns';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const LeaveRequest = () => {
   const [requests, setRequests] = useState([]);
@@ -32,6 +34,7 @@ const LeaveRequest = () => {
   const [leaveDate, setLeaveDate] = useState(new Date().toISOString().split('T')[0]);
   const [leaveType, setLeaveType] = useState('full');
   const [leaveReason, setLeaveReason] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, id: null });
 
   useEffect(() => {
     fetchMyRequests(1);
@@ -106,6 +109,31 @@ const LeaveRequest = () => {
     }
   };
 
+  const handleDeleteRequest = async (id) => {
+    setConfirmDelete({ isOpen: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { id } = confirmDelete;
+    try {
+      const token = sessionStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({
+        title: "Success",
+        description: "Leave application deleted successfully",
+      });
+      setConfirmDelete({ isOpen: false, id: null });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.response?.data?.msg || 'Failed to delete request',
+      });
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'approved':
@@ -126,33 +154,27 @@ const LeaveRequest = () => {
   };
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-700">
       <header className="space-y-1">
-        <div className="flex items-center gap-2 text-black font-medium mb-2">
-          <div className="w-8 h-8 rounded-lg bg-[#fffe01]/10 flex items-center justify-center">
-            <CalendarIcon className="w-4 h-4 text-black" />
-          </div>
-          <span className="text-xs tracking-widest uppercase">Professional Absence</span>
-        </div>
-        <h1 className="text-4xl font-medium tracking-tight text-gray-900">
+        <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-gray-900">
           Leave <span className="text-[#d30614]">Request Center</span>
         </h1>
-        <p className="text-gray-500 font-normal">Apply for planned leaves and track your formal requests.</p>
+        <p className="text-sm md:text-base text-gray-500 font-normal">Apply for planned leaves and track your formal requests.</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         {/* Leave Form */}
         <Card className="lg:col-span-5 border-0 shadow-lg rounded-2xl bg-black text-[#fffe01] overflow-hidden h-fit">
-          <CardHeader className="pb-4 border-b border-zinc-800">
+          <CardHeader className="p-6 md:p-8 pb-4 border-b border-zinc-800">
             <CardTitle className="text-xl font-medium flex items-center gap-2">
               <Send className="w-5 h-5 text-[#fffe01]" />
               New Application
             </CardTitle>
-            <CardDescription className="text-zinc-400 font-normal">Coordinate your time off with the administration.</CardDescription>
+            <CardDescription className="text-zinc-400 font-normal text-xs md:text-sm">Coordinate your time off with the administration.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-8 px-8 pb-8">
+          <CardContent className="pt-6 md:pt-8 px-6 md:px-8 pb-8">
             <form onSubmit={handleApplyLeave} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-medium uppercase tracking-widest ml-1 text-zinc-400">Leave Date</Label>
                   <Input 
@@ -192,7 +214,7 @@ const LeaveRequest = () => {
               <Button
                 type="submit"
                 disabled={formLoading}
-                className="w-full h-16 bg-[#fffe01] hover:bg-indigo-600 text-black font-medium text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95"
+                className="w-full h-16 bg-[#fffe01] hover:bg-black hover:text-[#fffe01] text-black font-medium text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95"
               >
                 {formLoading ? <Loader size="sm" color="white" /> : 'Apply for Leave'}
               </Button>
@@ -202,13 +224,13 @@ const LeaveRequest = () => {
 
         {/* Request History */}
         <Card className="lg:col-span-7 border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden">
-          <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/30 flex flex-row items-center justify-between">
+          <CardHeader className="p-6 md:p-8 pb-4 border-b border-gray-100 bg-gray-50/30 flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-lg font-medium flex items-center gap-2 text-gray-900">
                 <History className="w-5 h-5 text-black" />
                 Application History
               </CardTitle>
-              <CardDescription className="font-normal">Recent status updates and logs.</CardDescription>
+              <CardDescription className="font-normal text-xs md:text-sm">Recent status updates and logs.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -217,54 +239,66 @@ const LeaveRequest = () => {
                 <Loader size="md" color="red" />
               </div>
             ) : requests.length === 0 ? (
-              <div className="p-20 text-center space-y-4">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <AlertCircle className="w-10 h-10 text-gray-300" />
+              <div className="p-12 md:p-20 text-center space-y-4">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <AlertCircle className="w-8 h-8 md:w-10 md:h-10 text-gray-300" />
                 </div>
-                <h4 className="text-gray-900 font-medium uppercase text-xs tracking-widest">No Applications Found</h4>
-                <p className="text-gray-400 text-sm font-normal">Your leave history will appear here once you submit a request.</p>
+                <h4 className="text-gray-900 font-medium uppercase text-[10px] md:text-xs tracking-widest">No Applications Found</h4>
+                <p className="text-gray-400 text-xs md:text-sm font-normal">Your leave history will appear here once you submit a request.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {requests.map((request) => (
-                  <div key={request._id} className="p-8 hover:bg-gray-50/60 transition-colors group relative">
-                    <div className="flex justify-between items-start mb-6">
+                  <div key={request._id} className="p-6 md:p-8 hover:bg-gray-50/60 transition-colors group relative">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                       <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${request.type === 'leave' ? 'bg-[#fffe01]/10 text-black' : 'bg-gray-50 text-gray-600'}`}>
-                           {request.type === 'leave' ? <CalendarIcon className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
+                        <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0 ${request.type === 'leave' ? 'bg-[#fffe01]/10 text-black' : 'bg-gray-50 text-gray-600'}`}>
+                           {request.type === 'leave' ? <CalendarIcon className="w-5 h-5 md:w-6 md:h-6" /> : <Clock className="w-5 h-5 md:w-6 md:h-6" />}
                         </div>
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                             <span className="text-base font-medium text-gray-900">
+                          <div className="flex flex-wrap items-center gap-2">
+                             <span className="text-sm md:text-base font-medium text-gray-900">
                                {request.date ? format(new Date(request.date), 'MMMM dd, yyyy') : format(new Date(request.appliedOn), 'MMMM dd, yyyy')}
                              </span>
                              {getStatusBadge(request.status)}
-                             {request.status !== 'pending' && request.verifyByAdminUserId?.name && (
-                               <span className="text-[10px] font-normal text-gray-400">
-                                 Verified by {request.verifyByAdminUserId.name}
-                               </span>
-                             )}
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] font-medium text-gray-400 uppercase tracking-widest">
+                          <div className="flex flex-wrap items-center gap-2 text-[9px] md:text-[10px] font-medium text-gray-400 uppercase tracking-widest">
                             {getTypeBadge(request.type)}
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>{request.type === 'leave' ? `${request.duration} Day(s) Application` : request.totalPermissionTime || 'Permission'}</span>
                           </div>
                         </div>
                       </div>
-                      {request.isApproved && (
-                        <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
-                           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      
+                      {request.status !== 'pending' && request.verifyByAdminUserId?.name && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
+                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                           <span className="text-[10px] font-normal text-gray-500">
+                             Verified by {request.verifyByAdminUserId.name}
+                           </span>
+                        </div>
+                      )}
+                      
+                      {request.status !== 'approved' && (
+                        <div className="flex items-center gap-2">
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             onClick={() => handleDeleteRequest(request._id)}
+                             className="h-9 w-9 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                           >
+                             <Trash2 className="w-4 h-4" />
+                           </Button>
                         </div>
                       )}
                     </div>
                     
-                    <div className="ml-[4.5rem] bg-gray-50 border border-gray-100 p-5 rounded-2xl shadow-sm text-gray-600 text-sm leading-relaxed">
+                    <div className="ml-0 sm:ml-[4.5rem] bg-gray-50 border border-gray-100 p-4 md:p-5 rounded-2xl shadow-sm text-gray-600 text-xs md:text-sm leading-relaxed italic">
                       "{request.reason}"
                     </div>
 
                     {request.status === 'rejected' && request.rejectedReason && (
-                      <div className="ml-[4.5rem] mt-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-xs text-rose-600 font-normal flex items-start gap-3">
+                      <div className="ml-0 sm:ml-[4.5rem] mt-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-xs text-rose-600 font-normal flex items-start gap-3">
                         <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                         <div>
                           <span className="uppercase text-[9px] block mb-1 opacity-70 tracking-tighter">
@@ -287,9 +321,16 @@ const LeaveRequest = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog 
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, id: null })}
+        onConfirm={confirmDeleteAction}
+        title="Cancel Leave Application"
+        description="Are you sure you want to retract this leave request? This action will remove the application from the registry."
+      />
     </div>
   );
 };
 
 export default LeaveRequest;
-

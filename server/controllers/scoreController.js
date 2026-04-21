@@ -56,11 +56,39 @@ exports.getMyWeeklyScore = async (req, res) => {
     
     // Performance assessment
     const getPerformanceMessage = (score) => {
-      if (score >= 90) return { title: "Excellent", msg: "Eligible for recognition or incentives", color: "text-emerald-600" };
-      if (score >= 80) return { title: "Good", msg: "Maintain performance", color: "text-blue-600" };
-      if (score >= 70) return { title: "Acceptable", msg: "Minor improvement recommended", color: "text-amber-600" };
-      if (score >= 60) return { title: "Below Expectation", msg: "Improvement plan", color: "text-orange-600" };
-      return { title: "Poor Performance", msg: "HR meeting and corrective action", color: "text-rose-600" };
+      if (score >= 90) return { title: "Excellent", msg: "Eligible for recognition or incentives", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" };
+      if (score >= 80) return { title: "Good", msg: "Maintain performance", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" };
+      if (score >= 70) return { title: "Acceptable", msg: "Minor improvement recommended", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" };
+      if (score >= 60) return { title: "Below Expectation", msg: "Improvement plan", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" };
+      return { title: "Poor Performance", msg: "HR meeting and corrective action", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" };
+    };
+
+    const evaluatedScores = scores.map(s => ({
+      ...s.toObject(),
+      assessment: getPerformanceMessage(s.totalCredits)
+    }));
+
+    res.json(evaluatedScores);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
+// @desc    Get historical scores for an employee (Employee/Admin)
+// @route   GET /api/scores/history
+exports.getMyScoreHistory = async (req, res) => {
+  try {
+    const scores = await Score.find({ user: req.user.id })
+      .populate('team', 'name description')
+      .sort({ weekStartDate: -1 });
+    
+    const getPerformanceMessage = (score) => {
+      if (score >= 90) return { title: "Excellent", msg: "Eligible for recognition or incentives", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" };
+      if (score >= 80) return { title: "Good", msg: "Maintain performance", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" };
+      if (score >= 70) return { title: "Acceptable", msg: "Minor improvement recommended", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" };
+      if (score >= 60) return { title: "Below Expectation", msg: "Improvement plan", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" };
+      return { title: "Poor Performance", msg: "HR meeting and corrective action", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" };
     };
 
     const evaluatedScores = scores.map(s => ({

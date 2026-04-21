@@ -101,48 +101,47 @@ const CalendarView = () => {
         key={day.toString()} 
         onClick={() => setSelectedDate(day)}
         className={cn(
-          "h-32 border-b border-r border-gray-100 p-2 transition-all hover:bg-gray-50 cursor-pointer relative group",
+          "min-h-[80px] lg:h-32 border-b border-r border-gray-100 p-1.5 lg:p-2 transition-all hover:bg-gray-50 cursor-pointer relative group",
           bgColor,
-          isSameDay(selectedDate, day) && "ring-2 ring-inset ring-black bg-[#fffe01]/5"
+          isSameDay(selectedDate, day) && "ring-2 ring-inset ring-black bg-[#fffe01]/5 z-10"
         )}
       >
         <div className="flex justify-between items-start">
           <span className={cn(
-            "w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium",
+            "w-5 h-5 lg:w-7 lg:h-7 flex items-center justify-center rounded-full text-[10px] lg:text-xs font-bold",
             isToday ? "bg-black text-[#fffe01] shadow-lg" : textColor
           )}>
             {format(day, 'd')}
           </span>
-          {badge}
+          <div className="hidden lg:block">{badge}</div>
+          <div className="lg:hidden">
+             {dayData && <div className={cn("w-1.5 h-1.5 rounded-full", 
+               dayData.type === 'holiday' ? 'bg-black' : 
+               dayData.type === 'leave' ? 'bg-rose-400' : 
+               dayData.details?.status === 'late' ? 'bg-amber-400' : 'bg-emerald-400'
+             )} />}
+          </div>
         </div>
 
         {dayData?.details?.checkIn && (
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-1 text-[9px] font-normal text-gray-500">
+          <div className="mt-1 lg:mt-2 space-y-0.5 lg:space-y-1 overflow-hidden">
+            <div className="hidden lg:flex items-center gap-1 text-[9px] font-normal text-gray-500">
                <Clock className="w-2.5 h-2.5 text-emerald-500" />
-               {dayData.details.checkIn} - {dayData.details.checkOut || '--:--'}
+               <span className="truncate">{dayData.details.checkIn} - {dayData.details.checkOut || '--:--'}</span>
             </div>
             {dayData.details.status === 'late' && (
-              <div className="text-[8px] font-medium text-rose-500 uppercase tracking-tighter">
-                Late{dayData.details.permissionMinutes > 0 ? `: ${Math.ceil(dayData.details.permissionMinutes)}m` : ''}
+              <div className="text-[7px] lg:text-[8px] font-black text-rose-500 uppercase tracking-tighter truncate">
+                LATE
               </div>
             )}
-            {dayData.details.lateReason && (
-              <div className="text-[7px] text-gray-400 font-normal truncate uppercase tracking-widest mt-0.5" title={dayData.details.lateReason}>
-                {dayData.details.lateReason}
-              </div>
-            )}
-            {dayData.details.lunchOut && (
-              <div className="flex items-center gap-1 text-[9px] font-normal text-gray-400">
-                 <Coffee className="w-2.5 h-2.5 text-amber-400" />
-                 Break Logged
-              </div>
-            )}
+            <div className="lg:hidden flex justify-center mt-1">
+               <Clock className="w-3 h-3 text-emerald-500/50" />
+            </div>
           </div>
         )}
 
         {dayData?.status && !badge && !dayData?.details?.checkIn && (
-          <p className="mt-1 text-[8px] font-medium text-gray-400 uppercase tracking-tighter truncate opacity-70 group-hover:opacity-100 transition-opacity">
+          <p className="mt-1 text-[7px] lg:text-[8px] font-medium text-gray-400 uppercase tracking-tighter truncate opacity-70 lg:block hidden">
             {dayData.status}
           </p>
         )}
@@ -154,24 +153,24 @@ const CalendarView = () => {
 
   return (
     <Card className="border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden">
-      <CardHeader className="p-10 border-b border-gray-100 bg-gray-50/30 flex flex-row items-center justify-between">
+      <CardHeader className="p-6 lg:p-10 border-b border-gray-100 bg-gray-50/30 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <CardTitle className="text-2xl font-medium flex items-center gap-3">
-            <CalendarIcon className="w-7 h-7 text-black" />
+          <CardTitle className="text-xl lg:text-2xl font-bold flex items-center gap-3">
+            <CalendarIcon className="w-6 h-6 lg:w-7 lg:h-7 text-black" />
             Attendance Timeline
           </CardTitle>
-          <p className="text-gray-500 font-normal text-xs">Comprehensive monthly protocol overview</p>
+          <p className="text-gray-500 font-medium text-[10px] lg:text-xs uppercase tracking-widest">Monthly Protocol Overview</p>
         </div>
         
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm">
-          <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-full hover:bg-gray-100">
-            <ChevronLeft className="w-5 h-5 text-black" />
+        <div className="flex items-center justify-between md:justify-end gap-4 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm w-full md:w-auto">
+          <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8 lg:h-10 lg:w-10 rounded-full hover:bg-gray-100">
+            <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5 text-black" />
           </Button>
-          <span className="text-base font-medium text-gray-900 min-w-32 text-center uppercase tracking-tight">
+          <span className="text-sm lg:text-base font-bold text-gray-900 min-w-32 text-center uppercase tracking-tight">
             {format(currentDate, 'MMMM yyyy')}
           </span>
-          <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-full hover:bg-gray-100">
-            <ChevronRight className="w-5 h-5 text-black" />
+          <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8 lg:h-10 lg:w-10 rounded-full hover:bg-gray-100">
+            <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5 text-black" />
           </Button>
         </div>
       </CardHeader>
@@ -179,9 +178,10 @@ const CalendarView = () => {
       <CardContent className="p-0 flex flex-col lg:flex-row">
         <div className="flex-1 w-full border-r border-gray-100">
           <div className="grid grid-cols-7 bg-gray-50/50 border-b border-gray-100">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="py-4 text-center text-[10px] font-medium text-gray-400 uppercase tracking-[0.2em] border-r border-gray-100 last:border-0 border-t border-gray-100 lg:border-t-0 opacity-80">
-                {day}
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+              <div key={i} className="py-3 lg:py-4 text-center text-[9px] lg:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-r border-gray-100 last:border-0 opacity-80">
+                <span className="hidden lg:inline">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}</span>
+                <span className="lg:hidden">{day}</span>
               </div>
             ))}
           </div>

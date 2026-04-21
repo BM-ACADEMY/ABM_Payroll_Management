@@ -1,7 +1,7 @@
 import { 
   X, ChevronDown, MoreHorizontal, Plus, Tag, CheckSquare, 
-  Paperclip, Layout, Bold, Italic, Link, MessageSquare,
-  Check, Trash2, Edit2, Send, List, Bell, Calendar, Clock,
+  Paperclip, Layout, MessageSquare, 
+  Check, Trash2, Edit2, Send, Bell, Calendar, Clock, 
   TrendingUp, Copy
 } from 'lucide-react';
 import { memo, useState, useEffect, useRef } from 'react';
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import SubTaskItem from './SubTaskItem';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import Loader from '@/components/ui/Loader';
+import { cn } from "@/lib/utils";
 
 const TaskDetailsModal = ({ 
   isOpen, 
@@ -40,17 +41,18 @@ const TaskDetailsModal = ({
   currentBoardId
 }) => {
   const { toast } = useToast();
+  const { task, comments, history, subTasks: initialSubTasks = [] } = taskDetails || {};
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
   const [isEditingDesc, setIsEditingDesc] = useState(false);
-  const [tempDesc, setTempDesc] = useState(taskDetails?.task?.description || '');
-  
+  const [tempDesc, setTempDesc] = useState(task?.description || '');
+
   // Mentions State
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionTriggerPos, setMentionTriggerPos] = useState(null);
   const [activeInput, setActiveInput] = useState(null); // 'desc' or 'comment' or 'editComment'
-  
+
   const [isMemberPickerOpen, setIsMemberPickerOpen] = useState(false);
   const [isLabelPickerOpen, setIsLabelPickerOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -64,6 +66,7 @@ const TaskDetailsModal = ({
   const [isNewItemDatePickerOpen, setIsNewItemDatePickerOpen] = useState(false);
   const [showActivityDetails, setShowActivityDetails] = useState(true);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isAddingSubTask, setIsAddingSubTask] = useState(false);
   const moreMenuRef = useRef(null);
 
   // Copy Flow State
@@ -111,7 +114,6 @@ const TaskDetailsModal = ({
         if (!isClickOnToggle) setIsMoreMenuOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMemberPickerOpen, isLabelPickerOpen, isDatePickerOpen, isChecklistPickerOpen, isMoreMenuOpen]);
@@ -172,7 +174,6 @@ const TaskDetailsModal = ({
     else if (type === 'desc') setTempDesc(text);
     else if (type === 'editComment') setEditCommentText(text);
 
-    const lastChar = text[text.length - 1];
     const words = text.split(/\s/);
     const lastWord = words[words.length - 1];
 
@@ -315,63 +316,16 @@ const TaskDetailsModal = ({
     }
   };
 
-  const Toolbar = ({ targetText, setTargetText, onSave, onCancel, showActions = true, textareaRef }) => {
-    const handleFormat = (openTag, closeTag, placeholder) => {
-      if (!textareaRef?.current) {
-        setTargetText(targetText + (openTag.includes('\n') ? openTag : openTag + placeholder + closeTag));
-        return;
-      }
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selected = targetText.substring(start, end);
-      const before = targetText.substring(0, start);
-      const after = targetText.substring(end);
-
-      let content = selected || placeholder;
-      let newText;
-
-      // Special handling for lists (starts with - or 1.) and multi-line selection
-      const isList = openTag.trim().startsWith('-') || openTag.trim().startsWith('1.');
-      
-      if (isList && selected.includes('\n')) {
-        const marker = openTag.trim() + ' ';
-        const lines = selected.split('\n');
-        const formattedLines = lines.map(line => {
-          if (!line.trim()) return line;
-          if (line.trim().startsWith(marker.trim())) return line; // Avoid double marking
-          return marker + line;
-        });
-        content = formattedLines.join('\n');
-        newText = before + content + after;
-      } else {
-        newText = before + openTag + content + closeTag + after;
-      }
-      
-      setTargetText(newText);
-      
-      // Need to wait for React to re-render before setting selection
-      setTimeout(() => {
-        textarea.focus();
-        const cursorPosition = start + (isList && selected.includes('\n') ? content.length : openTag.length + content.length + closeTag.length);
-        textarea.setSelectionRange(cursorPosition, cursorPosition);
-      }, 0);
-    };
-
+  const Toolbar = ({ onSave, onCancel, showActions = true }) => {
     return (
-      <div className="flex items-center justify-between bg-zinc-50 border border-zinc-200 rounded-t-lg px-2 py-1.5 border-b-0">
-         <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded hover:bg-white text-zinc-500" onClick={() => handleFormat('**', '**', 'bold')}><Bold className="w-3.5 h-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded hover:bg-white text-zinc-500" onClick={() => handleFormat('_', '_', 'italic')}><Italic className="w-3.5 h-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded hover:bg-white text-zinc-500" onClick={() => handleFormat('\n- ', '', 'list item')}><List className="w-3.5 h-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded hover:bg-white text-zinc-500" onClick={() => handleFormat('[', '](url)', 'text')}><Link className="w-3.5 h-3.5" /></Button>
+      <div className={cn(
+        "flex items-center justify-end bg-zinc-50 border border-zinc-200 rounded-t-lg px-2 py-1.5 border-b-0 transition-opacity duration-200",
+        showActions ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}>
+         <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 px-2 text-[11px] font-black text-zinc-500 hover:text-red-600 transition-colors uppercase tracking-tight">Cancel</Button>
+            <Button onClick={onSave} className="h-7 px-3 text-[11px] font-black bg-black text-[#fffe01] rounded uppercase tracking-tight shadow-sm hover:scale-105 transition-transform">Save</Button>
          </div>
-         {showActions && (
-           <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 px-2 text-[11px] font-black text-zinc-500 hover:text-red-600 transition-colors uppercase tracking-tight">Cancel</Button>
-              <Button onClick={onSave} className="h-7 px-3 text-[11px] font-black bg-black text-[#fffe01] rounded uppercase tracking-tight shadow-sm hover:scale-105 transition-transform">Save</Button>
-           </div>
-         )}
       </div>
     );
   };
@@ -383,7 +337,6 @@ const TaskDetailsModal = ({
       m.email.toLowerCase().includes(mentionSearch.toLowerCase())
     );
     if (filtered.length === 0) return null;
-
     return (
       <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-zinc-200 rounded-xl shadow-2xl z-[100] p-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
          <div className="px-2 py-1.5 mb-1 border-b border-zinc-100">
@@ -391,9 +344,9 @@ const TaskDetailsModal = ({
          </div>
          <div className="max-h-48 overflow-y-auto custom-scrollbar">
             {filtered.map(m => (
-               <div 
-                 key={m._id} 
-                 onClick={() => insertMention(m)}
+               <div
+                  key={m._id}
+                  onClick={() => insertMention(m)}
                  className="flex items-center gap-3 p-2 hover:bg-zinc-100 rounded-lg cursor-pointer group/mention transition-all"
                >
                   <div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-black shadow-sm group-hover/mention:scale-110 transition-transform">
@@ -410,9 +363,7 @@ const TaskDetailsModal = ({
     );
   };
 
-  if (!taskDetails) return null;
-
-  const { task, comments, history } = taskDetails;
+  if (!isOpen || !taskDetails || !task) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -531,10 +482,6 @@ const TaskDetailsModal = ({
                                  key={d._id} 
                                  onClick={() => {
                                    if (copyTargetType === 'upcoming') {
-                                     // For upcoming, we need a list. Fetch board details first?
-                                     // Actually, just copy to the first list of that board for simplicity, or we'd need a Step 3.
-                                     // Let's assume Step 3 is needed for Upcoming to select a list too? 
-                                     // Or just choose the first list.
                                      handleCopyTask('upcoming', d._id, d.lists?.[0] || 'auto'); 
                                    } else {
                                      handleCopyTask(copyTargetType.type, copyTargetType.boardId, d._id);
@@ -568,279 +515,310 @@ const TaskDetailsModal = ({
           <div className="flex flex-col md:flex-row h-full">
             {/* Left Column */}
             <div className="flex-1 p-10 space-y-12 overflow-y-auto custom-scrollbar">
-              <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={() => handleUpdateTask(task._id, { isCompleted: !task.isCompleted })}
-                      className={`w-7 h-7 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${task.isCompleted ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm' : 'border-zinc-300 hover:border-zinc-400 bg-white'}`}
-                    >
-                      {task.isCompleted && <Check className="w-4 h-4" />}
-                    </button>
-                    <DialogHeader className="p-0 space-y-0 text-left flex-1">
-                      {isEditingTitle ? (
-                        <Input 
-                          autoFocus
-                          className="text-[28px] font-bold text-zinc-900 tracking-tight leading-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent"
-                          value={editTitleValue}
-                          onChange={(e) => setEditTitleValue(e.target.value)}
-                          onBlur={handleTitleSave}
-                          onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
-                        />
-                      ) : (
-                        <DialogTitle 
-                          onDoubleClick={() => setIsEditingTitle(true)}
-                          className={`text-[28px] font-bold text-zinc-900 tracking-tight leading-tight transition-all cursor-text ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}
-                        >
-                          {task.title}
-                        </DialogTitle>
-                      )}
-                      <DialogDescription className="sr-only">
-                        Task details and management for {task.title}
-                      </DialogDescription>
-                    </DialogHeader>
-                  </div>
-                  
-                  {task.originTaskId && (
-                    <div className="flex items-center gap-2 pl-12">
-                       <Badge variant="outline" className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[10px] font-bold py-0 h-5">
-                          COPIED FROM PROJECT
-                       </Badge>
-                       <span className="text-[11px] text-zinc-400 font-medium italic">Track progress across boards</span>
-                    </div>
-                  )}
-                 
-                 <div className="flex items-center gap-2 pl-10">
-                   <Button 
-                    variant="outline" 
-                    data-member-toggle
-                    onClick={() => { setIsMemberPickerOpen(!isMemberPickerOpen); setIsLabelPickerOpen(false); setIsChecklistPickerOpen(false); setIsDatePickerOpen(false); }}
-                    className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => handleUpdateTask(task._id, { isCompleted: !task.isCompleted })}
+                    className={`w-7 h-7 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${task.isCompleted ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm' : 'border-zinc-300 hover:border-zinc-400 bg-white'}`}
                   >
-                     <Plus className="w-4 h-4 text-zinc-500" /> Add
-                  </Button>
+                    {task.isCompleted && <Check className="w-4 h-4" />}
+                  </button>
+                  <DialogHeader className="p-0 space-y-0 text-left flex-1">
+                    {isEditingTitle ? (
+                      <Input 
+                        autoFocus
+                        className="text-[28px] font-bold text-zinc-900 tracking-tight leading-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent"
+                        value={editTitleValue}
+                        onChange={(e) => setEditTitleValue(e.target.value)}
+                        onBlur={handleTitleSave}
+                        onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                      />
+                    ) : (
+                      <DialogTitle 
+                        onDoubleClick={() => setIsEditingTitle(true)}
+                        className={`text-[28px] font-bold text-zinc-900 tracking-tight leading-tight transition-all cursor-text ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}
+                      >
+                        {task.title}
+                      </DialogTitle>
+                    )}
+                    <DialogDescription className="sr-only">
+                      Task details and management for {task.title}
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
+                
+                {task.originTaskId && (
+                  <div className="flex items-center gap-2 pl-12">
+                     <Badge variant="outline" className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[10px] font-bold py-0 h-5">
+                        COPIED FROM PROJECT
+                     </Badge>
+                     <span className="text-[11px] text-zinc-400 font-medium italic">Track progress across boards</span>
+                  </div>
+                )}
+               
+               <div className="flex items-center gap-2 pl-10">
+                 <Button 
+                  variant="outline" 
+                  data-member-toggle
+                  onClick={() => { setIsMemberPickerOpen(!isMemberPickerOpen); setIsLabelPickerOpen(false); setIsChecklistPickerOpen(false); setIsDatePickerOpen(false); }}
+                  className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
+                >
+                   <Plus className="w-4 h-4 text-zinc-500" /> Add
+                </Button>
+                <Button 
+                  variant="outline" 
+                  data-label-toggle
+                  onClick={() => { setIsLabelPickerOpen(!isLabelPickerOpen); setIsChecklistPickerOpen(false); setIsDatePickerOpen(false); setIsMemberPickerOpen(false); }} 
+                  className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
+                >
+                   <Tag className="w-4 h-4 text-zinc-500" /> Labels
+                </Button>
+                
+                <div className="relative">
                   <Button 
                     variant="outline" 
-                    data-label-toggle
-                    onClick={() => { setIsLabelPickerOpen(!isLabelPickerOpen); setIsChecklistPickerOpen(false); setIsDatePickerOpen(false); setIsMemberPickerOpen(false); }} 
+                    data-checklist-toggle
+                    onClick={() => { setIsChecklistPickerOpen(!isChecklistPickerOpen); setIsLabelPickerOpen(false); setIsDatePickerOpen(false); setIsMemberPickerOpen(false); }} 
                     className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
                   >
-                     <Tag className="w-4 h-4 text-zinc-500" /> Labels
+                     <CheckSquare className="w-4 h-4 text-zinc-500" /> Checklist
                   </Button>
-                  
-                  <div className="relative">
-                    <Button 
-                      variant="outline" 
-                      data-checklist-toggle
-                      onClick={() => { setIsChecklistPickerOpen(!isChecklistPickerOpen); setIsLabelPickerOpen(false); setIsDatePickerOpen(false); setIsMemberPickerOpen(false); }} 
-                      className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
-                    >
-                       <CheckSquare className="w-4 h-4 text-zinc-500" /> Checklist
-                    </Button>
-                    {isChecklistPickerOpen && (
-                       <div ref={checklistPickerRef} className="absolute top-10 left-0 w-64 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
-                          <h5 className="text-[14px] font-bold text-zinc-700 pb-2 border-b border-zinc-100">Add Checklist</h5>
-                          <div className="space-y-2">
-                             <Label className="text-xs font-bold text-zinc-500">Title</Label>
-                             <Input 
-                               autoFocus
-                               value={newChecklistTitle} 
-                               onChange={e=>setNewChecklistTitle(e.target.value)}
-                               className="h-9 rounded-md border-zinc-300" 
-                             />
-                          </div>
-                          <Button 
-                            onClick={() => { handleAddChecklist(task._id, newChecklistTitle); setIsChecklistPickerOpen(false); }}
-                            className="w-full bg-[#0052cc] hover:bg-[#0747a6] text-white font-bold h-9 rounded-md"
-                          >
-                             Add
-                          </Button>
-                       </div>
-                    )}
-                  </div>
-
-                  <div className="relative">
-                     <input 
-                       type="file" 
-                       id="attachment-upload" 
-                       className="hidden" 
-                       onChange={async (e) => { 
-                           const file = e.target.files?.[0];
-                           if(!file) return;
-                           
-                           try {
-                             const formData = new FormData();
-                             formData.append('file', file);
-                             
-                             const token = sessionStorage.getItem('token');
-                             const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/upload`, formData, {
-                               headers: { 
-                                 'Content-Type': 'multipart/form-data',
-                                 'x-auth-token': token 
-                               }
-                             });
-                             
-                             const newAttachment = { 
-                               name: res.data.name, 
-                               url: res.data.url, 
-                               fileType: res.data.fileType, 
-                               createdAt: new Date().toISOString() 
-                             };
-                             handleUpdateTask(task._id, { attachments: [...(task.attachments || []), newAttachment] });
-                             toast({ title: "Success", description: "File uploaded successfully" });
-                           } catch (err) {
-                             console.error('Upload Error:', err);
-                             toast({ variant: "destructive", title: "Error", description: "Failed to upload file" });
-                           }
-                        }} 
-                     />
-                  </div>
-                 </div>
-              </div>
-
-              <div className="flex flex-wrap items-start gap-8 pl-10 mb-8">
-                {/* Members */}
-                <div className="space-y-2">
-                   <h4 className="text-[12px] font-bold text-zinc-500">Members</h4>
-                   <div className="flex flex-wrap gap-2 items-center">
-                      {task.assignees?.map(a => (
-                        <div key={a._id} className="w-8 h-8 rounded-full bg-[#0052cc] text-white flex items-center justify-center text-[11px] font-bold shadow-sm border-2 border-white ring-1 ring-zinc-300" title={a.name}>
-                           {a.name.split(' ').map(n=>n[0]).join('')}
+                  {isChecklistPickerOpen && (
+                     <div ref={checklistPickerRef} className="absolute top-10 left-0 w-64 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
+                        <h5 className="text-[14px] font-bold text-zinc-700 pb-2 border-b border-zinc-100">Add Checklist</h5>
+                        <div className="space-y-2">
+                           <Label className="text-xs font-bold text-zinc-500">Title</Label>
+                           <Input 
+                             autoFocus
+                             value={newChecklistTitle} 
+                             onChange={e=>setNewChecklistTitle(e.target.value)}
+                             className="h-9 rounded-md border-zinc-300" 
+                           />
                         </div>
-                      ))}
-                       <div className="relative">
-                          <div data-member-toggle onClick={() => setIsMemberPickerOpen(!isMemberPickerOpen)} className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-600 hover:bg-zinc-200 cursor-pointer border border-zinc-200 transition-all shadow-sm"><Plus className="w-4 h-4" /></div>
-                         {isMemberPickerOpen && (
-                            <div ref={memberPickerRef} className="absolute top-10 left-0 w-[304px] bg-white border border-zinc-200 rounded-lg shadow-[0_12px_24px_rgba(0,0,0,0.15)] z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                               <div className="flex items-center justify-between mb-2">
-                                  <span className="text-[14px] font-bold text-zinc-700 w-full text-center">Members</span>
-                                  <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black absolute right-4" onClick={()=>setIsMemberPickerOpen(false)} />
-                               </div>
-                               <Input placeholder="Search members" className="h-9 text-sm rounded-sm border-zinc-300" />
-                               <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-                                  {task.assignees?.length > 0 && (
-                                     <div className="space-y-2">
-                                        <h5 className="text-[12px] font-bold text-zinc-500 uppercase tracking-tight">Card members</h5>
-                                        {task.assignees.map(m => (
-                                           <div key={m._id} className="flex items-center justify-between p-1 group">
-                                              <div className="flex items-center gap-3">
-                                                 <div className="w-8 h-8 rounded-full bg-[#0052cc] text-white flex items-center justify-center text-[10px] font-bold">{m.name.split(' ').map(n=>n[0]).join('')}</div>
-                                                 <span className="text-[13px] font-medium text-zinc-800">{m.name}</span>
+                        <Button 
+                          onClick={() => { handleAddChecklist(task._id, newChecklistTitle); setIsChecklistPickerOpen(false); }}
+                          className="w-full bg-[#0052cc] hover:bg-[#0747a6] text-white font-bold h-9 rounded-md"
+                        >
+                           Add
+                        </Button>
+                     </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                   <input 
+                     type="file" 
+                     id="attachment-upload" 
+                     className="hidden" 
+                     onChange={async (e) => { 
+                         const file = e.target.files?.[0];
+                         if(!file) return;
+                         
+                         try {
+                           const formData = new FormData();
+                           formData.append('file', file);
+                           
+                           const token = sessionStorage.getItem('token');
+                           const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/upload`, formData, {
+                             headers: { 
+                               'Content-Type': 'multipart/form-data',
+                               'x-auth-token': token 
+                             }
+                           });
+                           
+                           const newAttachment = { 
+                             name: res.data.name, 
+                             url: res.data.url, 
+                             fileType: res.data.fileType, 
+                             createdAt: new Date().toISOString() 
+                           };
+                           handleUpdateTask(task._id, { attachments: [...(task.attachments || []), newAttachment] });
+                           toast({ title: "Success", description: "File uploaded successfully" });
+                         } catch (err) {
+                           console.error('Upload Error:', err);
+                           toast({ variant: "destructive", title: "Error", description: "Failed to upload file" });
+                         }
+                      }} 
+                   />
+                </div>
+               </div>
+
+
+                {/* Meta Properties Row */}
+                <div className="flex flex-wrap items-start gap-12 pl-10 mb-2">
+                  {/* Members */}
+                  <div className="space-y-3">
+                     <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Members</h4>
+                     <div className="flex flex-wrap gap-2 items-center">
+                        {task.assignees?.map(a => (
+                          <div key={a._id} className="w-8 h-8 rounded-full bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-black shadow-sm border-2 border-white ring-1 ring-zinc-100 transition-transform hover:scale-110 cursor-default" title={a.name}>
+                             {a.name.split(' ').map(n=>n[0]).join('')}
+                          </div>
+                        ))}
+                        <div className="relative">
+                            <button 
+                              data-member-toggle 
+                              onClick={() => setIsMemberPickerOpen(!isMemberPickerOpen)} 
+                              className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-black hover:border-black transition-all shadow-sm"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                            {isMemberPickerOpen && (
+                               <div ref={memberPickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                                  <div className="flex items-center justify-between">
+                                     <span className="text-xs font-black uppercase tracking-widest text-zinc-400">Manage Members</span>
+                                     <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsMemberPickerOpen(false)} />
+                                  </div>
+                                  <Input placeholder="Find members..." className="h-10 text-sm rounded-xl border-zinc-200" />
+                                  <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                     {task.assignees?.length > 0 && (
+                                        <div className="space-y-2">
+                                           <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">In this vector</h5>
+                                           {task.assignees.map(m => (
+                                              <div key={m._id} className="flex items-center justify-between p-1.5 hover:bg-zinc-50 rounded-xl transition-colors">
+                                                 <div className="flex items-center gap-3">
+                                                    <div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[9px] font-black">{m.name.split(' ').map(n=>n[0]).join('')}</div>
+                                                    <span className="text-[13px] font-bold text-zinc-800">{m.name}</span>
+                                                 </div>
+                                                 <X onClick={() => handleUpdateTask(task._id, { assignees: task.assignees.filter(a=>a._id !== m._id).map(a=>a._id) })} className="w-3.5 h-3.5 text-zinc-300 cursor-pointer hover:text-red-500 transition-colors" />
                                               </div>
-                                              <X onClick={() => handleUpdateTask(task._id, { assignees: task.assignees.filter(a=>a._id !== m._id).map(a=>a._id) })} className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" />
+                                           ))}
+                                        </div>
+                                     )}
+                                     <div className="space-y-2">
+                                        <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Available Nodes</h5>
+                                        {boardData.members.filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => (
+                                           <div 
+                                             key={m._id} 
+                                             onClick={() => handleUpdateTask(task._id, { assignees: [...(task.assignees?.map(a=>a._id) || []), m._id] })}
+                                             className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors"
+                                           >
+                                              <div className="w-7 h-7 rounded-lg bg-zinc-100 text-zinc-400 flex items-center justify-center text-[9px] font-black group-hover:bg-zinc-900 group-hover:text-[#fffe01]">{m.name.split(' ').map(n=>n[0]).join('')}</div>
+                                              <span className="text-[13px] font-bold text-zinc-800">{m.name}</span>
                                            </div>
                                         ))}
                                      </div>
-                                  )}
-                                  <div className="space-y-2">
-                                     <h5 className="text-[12px] font-bold text-zinc-500 uppercase tracking-tight">Board members</h5>
-                                     {boardData.members.filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => (
-                                        <div 
-                                          key={m._id} 
-                                          onClick={() => handleUpdateTask(task._id, { assignees: [...(task.assignees?.map(a=>a._id) || []), m._id] })}
-                                          className="flex items-center gap-3 p-1 hover:bg-zinc-100 rounded-md cursor-pointer group"
-                                        >
-                                           <div className="w-8 h-8 rounded-full bg-zinc-800 text-[#fffe01] flex items-center justify-center text-[10px] font-bold">{m.name.split(' ').map(n=>n[0]).join('')}</div>
-                                           <span className="text-[13px] font-medium text-zinc-800">{m.name}</span>
-                                        </div>
-                                     ))}
                                   </div>
                                </div>
-                            </div>
+                            )}
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Labels */}
+                  <div className="space-y-3">
+                     <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Labels</h4>
+                      <div className="flex flex-wrap gap-2 items-center">
+                         {task.labels?.map((l, i) => (
+                           <Badge key={i} style={{ backgroundColor: l.color }} className="text-white border-none rounded-lg h-8 px-4 text-[10px] font-black uppercase tracking-widest shadow-sm transition-transform hover:scale-105 cursor-default">{l.text}</Badge>
+                         ))}
+                          <div className="relative">
+                             <button 
+                               data-label-toggle 
+                               onClick={() => setIsLabelPickerOpen(!isLabelPickerOpen)} 
+                               className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-black hover:border-black transition-all shadow-sm"
+                             >
+                               <Plus className="w-4 h-4" />
+                             </button>
+                             {isLabelPickerOpen && (
+                                <div ref={labelPickerRef} className="absolute top-10 left-0 w-[240px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                                   <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 w-full text-center block">Classification</span>
+                                   <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                      {[ {t:'Done', c:'#51cc9e'}, {t:'Under QC', c:'#f1d643'}, {t:'Waiting for requirement', c:'#ff9f1a'}, {t:'Not yet started', c:'#f87171'}, {t:'On hold', c:'#c084fc'}, {t:'In process', c:'#60a5fa'} ].map((opt, i) => {
+                                         const isLabeled = task.labels?.some(l => l.text === opt.t);
+                                         return (
+                                            <div key={i} onClick={() => handleUpdateLabels({ text: opt.t, color: opt.c })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer group transition-colors">
+                                               <div className={`w-5 h-8 rounded-md transition-all ${isLabeled ? 'w-2' : ''}`} style={{ backgroundColor: opt.c }}></div>
+                                               <span className={cn("text-[11px] font-black uppercase tracking-tight transition-colors", isLabeled ? "text-zinc-900" : "text-zinc-500 group-hover:text-zinc-700")}>{opt.t}</span>
+                                            </div>
+                                         );
+                                      })}
+                                   </div>
+                                </div>
+                             )}
+                          </div>
+                      </div>
+                  </div>
+                </div>
+
+                {/* Unified Intelligence Section */}
+                <div className="pl-10 space-y-8">
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                     <div className="space-y-3">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-400">Tactical Priority</Label>
+                        <select 
+                          value={task.priority || 'Normal'}
+                          onChange={(e) => handleUpdateTask(task._id, { priority: e.target.value })}
+                          className="w-full h-10 bg-transparent border-b-2 border-zinc-100 hover:border-black text-[11px] font-black uppercase tracking-widest transition-all outline-none pb-1 appearance-none"
+                        >
+                          <option value="Low">Low Priority</option>
+                          <option value="Normal">Normal Node</option>
+                          <option value="High">High Vector</option>
+                          <option value="Urgent">Urgent Alert</option>
+                        </select>
+                     </div>
+
+                     <div className="space-y-3">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-400">Est. Quantum (H)</Label>
+                        <div className="relative group">
+                           <Input 
+                             type="number"
+                             placeholder="0.0"
+                             value={task.estimatedTime || ''}
+                             onChange={(e) => handleUpdateTask(task._id, { estimatedTime: e.target.value })}
+                             className="h-10 bg-transparent border-0 border-b-2 border-zinc-100 rounded-none px-0 text-xs font-black focus-visible:ring-0 focus:border-black transition-all"
+                           />
+                        </div>
+                     </div>
+
+                     <div className="space-y-3">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-400">Execution Flux (%)</Label>
+                        <div className="flex items-center gap-4">
+                           <span className="text-xs font-black text-zinc-900 w-8">{task.progress || 0}%</span>
+                           <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden relative">
+                              <div className="absolute inset-0 bg-black transition-all duration-700 ease-out shadow-[0_0_8px_rgba(0,0,0,0.1)]" style={{ width: `${task.progress || 0}%` }}></div>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="space-y-3 text-right">
+                        <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-400">Deployment Status</Label>
+                        <div className="flex justify-end">
+                           <button 
+                             onClick={() => handleUpdateTask(task._id, { isInSprint: !task.isInSprint })}
+                             className={cn(
+                               "h-9 px-4 rounded-xl flex items-center gap-3 transition-all font-black text-[9px] uppercase tracking-widest border-2",
+                               task.isInSprint 
+                                 ? "bg-black text-[#fffe01] border-black shadow-lg shadow-black/10" 
+                                 : "bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200"
+                             )}
+                           >
+                              {task.isInSprint ? 'Active Sprint' : 'In Backlog'}
+                              <Layout className={cn("w-3.5 h-3.5", task.isInSprint ? "text-[#fffe01]" : "text-zinc-200")} />
+                           </button>
+                        </div>
+                     </div>
+                   </div>
+
+                   <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                         <Label className="text-[10px] uppercase font-black tracking-widest text-zinc-400 flex items-center gap-2">
+                            Execution Blockers
+                            {task.blocker && <span className="flex h-1.5 w-1.5 rounded-full bg-red-500 animate-ping" />}
+                         </Label>
+                         {task.blocker && (
+                            <button onClick={() => handleUpdateTask(task._id, { blocker: '' })} className="text-[9px] font-black text-red-500 uppercase tracking-widest opacity-0 hover:opacity-100 transition-opacity">Clear Blocker</button>
                          )}
+                      </div>
+                      <div className="relative group/blocker">
+                        <Textarea 
+                          placeholder="Document any critical path obstructions..."
+                          value={task.blocker || ''}
+                          onChange={(e) => handleUpdateTask(task._id, { blocker: e.target.value })}
+                          className="min-h-[40px] bg-zinc-50/50 border-0 border-l-4 border-zinc-100 focus:border-red-500 rounded-none p-4 text-[13px] font-medium focus-visible:ring-0 transition-all resize-none italic text-zinc-600"
+                        />
                       </div>
                    </div>
                 </div>
-
-                {/* Labels */}
-                <div className="space-y-2">
-                   <h4 className="text-[12px] font-bold text-zinc-500">Labels</h4>
-                    <div className="flex flex-wrap gap-2 items-center">
-                       {task.labels?.map((l, i) => (
-                         <Badge key={i} style={{ backgroundColor: l.color }} className="text-white border-none rounded h-8 px-3 text-[12px] font-bold tracking-tight min-w-[40px] shadow-sm">{l.text}</Badge>
-                       ))}
-                        <div className="relative">
-                           <div data-label-toggle onClick={() => setIsLabelPickerOpen(!isLabelPickerOpen)} className="w-8 h-8 rounded bg-zinc-100 flex items-center justify-center text-zinc-600 hover:bg-zinc-200 cursor-pointer border border-zinc-200 transition-all font-bold shadow-sm"><Plus className="w-4 h-4" /></div>
-                          {isLabelPickerOpen && (
-                             <div ref={labelPickerRef} className="absolute top-10 left-0 w-[304px] bg-white border border-zinc-200 rounded-lg shadow-[0_12px_24px_rgba(0,0,0,0.15)] z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                                <span className="text-[14px] font-bold text-zinc-700 w-full text-center inline-block mb-2">Labels</span>
-                                <Input placeholder="Search labels..." className="h-9 text-sm rounded-sm border-zinc-300" />
-                                <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
-                                   {[ {t:'Done', c:'#51cc9e'}, {t:'Under QC', c:'#f1d643'}, {t:'Waiting for requirement', c:'#ff9f1a'}, {t:'Not yet started', c:'#f87171'}, {t:'On hold', c:'#c084fc'}, {t:'In process', c:'#60a5fa'} ].map((opt, i) => {
-                                      const isLabeled = task.labels?.some(l => l.text === opt.t);
-                                      return (
-                                         <div key={i} className="flex items-center gap-2 group">
-                                            <div onClick={() => handleUpdateLabels({ text: opt.t, color: opt.c })} className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center transition-all cursor-pointer ${isLabeled ? 'border-[#0052cc] bg-[#0052cc]' : 'border-zinc-300 bg-white'}`}>{isLabeled && <Check className="w-3 h-3 text-white" />}</div>
-                                            <div onClick={() => handleUpdateLabels({ text: opt.t, color: opt.c })} style={{ backgroundColor: opt.c }} className="flex-1 h-8 rounded px-3 flex items-center text-[12px] font-bold text-white cursor-pointer shadow-sm">{opt.t}</div>
-                                         </div>
-                                      );
-                                   })}
-                                </div>
-                             </div>
-                          )}
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* Due date */}
-                 <div className="space-y-3">
-                    <h4 className="text-[12px] font-bold text-zinc-500">Due date</h4>
-                    <div className="relative">
-                       <div 
-                        data-date-toggle
-                          onClick={() => {
-                             const start = task.startTime ? new Date(task.startTime) : null;
-                             const due = task.deadline ? new Date(task.deadline) : null;
-                             setTempStartDate(start ? start.toISOString().split('T')[0] : '');
-                             setTempStartTime(start ? start.toTimeString().split(' ')[0].substring(0,5) : '09:00');
-                             setIsStartChecked(!!start);
-                             setTempDueDate(due ? due.toISOString().split('T')[0] : '');
-                             setTempDueTime(due ? due.toTimeString().split(' ')[0].substring(0,5) : '17:00');
-                             setIsDueChecked(!!due);
-                             setIsDatePickerOpen(!isDatePickerOpen);
-                          }}
-                          className="flex items-center gap-3 bg-zinc-100 border border-zinc-200 rounded-md px-3 py-2 cursor-pointer hover:bg-zinc-200 transition-all w-fit"
-                        >
-                          <span className="text-[14px] font-medium text-zinc-800">
-                             {task.deadline ? new Date(task.deadline).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : 'Set Due Date'}
-                          </span>
-                          {task.deadline && (
-                             <>
-                                {isOverdue(task.deadline) ? <Badge className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border-none shadow-sm">Overdue</Badge> : isDueSoon(task.deadline) && <Badge className="bg-yellow-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded border-none shadow-sm animate-pulse">Due soon</Badge>}
-                             </>
-                          )}
-                          <ChevronDown className="w-4 h-4 text-zinc-500" />
-                       </div>
-                       {isDatePickerOpen && (
-                          <div ref={datePickerRef} className="absolute top-12 left-0 w-[300px] bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                             <span className="text-[14px] font-bold text-zinc-700 w-full text-center inline-block">Dates</span>
-                             <div className="space-y-4">
-                                <div className="space-y-1.5">
-                                   <span className="text-[12px] font-bold text-zinc-600">Start date</span>
-                                   <div className="flex items-center gap-2">
-                                      <div onClick={()=>setIsStartChecked(!isStartChecked)} className={`w-5 h-5 rounded-sm border-2 shrink-0 cursor-pointer flex items-center justify-center ${isStartChecked ? 'border-[#0052cc] bg-[#0052cc]' : 'border-zinc-200'}`}>{isStartChecked && <Check className="w-3 h-3 text-white" />}</div>
-                                      <input type="date" value={tempStartDate} onChange={e=>setTempStartDate(e.target.value)} disabled={!isStartChecked} className="h-9 rounded-md border border-zinc-300 text-xs font-bold px-2 flex-1"/>
-                                      <input type="time" value={tempStartTime} onChange={e=>setTempStartTime(e.target.value)} disabled={!isStartChecked} className="h-9 rounded-md border border-zinc-300 text-xs font-bold w-24 px-2"/>
-                                   </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                   <span className="text-[12px] font-bold text-zinc-600">Due date</span>
-                                   <div className="flex items-center gap-2">
-                                      <div onClick={()=>setIsDueChecked(!isDueChecked)} className={`w-5 h-5 rounded-sm border-2 shrink-0 cursor-pointer flex items-center justify-center ${isDueChecked ? 'border-[#0052cc] bg-[#0052cc]' : 'border-zinc-200'}`}>{isDueChecked && <Check className="w-3 h-3 text-white" />}</div>
-                                      <input type="date" value={tempDueDate} onChange={e=>setTempDueDate(e.target.value)} disabled={!isDueChecked} className="h-9 rounded-md border border-zinc-300 text-xs font-bold px-2 flex-1"/>
-                                      <input type="time" value={tempDueTime} onChange={e=>setTempDueTime(e.target.value)} disabled={!isDueChecked} className="h-9 rounded-md border border-zinc-300 text-xs font-bold w-24 px-2"/>
-                                   </div>
-                                </div>
-                                <Button onClick={() => { 
-                                   handleUpdateTask(task._id, { startTime: isStartChecked ? `${tempStartDate}T${tempStartTime}:00` : null, deadline: isDueChecked ? `${tempDueDate}T${tempDueTime}:00` : null }); 
-                                   setIsDatePickerOpen(false); 
-                                }} className="w-full bg-[#0052cc] text-white font-bold h-10 mt-2 hover:bg-[#0747a6] rounded-md transition-all">Save</Button>
-                                <Button variant="ghost" onClick={() => { handleUpdateTask(task._id, { deadline: null, startTime: null }); setIsDatePickerOpen(false); }} className="w-full text-zinc-500 font-bold h-10 text-[14px] hover:bg-zinc-100 transition-all">Remove</Button>
-                             </div>
-                          </div>
-                       )}
-                    </div>
-                 </div>
-              </div>
 
               {/* Description */}
               <div className="space-y-4 pl-6 relative">
@@ -862,11 +840,8 @@ const TaskDetailsModal = ({
                 {isEditingDesc ? (
                   <div className="space-y-0 relative border border-zinc-200 rounded-lg overflow-hidden shadow-sm">
                      <Toolbar 
-                        targetText={tempDesc} 
-                        setTargetText={setTempDesc} 
                         onSave={() => { handleUpdateTask(task._id, { description: tempDesc }); setIsEditingDesc(false); }}
                         onCancel={() => { setTempDesc(task.description || ''); setIsEditingDesc(false); }}
-                        textareaRef={descRef}
                      />
                      <Textarea 
                         ref={descRef}
@@ -895,15 +870,15 @@ const TaskDetailsModal = ({
                         <div className="flex flex-wrap gap-3 mt-4">
                            {task.attachments.map((file, idx) => (
                              <div 
-                               key={idx} 
-                               onClick={() => {
-                                 const baseUrl = import.meta.env.VITE_API_URL || '';
-                                 const fullUrl = (file.url.startsWith('blob:') || file.url.startsWith('http')) 
-                                   ? file.url 
-                                   : `${baseUrl.replace(/\/$/, '')}/${file.url.replace(/^\//, '')}`;
-                                 window.open(fullUrl, '_blank');
-                               }}
-                               className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl hover:bg-white transition-all cursor-pointer group/file"
+                                key={idx} 
+                                onClick={() => {
+                                  const baseUrl = import.meta.env.VITE_API_URL || '';
+                                  const fullUrl = (file.url.startsWith('blob:') || file.url.startsWith('http')) 
+                                    ? file.url 
+                                    : `${baseUrl.replace(/\/$/, '')}/${file.url.replace(/^\//, '')}`;
+                                  window.open(fullUrl, '_blank');
+                                }}
+                                className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl hover:bg-white transition-all cursor-pointer group/file"
                              >
                                 <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 flex items-center justify-center text-zinc-500 group-hover/file:bg-black group-hover/file:text-[#fffe01] transition-colors">
                                    <Paperclip className="w-5 h-5" />
@@ -920,59 +895,128 @@ const TaskDetailsModal = ({
                 )}
               </div>
 
-              {/* Checklists */}
-              <div className="space-y-12">
-                 {task.checklists?.map(checklist => {
-                    const progress = checklist.items?.length ? Math.round((checklist.items.filter(i=>i.isCompleted).length / checklist.items.length) * 100) : 0;
-                    return (
-                       <div key={checklist._id} className="space-y-6">
-                          <div className="flex items-center justify-between">
-                             <div className="flex items-center gap-2">
-                                <CheckSquare className="w-5 h-5 text-zinc-900" />
-                                <h3 className="font-bold text-[17px] tracking-tight">{checklist.name}</h3>
-                                <span className="text-[11px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-bold">
-                                   {checklist.items?.filter(i => i.isCompleted).length || 0}/{checklist.items?.length || 0}
-                                </span>
-                             </div>
-                             <Button variant="ghost" size="sm" onClick={() => handleRemoveChecklist(checklist._id)} className="font-bold text-zinc-700">Delete</Button>
-                          </div>
-                          <div className="flex items-center gap-4">
-                             <span className="text-[11px] font-bold text-zinc-500 w-6">{progress}%</span>
-                             <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden"><div className="h-full bg-zinc-300 transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
-                          </div>
-                          <div className="space-y-3">
-                             {checklist.items?.map(item => (
-                                <SubTaskItem 
-                                  key={item._id} 
-                                  task={{ ...item, checklistId: checklist._id }} 
-                                  boardMembers={boardData?.members} 
-                                  teamId={boardData?.team?._id || boardData?.team}
-                                  onUpdate={(id, updates) => handleUpdateChecklistItem(task._id, checklist._id, id, updates)}
-                                  onAddSubTask={handleAddSubTask}
-                                  onToggleCompletion={(id, completed) => handleUpdateChecklistItem(task._id, checklist._id, id, { isCompleted: !completed })}
-                                  isChecklist={true}
-                                  onRefresh={onRefresh}
-                                  currentBoardId={boardData._id}
-                                />
-                             ))}
-                             {activeChecklistForNewItem === checklist._id ? (
-                                <div className="space-y-3 pt-2">
-                                   <Textarea placeholder="Add an item" autoFocus className="w-full border-[#0052cc] border-2 rounded-lg p-3 text-[14px]" id={`new-item-text-${checklist._id}`} />
-                                   <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                         <Button onClick={() => { const el = document.getElementById(`new-item-text-${checklist._id}`); if(el.value) { handleAddChecklistItem(checklist._id, el.value); el.value = ''; } }} className="bg-[#0052cc] font-bold">Add</Button>
-                                         <Button variant="ghost" onClick={() => setActiveChecklistForNewItem(null)} className="font-bold text-zinc-600">Cancel</Button>
-                                      </div>
-                                   </div>
-                                </div>
-                             ) : (
-                                <Button variant="outline" onClick={() => setActiveChecklistForNewItem(checklist._id)} className="bg-zinc-100/50 font-bold text-xs gap-2">Add an item</Button>
-                             )}
-                          </div>
-                       </div>
-                    );
-                 })}
-              </div>
+               {/* Checklists */}
+               <div className="space-y-12 mb-12">
+                  {task.checklists?.map(checklist => {
+                     const progress = checklist.items?.length ? Math.round((checklist.items.filter(i=>i.isCompleted).length / checklist.items.length) * 100) : 0;
+                     return (
+                        <div key={checklist._id} className="space-y-6">
+                           <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                 <CheckSquare className="w-5 h-5 text-zinc-900" />
+                                 <h3 className="font-bold text-[17px] tracking-tight">{checklist.name}</h3>
+                                 <span className="text-[11px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-bold">
+                                    {checklist.items?.filter(i => i.isCompleted).length || 0}/{checklist.items?.length || 0}
+                                 </span>
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={() => handleRemoveChecklist(checklist._id)} className="font-bold text-zinc-700">Delete</Button>
+                           </div>
+                           <div className="flex items-center gap-4">
+                              <span className="text-[11px] font-bold text-zinc-500 w-6">{progress}%</span>
+                              <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden"><div className="h-full bg-zinc-300 transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
+                           </div>
+                           <div className="space-y-3">
+                              {checklist.items?.map(item => (
+                                 <SubTaskItem 
+                                   key={item._id} 
+                                   task={{ ...item, checklistId: checklist._id }} 
+                                   boardMembers={boardData?.members} 
+                                   teamId={boardData?.team?._id || boardData?.team}
+                                   onUpdate={(id, updates) => handleUpdateChecklistItem(task._id, checklist._id, id, updates)}
+                                   onAddSubTask={handleAddSubTask}
+                                   onToggleCompletion={(id, completed) => handleUpdateChecklistItem(task._id, checklist._id, id, { isCompleted: !completed })}
+                                   isChecklist={true}
+                                   onRefresh={onRefresh}
+                                   currentBoardId={boardData._id}
+                                 />
+                              ))}
+                              {activeChecklistForNewItem === checklist._id ? (
+                                 <div className="space-y-3 pt-2">
+                                    <Textarea placeholder="Add an item" autoFocus className="w-full border-zinc-900 border-2 rounded-xl p-3 text-[14px]" id={`new-item-text-${checklist._id}`} />
+                                    <div className="flex items-center gap-2">
+                                       <Button onClick={() => { const el = document.getElementById(`new-item-text-${checklist._id}`); if(el.value) { handleAddChecklistItem(checklist._id, el.value); el.value = ''; } }} className="bg-black text-[#fffe01] font-bold rounded-lg px-4 h-9">Add</Button>
+                                       <Button variant="ghost" onClick={() => setActiveChecklistForNewItem(null)} className="font-bold text-zinc-600">Cancel</Button>
+                                    </div>
+                                 </div>
+                              ) : (
+                                 <Button variant="outline" onClick={() => setActiveChecklistForNewItem(checklist._id)} className="bg-zinc-50 border-zinc-100 font-bold text-[11px] uppercase tracking-widest gap-2 py-2 h-auto rounded-xl text-zinc-500 hover:text-black">Add an item</Button>
+                              )}
+                           </div>
+                        </div>
+                     );
+                  })}
+               </div>
+
+               {/* Sub-tasks Section */}
+               <div className="pt-8 border-t border-zinc-100 space-y-6">
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-zinc-900 rounded-lg shadow-sm">
+                           <Layout className="w-4 h-4 text-[#fffe01]" />
+                        </div>
+                        <h3 className="font-black text-[18px] tracking-tight text-zinc-900 uppercase">Sub-tasks <span className="text-zinc-300 ml-1">Nodes</span></h3>
+                        {initialSubTasks.length > 0 && (
+                          <span className="text-[11px] bg-zinc-100 text-zinc-500 px-2 py-0.5 rounded-full font-black">
+                             {initialSubTasks.length}
+                          </span>
+                        )}
+                     </div>
+                  </div>
+
+                  <div className="space-y-3">
+                     {initialSubTasks.map(st => (
+                        <SubTaskItem 
+                           key={st._id} 
+                           task={st} 
+                           boardMembers={boardData?.members} 
+                           teamId={boardData?.team?._id || boardData?.team}
+                           onUpdate={handleUpdateTask}
+                           onAddSubTask={handleAddSubTask}
+                           onRefresh={() => onRefresh && onRefresh()}
+                           currentBoardId={boardData._id}
+                        />
+                     ))}
+
+                     {isAddingSubTask ? (
+                        <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                           <div className="bg-white border-2 border-zinc-900 rounded-2xl p-4 shadow-xl">
+                              <Textarea 
+                                 placeholder="What needs to be done?" 
+                                 autoFocus 
+                                 className="w-full border-0 focus-visible:ring-0 p-0 text-[15px] font-medium min-h-[60px] resize-none" 
+                                 id="new-subtask-title" 
+                              />
+                              <div className="flex items-center justify-between mt-4 border-t border-zinc-100 pt-4">
+                                 <div className="flex items-center gap-2">
+                                    <Button 
+                                       onClick={() => { 
+                                          const el = document.getElementById('new-subtask-title'); 
+                                          if(el.value.trim()) { 
+                                             handleAddSubTask(task._id, el.value.trim()); 
+                                             el.value = ''; 
+                                             setIsAddingSubTask(false);
+                                          } 
+                                       }} 
+                                       className="bg-black text-[#fffe01] font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-10 shadow-lg"
+                                    >
+                                       Create Node
+                                    </Button>
+                                    <Button variant="ghost" onClick={() => setIsAddingSubTask(false)} className="font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:text-black">Cancel</Button>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     ) : (
+                        <Button 
+                           variant="outline" 
+                           onClick={() => setIsAddingSubTask(true)} 
+                           className="w-full bg-zinc-50 border-zinc-100/50 border-dashed border-2 py-6 rounded-2xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:text-black hover:bg-white hover:border-zinc-200 transition-all flex items-center justify-center gap-2"
+                        >
+                           <Plus className="w-4 h-4" /> Initialize Sub-Node
+                        </Button>
+                     )}
+                  </div>
+               </div>
             </div>
 
             {/* Right Column - Activity */}
@@ -993,12 +1037,9 @@ const TaskDetailsModal = ({
                <div className="relative mb-10 group/comment">
                   <div className="bg-white border-2 border-zinc-100 focus-within:border-black rounded-xl overflow-hidden transition-all shadow-sm focus-within:shadow-md">
                      <Toolbar 
-                        targetText={commentText} 
-                        setTargetText={setCommentText} 
                         onSave={() => { if(commentText.trim()){ handleAddComment(task._id, commentText); setCommentText(''); } }}
                         onCancel={() => setCommentText('')}
                         showActions={commentText.length > 0}
-                        textareaRef={commentRef}
                      />
                      <Textarea 
                         ref={commentRef}
@@ -1055,11 +1096,8 @@ const TaskDetailsModal = ({
                                {editingCommentId === item._id ? (
                                  <div className="space-y-0 relative border border-black rounded-lg overflow-hidden shadow-lg mt-2 scale-in-center animate-in fade-in duration-200">
                                     <Toolbar 
-                                       targetText={editCommentText} 
-                                       setTargetText={setEditCommentText} 
                                        onSave={() => { handleUpdateComment(item._id, editCommentText); setEditingCommentId(null); }}
                                        onCancel={() => setEditingCommentId(null)}
-                                       textareaRef={editCommentRef}
                                     />
                                     <Textarea 
                                        ref={editCommentRef}

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Layout, Plus, Users, ArrowRight, Kanban, Clock, Calendar, MoreVertical, Trash2, Edit } from "lucide-react"
+import { Layout, Plus, Users, ArrowRight, Kanban, Clock, Calendar, MoreVertical, Trash2, Edit, Activity, TrendingUp, AlertTriangle, CheckCircle2, Layers } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Loader from "@/components/ui/Loader";
@@ -130,8 +130,21 @@ const KanbanBoards = () => {
               Team <span className="text-[#d30614]">Boards</span>
             </h1>
           </div>
-          <p className="text-gray-500 max-w-2xl font-normal">Manage your daily tasks, weekly goals, and team project workspaces.</p>
+          <p className="text-gray-500 max-w-2xl font-normal">Synthesizing project velocity, task throughput, and team execution vectors.</p>
         </div>
+
+        <div className="flex gap-4">
+          <Card className="hidden md:flex flex-row items-center gap-4 bg-zinc-900 text-white p-4 rounded-3xl border-none shadow-xl">
+             <div className="p-2 bg-[#fffe01] rounded-xl">
+               <Activity className="w-5 h-5 text-black" />
+             </div>
+             <div>
+               <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Velocity</div>
+               <div className="text-lg font-black text-[#fffe01]">
+                 {Object.values(boardsByTeam).flat().reduce((acc, b) => acc + (b.progress || 0), 0) / (Object.values(boardsByTeam).flat().length || 1).toFixed(0)}%
+               </div>
+             </div>
+          </Card>
 
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
@@ -189,7 +202,8 @@ const KanbanBoards = () => {
               </form>
             </DialogContent>
         </Dialog>
-      </header>
+      </div>
+    </header>
 
       <div className="space-y-16 pb-20">
         {/* Regular workspaces */}
@@ -224,22 +238,61 @@ const KanbanBoards = () => {
                   {boardsByTeam[team._id]?.map(board => (
                     <div key={board._id} className="relative group">
                       <Card 
-                        className="h-full border-none shadow-sm hover:shadow-xl transition-all cursor-pointer rounded-3xl bg-white overflow-hidden"
+                        className="h-full border-none shadow-xl hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white overflow-hidden group/card flex flex-col"
                         onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban/${board._id}`)}
                       >
-                        <div className="h-2 bg-gradient-to-r from-[#fffe01] to-[#d30614]"></div>
-                        <CardHeader className="pb-4">
-                          <CardTitle className="text-xl font-semibold group-hover/card:text-[#d30614] transition-colors">{board.title}</CardTitle>
-                          <CardDescription className="line-clamp-2 min-h-[40px] font-normal text-zinc-500">{board.description || 'No description'}</CardDescription>
+                        <div className={`h-1.5 w-full ${board.progress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-[#fffe01] to-[#d30614]'}`}></div>
+                        <CardHeader className="pb-4 pt-8 px-8">
+                          <div className="flex items-center justify-between mb-4">
+                             <Badge variant="outline" className={`text-[8px] font-black tracking-widest border-zinc-100 ${board.status === 'Active' ? 'text-blue-500 bg-blue-50' : 'text-zinc-400 bg-zinc-50'}`}>
+                               {board.status || 'ACTIVE'}
+                             </Badge>
+                             {board.stats?.blocked > 0 && (
+                               <Badge className="bg-red-50 text-red-500 hover:bg-red-100 border-none text-[8px] font-black flex items-center gap-1">
+                                 <AlertTriangle className="w-3 h-3" /> {board.stats.blocked} BLOCKED
+                               </Badge>
+                             )}
+                          </div>
+                          <CardTitle className="text-2xl font-black text-zinc-900 group-hover/card:text-[#d30614] transition-colors tracking-tight line-clamp-1">{board.title}</CardTitle>
+                          <CardDescription className="line-clamp-2 min-h-[40px] font-medium text-zinc-400 text-sm mt-1 leading-relaxed">{board.description || 'No description provided for this operational workspace.'}</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between text-zinc-400 text-xs font-normal">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>Created {new Date(board.createdAt).toLocaleDateString()}</span>
+                        
+                        <CardContent className="px-8 pb-8 space-y-6 flex-1 flex flex-col justify-end">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                               <span>Throughput</span>
+                               <span className="text-zinc-900">{board.progress}%</span>
                             </div>
-                            <div className="bg-zinc-50 p-2 rounded-full group-hover:bg-[#fffe01]/10 group-hover:text-black transition-all">
-                              <ArrowRight className="w-4 h-4" />
+                            <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                               <div 
+                                 className={`h-full transition-all duration-500 ${board.progress === 100 ? "bg-emerald-500" : "bg-black"}`} 
+                                 style={{ width: `${board.progress || 0}%` }} 
+                               />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                             <div className="bg-zinc-50 p-3 rounded-2xl text-center">
+                               <div className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">Total</div>
+                               <div className="text-sm font-black text-zinc-900">{board.stats?.total || 0}</div>
+                             </div>
+                             <div className="bg-emerald-50 p-3 rounded-2xl text-center">
+                               <div className="text-[10px] font-black text-emerald-600/50 uppercase tracking-tighter">Done</div>
+                               <div className="text-sm font-black text-emerald-600">{board.stats?.completed || 0}</div>
+                             </div>
+                             <div className="bg-zinc-50 p-3 rounded-2xl text-center">
+                               <div className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">API</div>
+                               <div className="text-sm font-black text-zinc-900"><Layers className="w-3 h-3 mx-auto opacity-20" /></div>
+                             </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4 border-t border-zinc-50">
+                            <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] font-bold uppercase tracking-tight">
+                              <Calendar className="w-3.5 h-3.5" />
+                              <span>{new Date(board.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <div className="w-10 h-10 bg-zinc-50 rounded-2xl flex items-center justify-center group-hover/card:bg-[#fffe01] group-hover/card:text-black text-zinc-300 transition-all border border-zinc-100 group-hover/card:border-transparent group-hover/card:scale-110 shadow-sm active:scale-95">
+                              <ArrowRight className="w-5 h-5" />
                             </div>
                           </div>
                         </CardContent>
@@ -281,32 +334,59 @@ const KanbanBoards = () => {
           <section className="space-y-12">
             <div className="flex items-center gap-3 mb-2">
               <div className="h-6 w-1 bg-[#fffe01] rounded-full"></div>
-              <h2 className="text-xl font-black uppercase tracking-widest text-zinc-400">Shared with Me</h2>
+              <h2 className="text-xl font-black uppercase tracking-widest text-zinc-400">Collaboration Space</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {sharedBoards.map(board => (
                 <div key={board._id} className="relative group">
                   <Card 
-                    className="h-full border-none shadow-sm hover:shadow-xl transition-all cursor-pointer rounded-3xl bg-white overflow-hidden"
+                    className="h-full border-none shadow-xl hover:shadow-2xl transition-all cursor-pointer rounded-[2.5rem] bg-white overflow-hidden group/card flex flex-col"
                     onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban/${board._id}`)}
                   >
-                    <div className="h-2 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between mb-2">
-                         <Badge variant="outline" className="text-[8px] font-black tracking-widest text-blue-500 border-blue-100 bg-blue-50/50">{board.team?.name || 'Shared'}</Badge>
+                    <div className={`h-1.5 w-full ${board.progress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-400 to-indigo-500'}`}></div>
+                    <CardHeader className="pb-4 pt-8 px-8">
+                      <div className="flex items-center justify-between mb-4">
+                         <Badge variant="outline" className="text-[8px] font-black tracking-widest text-blue-500 border-blue-100 bg-blue-50/50">
+                           {board.team?.name || 'SHARED'}
+                         </Badge>
                       </div>
-                      <CardTitle className="text-xl font-semibold hover:text-blue-500 transition-colors">{board.title}</CardTitle>
-                      <CardDescription className="line-clamp-2 min-h-[40px] font-normal text-zinc-500">{board.description || 'No description'}</CardDescription>
+                      <CardTitle className="text-2xl font-black text-zinc-900 group-hover/card:text-blue-500 transition-colors tracking-tight line-clamp-1">{board.title}</CardTitle>
+                      <CardDescription className="line-clamp-2 min-h-[40px] font-medium text-zinc-400 text-sm mt-1 leading-relaxed">{board.description || 'Collaborative workspace for cross-team operations.'}</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between text-zinc-400 text-xs font-normal">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>Created {new Date(board.createdAt).toLocaleDateString()}</span>
+                    
+                    <CardContent className="px-8 pb-8 space-y-6 flex-1 flex flex-col justify-end">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                           <span>Progress</span>
+                           <span className="text-zinc-900">{board.progress}%</span>
                         </div>
-                        <div className="bg-zinc-50 p-2 rounded-full hover:bg-blue-50 hover:text-blue-500 transition-all">
-                          <ArrowRight className="w-4 h-4" />
+                        <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                           <div 
+                             className={`h-full transition-all duration-500 ${board.progress === 100 ? "bg-emerald-500" : "bg-blue-500"}`} 
+                             style={{ width: `${board.progress || 0}%` }} 
+                           />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                         <div className="bg-zinc-50 p-3 rounded-2xl text-center">
+                           <div className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">Tasks</div>
+                           <div className="text-sm font-black text-zinc-900">{board.stats?.total || 0}</div>
+                         </div>
+                         <div className="bg-blue-50 p-3 rounded-2xl text-center">
+                           <div className="text-[10px] font-black text-blue-600/50 uppercase tracking-tighter">Done</div>
+                           <div className="text-sm font-black text-blue-600">{board.stats?.completed || 0}</div>
+                         </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-zinc-50">
+                        <div className="flex items-center gap-1.5 text-zinc-400 text-[10px] font-bold uppercase tracking-tight">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>COLLABORATOR</span>
+                        </div>
+                        <div className="w-10 h-10 bg-zinc-50 rounded-2xl flex items-center justify-center group-hover/card:bg-blue-500 group-hover/card:text-white text-zinc-300 transition-all border border-zinc-100 group-hover/card:border-transparent group-hover/card:scale-110 shadow-sm active:scale-95">
+                          <ArrowRight className="w-5 h-5" />
                         </div>
                       </div>
                     </CardContent>

@@ -10,38 +10,23 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Users2,
   UserCheck2,
-  UserCheck,
-  UserX,
   Clock,
   Search,
   Filter,
   Download,
-  ChevronRight,
-  ChevronLeft,
   CalendarCheck2,
   Calendar,
   ShieldAlert,
-  CalendarDays,
   Edit,
   XCircle,
   Home,
   Building2,
-  MapPin
+  MapPin,
+  CalendarDays
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { memo, useMemo, lazy, Suspense } from 'react';
@@ -50,145 +35,11 @@ import Loader from "@/components/ui/Loader";
 
 const EmergencyModalContent = lazy(() => import('./EmergencyModalContent'));
 
-const AttendanceRow = memo(({ item, onEdit }) => {
-  return (
-    <TableRow className="border-gray-100 hover:bg-gray-50/60 transition-all group">
-      <TableCell className="px-10 py-6">
-        <div className="flex flex-col gap-1.5">
-          <span className="font-normal text-gray-900 text-lg tracking-tight leading-none">{item.user?.name}</span>
-          <span className="text-xs font-normal text-gray-400 uppercase tracking-widest">{item.user?.employeeId || 'ID Pending'}</span>
-        </div>
-      </TableCell>
-      <TableCell className="text-center">
-        {item.isHoliday ? (
-          <Badge variant="outline" className="font-medium text-[9px] bg-[#d30614]/10 text-[#d30614] border-[#d30614]/20 uppercase px-3 py-1 rounded-lg">Official Holiday</Badge>
-        ) : (
-          <div className="flex justify-center">
-            {item.checkIn?.mode === 'WFH' ? (
-              <Badge className="bg-gray-50 text-gray-700 border border-gray-200 uppercase text-[9px] font-medium h-7 rounded-sm px-2 gap-1.5 shadow-none">
-                <Home className="w-3 h-3" /> WFH
-              </Badge>
-            ) : (
-              <Badge className="bg-gray-50 text-gray-700 border border-gray-200 uppercase text-[9px] font-medium h-7 rounded-sm px-2 gap-1.5 shadow-none">
-                <Building2 className="w-3 h-3" /> WFO
-              </Badge>
-            )}
-          </div>
-        )}
-      </TableCell>
-      <TableCell className="text-center">
-        {item.isHoliday ? (
-           <span className="text-gray-300 font-normal text-[10px] uppercase tracking-widest opacity-50">Station Reserved</span>
-        ) : (
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex flex-col items-center gap-1.5 min-w-[5rem]">
-              {item.schedule && (
-                <span className="text-[9px] font-medium text-blue-600 uppercase tracking-tighter opacity-70">
-                  Sch: {item.schedule.loginTime}
-                </span>
-              )}
-              <div className={`px-4 py-1.5 rounded-full font-medium text-xs tracking-tighter w-24 text-center flex items-center justify-center gap-1.5 ${item.checkIn?.time ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-gray-50 text-gray-300 border border-gray-200'}`}>
-                {item.checkIn?.time || '--:--'}
-                {item.checkIn?.location && (
-                  <a 
-                    href={`https://www.google.com/maps?q=${item.checkIn.location.lat},${item.checkIn.location.lng}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="hover:scale-110 transition-transform text-emerald-600"
-                    title="View Check-in Location"
-                  >
-                    <MapPin className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-              {item.checkIn?.permissionMinutes > 0 && (
-                <span className="text-[9px] font-medium text-rose-500 uppercase tracking-tighter">Late By {Math.ceil(item.checkIn.permissionMinutes)} Min</span>
-              )}
-            </div>
-            <span className="text-gray-300 font-light text-xs">→</span>
-            <div className="flex flex-col items-center gap-1.5 min-w-[5rem]">
-              {item.schedule && (
-                <span className="text-[9px] font-medium text-blue-600 uppercase tracking-tighter opacity-70">
-                  Sch: {item.schedule.logoutTime}
-                </span>
-              )}
-              <div className={`px-4 py-1.5 rounded-full font-medium text-xs tracking-tighter w-24 text-center flex items-center justify-center gap-1.5 ${item.checkOut?.time ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-gray-50 text-gray-300 border border-gray-200'}`}>
-                {item.checkOut?.time || '--:--'}
-                {item.checkOut?.location && (
-                  <a 
-                    href={`https://www.google.com/maps?q=${item.checkOut.location.lat},${item.checkOut.location.lng}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="hover:scale-110 transition-transform text-rose-600"
-                    title="View Check-out Location"
-                  >
-                    <MapPin className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </TableCell>
-      <TableCell className="text-center">
-        {!item.isHoliday && item.lunch?.out ? (
-          <div className="flex flex-col items-center justify-center gap-1.5">
-             {item.schedule && (
-               <span className="text-[9px] font-medium text-blue-600 uppercase tracking-tighter opacity-70">
-                 Limit: {item.schedule.lunchDuration}m
-               </span>
-             )}
-             <Badge variant="outline" className="border-gray-200 text-gray-500 bg-gray-50 rounded-lg text-[9px] font-medium px-2 gap-1 h-7 uppercase tracking-wider">
-                {item.lunch.out} - {item.lunch.in || 'PND'}
-             </Badge>
-          </div>
-        ) : (
-          <span className="text-gray-300 text-[9px] font-medium uppercase tracking-widest">No Break Logged</span>
-        )}
-      </TableCell>
-      <TableCell className="text-center">
-        {item.isHoliday ? (
-          <Badge className="bg-[#d30614]/10 text-[#d30614] border border-[#d30614]/20 font-medium text-[9px] uppercase shadow-none px-3 py-1 rounded-sm">On Leave</Badge>
-        ) : (
-          <div className="flex justify-center">
-            {item.checkIn?.status === 'absent' ? (
-               <Badge className="font-medium text-[9px] uppercase shadow-none bg-rose-50 text-rose-600 border border-rose-200 px-3 py-1 rounded-sm hover:bg-rose-100">
-                 ABSENT
-               </Badge>
-            ) : item.checkIn?.time ? (
-               <Badge className="font-medium text-[9px] uppercase shadow-none bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 rounded-sm hover:bg-emerald-100">
-                 VALIDATED
-               </Badge>
-            ) : (
-               <Badge className="font-medium text-[9px] uppercase shadow-none bg-rose-50 text-rose-600 border border-rose-200 px-3 py-1 rounded-sm hover:bg-rose-100">
-                 ABSENT
-               </Badge>
-            )}
-          </div>
-        )}
-      </TableCell>
-      <TableCell className="text-center pr-10">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onEdit(item)}
-          className="text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
-});
-
-AttendanceRow.displayName = 'AttendanceRow';
-
 const AdminAttendance = () => {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [searchTerm, setSearchTerm] = useState('');
-  
   const [emergencyLoading, setEmergencyLoading] = useState(false);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [emergencyData, setEmergencyData] = useState({ userId: '', checkInTime: '', checkOutTime: '', mode: 'WFO' });
@@ -224,7 +75,6 @@ const AdminAttendance = () => {
   const handlePageChange = (page) => {
     fetchAttendance(page);
   };
-
 
   const handleEmergencySubmit = async (e) => {
     e.preventDefault();
@@ -284,151 +134,204 @@ const AdminAttendance = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6 md:space-y-10 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 text-black font-medium mb-1">
-            <div className="w-10 h-10 rounded-2xl bg-[#d30614]/10 flex items-center justify-center shadow-sm">
-              <UserCheck className="w-6 h-6 text-[#d30614]" />
-            </div>
-            <span className="text-sm tracking-[0.2em] uppercase font-medium text-[#d30614]">Operations Control</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-gray-900">
-            Attendance <span className="text-[#d30614]">Monitoring</span>
+    <div className="p-4 md:p-8 lg:p-10 space-y-8 animate-in fade-in duration-500 bg-gray-50/30 min-h-screen pb-32">
+      {/* Header */}
+      <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-gray-900 leading-tight">
+            Staff <span className="text-[#d30614]">Attendance</span>
           </h1>
-          <p className="text-gray-500 font-normal max-w-xl leading-relaxed">Review real-time presence signatures and shift compliance across your workforce.</p>
+          <p className="text-gray-500 text-base md:text-lg font-normal">
+            Monitor daily logs, manage overrides, and analyze workforce presence
+          </p>
         </div>
         
-        <Card className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm flex items-center gap-4">
-          <div className="space-y-1 px-2">
-             <Label htmlFor="date-picker" className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Select Date</Label>
-             <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-black" />
-                <Input 
-                  id="date-picker"
-                  type="date" 
-                  value={date} 
-                  onChange={(e) => setDate(e.target.value)}
-                  className="border-none bg-transparent font-medium text-gray-900 focus-visible:ring-0 p-0 h-auto w-36"
-                />
-             </div>
+        <Card className="p-4 bg-white border-gray-100 shadow-sm rounded-2xl flex items-center gap-4 w-full xl:w-auto">
+          <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 flex-1 md:flex-initial">
+            <Calendar className="w-4 h-4 text-[#d30614]" />
+            <Input 
+              type="date" 
+              value={date} 
+              onChange={(e) => setDate(e.target.value)}
+              className="border-none bg-transparent font-bold text-gray-900 focus-visible:ring-0 p-0 h-auto w-full md:w-32"
+            />
           </div>
+          <Button variant="outline" className="rounded-xl border-gray-200">
+             <Download className="w-4 h-4 mr-2" /> Export
+          </Button>
         </Card>
       </header>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+        <Card className="border-gray-100 shadow-sm bg-white rounded-2xl p-6">
+          <div className="flex items-center gap-5">
+             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <UserCheck2 className="w-6 h-6" />
              </div>
              <div>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Present Personnel</p>
-                <p className="text-3xl font-medium text-gray-900">{attendance.filter(a => a.checkIn?.time).length}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Present Today</p>
+                <p className="text-3xl font-bold text-gray-900">{attendance.filter(a => a.checkIn?.time).length}</p>
              </div>
           </div>
         </Card>
-        <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 rounded-2xl bg-[#d30614] flex items-center justify-center text-white shadow-sm">
+        
+        <Card className="border-gray-100 shadow-sm bg-gray-900 text-white rounded-2xl p-6">
+          <div className="flex items-center gap-5">
+             <div className="w-12 h-12 rounded-xl bg-[#fffe01] text-black flex items-center justify-center shadow-lg shadow-yellow-400/10">
                 <Users2 className="w-6 h-6" />
              </div>
              <div>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Total Records</p>
-                <p className="text-3xl font-medium text-gray-900">{attendance.length}</p>
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">Total Workforce</p>
+                <p className="text-3xl font-bold text-white">{attendance.length}</p>
              </div>
           </div>
         </Card>
-        <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 hover:shadow-md transition-all">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
+
+        <Card className="border-gray-100 shadow-sm bg-white rounded-2xl p-6">
+          <div className="flex items-center gap-5">
+             <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
                 <CalendarCheck2 className="w-6 h-6" />
              </div>
              <div>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Late Arrivals</p>
-                <p className="text-3xl font-medium text-gray-900">{attendance.filter(a => a.checkIn?.status === 'late').length}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Late Logins</p>
+                <p className="text-3xl font-bold text-gray-900">{attendance.filter(a => a.checkIn?.status === 'late').length}</p>
              </div>
           </div>
         </Card>
       </div>
 
-      <Card className="bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden">
-        <CardHeader className="flex flex-col xl:flex-row items-start xl:items-center justify-between pb-8 p-10 gap-6 border-b border-gray-100 bg-gray-50/30">
-          <div className="space-y-1">
-            <CardTitle className="text-2xl text-gray-900 font-medium flex items-center gap-3">
-              <Users2 className="w-7 h-7 text-black" />
-              Staff Logs for {format(new Date(date), 'MMMM dd, yyyy')}
+      {/* Main Table Content */}
+      <Card className="border-gray-100 shadow-sm bg-white rounded-3xl overflow-hidden">
+        <CardHeader className="p-6 md:p-8 border-b border-gray-50 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+          <div>
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <Clock className="w-5 h-5 text-[#d30614]" /> Attendance Records
             </CardTitle>
-            <CardDescription className="text-gray-500 font-normal">Verification signatures for the requested operational cycle</CardDescription>
+            <CardDescription className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-1">{format(new Date(date), 'MMMM dd, yyyy')}</CardDescription>
           </div>
-          <div className="relative w-full xl:w-96 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-black transition-colors" />
+          
+          <div className="relative w-full xl:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
             <Input 
-              placeholder="Search name or ID..." 
+              placeholder="Search by name or ID..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-white border border-gray-200 pl-12 h-14 text-gray-900 font-normal rounded-2xl focus-visible:ring-black shadow-sm w-full" 
+              className="bg-gray-50 border-gray-100 pl-10 h-12 rounded-xl focus:bg-white text-sm" 
             />
           </div>
         </CardHeader>
+        
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex flex-col justify-center items-center py-32 gap-4">
+            <div className="py-32 flex flex-col items-center gap-4">
                <Loader size="lg" color="red" />
-               <span className="text-[10px] font-medium text-gray-400 uppercase tracking-[0.4em]">Loading Logs...</span>
+               <span className="text-xs font-medium text-gray-400">Syncing workforce data...</span>
             </div>
           ) : attendance.length === 0 ? (
-            <div className="text-center py-32 space-y-4">
-               <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto">
-                 <XCircle className="w-10 h-10 text-gray-300" />
+            <div className="py-32 text-center space-y-4">
+               <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto">
+                 <XCircle className="w-8 h-8 text-gray-200" />
                </div>
-               <p className="text-gray-400 font-normal uppercase tracking-widest text-xs">No activity detected for this date.</p>
-            </div>
-          ) : filteredAttendance.length === 0 ? (
-            <div className="text-center py-32">
-               <p className="text-gray-400 font-normal">No results found for "{searchTerm}"</p>
+               <p className="text-gray-400 font-medium text-sm">No attendance records found for this date.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow className="border-gray-100">
-                    <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-[0.2em] px-10 h-14">Staff Member</TableHead>
-                    <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-[0.2em] text-center">Environment</TableHead>
-                    <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-[0.2em] text-center">Session Activity</TableHead>
-                    <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-[0.2em] text-center">Lunch Protocol</TableHead>
-                    <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-[0.2em] text-center">Validation</TableHead>
-                    <TableHead className="text-gray-500 font-medium text-[10px] uppercase tracking-[0.2em] text-center pr-10">Action</TableHead>
+                <TableHeader className="bg-gray-50/50">
+                  <TableRow>
+                    <TableHead className="pl-8 h-14 text-[10px] uppercase font-bold text-gray-400 tracking-widest">Employee</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Mode</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Login / Logout</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Break Interval</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Status</TableHead>
+                    <TableHead className="pr-8 h-14 text-right"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAttendance.map((item) => (
-                    <AttendanceRow key={item._id} item={item} onEdit={handleEditClick} />
+                    <TableRow key={item._id} className="hover:bg-gray-50/30 transition-all border-gray-50">
+                      <TableCell className="pl-8 py-5">
+                         <div className="flex flex-col leading-tight">
+                            <span className="font-bold text-gray-900">{item.user?.name}</span>
+                            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mt-1">{item.user?.employeeId || 'N/A'}</span>
+                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         {item.isHoliday ? (
+                           <Badge variant="outline" className="bg-gray-50 text-gray-400 border-gray-200 text-[9px] font-bold uppercase py-1">HOLIDAY</Badge>
+                         ) : (
+                           <Badge variant="outline" className="bg-white border-gray-200 text-gray-600 text-[9px] font-bold uppercase py-1 h-7 inline-flex gap-1.5 px-3">
+                             {item.checkIn?.mode === 'WFH' ? <Home className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
+                             {item.checkIn?.mode || 'OFFICE'}
+                           </Badge>
+                         )}
+                      </TableCell>
+                      <TableCell>
+                         {!item.isHoliday && (
+                           <div className="flex items-center justify-center gap-4">
+                              <div className="flex flex-col items-center gap-1 min-w-[70px]">
+                                <span className={`text-[9px] font-bold rounded-lg px-2 py-0.5 ${item.checkIn?.status === 'late' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                  {item.checkIn?.time || '--:--'}
+                                </span>
+                                {item.checkIn?.location && (
+                                   <a href={`https://www.google.com/maps?q=${item.checkIn.location.lat},${item.checkIn.location.lng}`} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-[#d30614]"><MapPin className="w-3 h-3" /></a>
+                                )}
+                              </div>
+                              <span className="text-gray-200">/</span>
+                              <div className="flex flex-col items-center gap-1 min-w-[70px]">
+                                <span className="bg-gray-900 text-white text-[9px] font-bold rounded-lg px-2 py-0.5">
+                                  {item.checkOut?.time || '--:--'}
+                                </span>
+                                {item.checkOut?.location && (
+                                   <a href={`https://www.google.com/maps?q=${item.checkOut.location.lat},${item.checkOut.location.lng}`} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-[#d30614]"><MapPin className="w-3 h-3" /></a>
+                                )}
+                              </div>
+                           </div>
+                         )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                           {item.lunch?.out ? `${item.lunch.out} - ${item.lunch.in || 'PND'}` : '--:--'}
+                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         {item.isHoliday ? (
+                           <Badge className="bg-red-50 text-red-700 border-none font-bold text-[9px] uppercase">LEAVE</Badge>
+                         ) : (
+                           <Badge className={`font-bold text-[9px] uppercase border-none ${item.checkIn?.time ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                              {item.checkIn?.time ? 'PRESENT' : 'PENDING'}
+                           </Badge>
+                         )}
+                      </TableCell>
+                      <TableCell className="pr-8 text-right">
+                         <Button
+                           onClick={() => handleEditClick(item)}
+                           variant="ghost"
+                           size="icon"
+                           className="h-9 w-9 text-gray-400 hover:text-[#d30614] hover:bg-red-50 rounded-xl"
+                         >
+                           <Edit className="w-4 h-4" />
+                         </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
           )}
         </CardContent>
-        <div className="px-6 border-t border-gray-100 bg-gray-50/10">
-          <PaginationControl 
-            pagination={pagination} 
-            onPageChange={handlePageChange} 
-          />
+        <div className="p-8 border-t border-gray-50 bg-gray-50/20 flex justify-center">
+           <PaginationControl 
+             pagination={pagination} 
+             onPageChange={handlePageChange} 
+           />
         </div>
       </Card>
-      
-      <div className="flex justify-center pt-6 opacity-30">
-         <div className="flex items-center gap-2 text-[10px] font-medium text-gray-400 uppercase tracking-[0.4em]">
-            <div className="w-2 h-2 rounded-full bg-black animate-pulse"></div>
-            End of Operational Cycle
-         </div>
-      </div>
 
-      {/* Emergency Override Modal */}
       <Dialog open={isEmergencyModalOpen} onOpenChange={setIsEmergencyModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white border-gray-200">
-          <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading form...</div>}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-0 border-none shadow-2xl overflow-hidden">
+          <Suspense fallback={<div className="p-20 flex justify-center"><Loader color="red" /></div>}>
             {isEmergencyModalOpen && (
               <EmergencyModalContent 
                 date={date}
@@ -448,4 +351,3 @@ const AdminAttendance = () => {
 };
 
 export default AdminAttendance;
-

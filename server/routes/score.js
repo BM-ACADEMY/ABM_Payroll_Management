@@ -7,4 +7,8 @@ const scoreController = require('../controllers/scoreController');
 // @desc    Get current user's weekly scores
 router.get('/my-score', auth, scoreController.getMyWeeklyScore);
 
+// @route   GET api/scores/history
+// @desc    Get current user's historical scores
+router.get('/history', auth, scoreController.getMyScoreHistory);
+
 module.exports = router;

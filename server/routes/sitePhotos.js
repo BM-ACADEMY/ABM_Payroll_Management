@@ -156,4 +156,45 @@ router.post('/:id/comments', auth, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/site-photos/:id
+// @desc    Delete a site photo
+// @access  Private
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const photo = await SitePhoto.findById(req.params.id);
+    if (!photo) {
+      return res.status(404).json({ msg: 'Photo not found' });
+    }
+
+    const currentUser = await User.findById(req.user.id).populate('role');
+    const isAdmin = ['admin', 'subadmin'].includes(currentUser?.role?.name);
+
+    // Check ownership or admin rights
+    if (photo.user.toString() !== req.user.id && !isAdmin) {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
+
+    // Delete file if it exists
+    const filePath = path.join(__dirname, '../../client/public', photo.imageUrl);
+    // Wait, let me check where the server serves uploads from.
+    // In many setups, uploads are in server/uploads or client/public/uploads.
+    // Let's check the POST route again.
+    
+    // Line 13: const dir = 'uploads/site/';
+    // This is relative to the server root.
+    const serverFilePath = path.join(__dirname, '..', '..', photo.imageUrl);
+    
+    if (fs.existsSync(serverFilePath)) {
+      fs.unlinkSync(serverFilePath);
+    }
+
+    await SitePhoto.findByIdAndDelete(req.params.id);
+
+    res.json({ msg: 'Photo removed' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 module.exports = router;
