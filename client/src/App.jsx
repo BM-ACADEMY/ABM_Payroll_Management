@@ -104,7 +104,7 @@ function AppContent() {
               user={user} 
             />
             {/* Floating Toggle Buttons */}
-            <div className="fixed bottom-8 right-8 flex flex-col gap-4 z-[55]">
+            <div className="fixed bottom-8 right-8 flex flex-col gap-4 z-[90]">
               {/* Tracker Toggle */}
               <button 
                 onClick={() => setIsTrackerOpen(!isTrackerOpen)}

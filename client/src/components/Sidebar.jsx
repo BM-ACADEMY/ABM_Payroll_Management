@@ -40,7 +40,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen transition-all duration-500 ease-in-out bg-black border-r border-white/5 z-50 flex flex-col p-4 shadow-2xl ${isMobile
+        className={`fixed left-0 top-0 h-screen transition-all duration-500 ease-in-out bg-black border-r border-white/5 z-[70] flex flex-col p-4 shadow-2xl ${isMobile
             ? (isCollapsed ? '-translate-x-full w-64' : 'translate-x-0 w-64')
             : (isCollapsed ? 'w-20' : 'w-64')
           }`}
