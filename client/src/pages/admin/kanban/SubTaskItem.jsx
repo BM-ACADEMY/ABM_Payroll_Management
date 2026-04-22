@@ -1,5 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import axios from 'axios';
+import { format } from 'date-fns';
 import { Clock, UserPlus, MoreHorizontal, Check, ChevronDown, ChevronRight, X, Plus, AlignLeft, Layout, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,7 +182,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                     className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${new Date(dueDate) < new Date() && !task.isCompleted ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
                   >
                      <Clock className="w-3 h-3" />
-                     {new Date(dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                     {format(new Date(dueDate), 'MMM d, HH:mm')}
                   </div>
                )}
                {displayedAssignees.length > 0 && (
@@ -215,10 +216,10 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                        <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsItemDatePickerOpen(false)} />
                     </div>
                     <Input 
-                       type="date" 
+                       type="datetime-local" 
                        autoFocus
                        className="h-9 text-xs font-bold rounded-lg border-zinc-200"
-                       defaultValue={dueDate ? new Date(dueDate).toISOString().split('T')[0] : ''}
+                       defaultValue={dueDate ? format(new Date(dueDate), "yyyy-MM-dd'T'HH:mm") : ''}
                        onChange={(e) => { onUpdate(task._id, { dueDate: e.target.value }); setIsItemDatePickerOpen(false); }}
                     />
                     <div className="pt-2 flex gap-2">
@@ -470,7 +471,7 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                    className={`flex items-center gap-1.5 text-[11px] font-bold hover:text-zinc-900 cursor-pointer transition-colors ${dueDate ? 'text-[#0052cc]' : ''}`}
                  >
                     <Clock className="w-4 h-4" />
-                    {dueDate ? new Date(dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Due date'}
+                    {dueDate ? format(new Date(dueDate), 'MMM d, HH:mm') : 'Due date'}
                  </div>
 
                  {isItemDatePickerOpen && (
@@ -480,9 +481,9 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                          <X className="w-3.5 h-3.5 text-zinc-400 cursor-pointer" onClick={()=>setIsItemDatePickerOpen(false)} />
                       </div>
                       <Input 
-                         type="date" 
+                         type="datetime-local" 
                          className="h-8 text-xs font-bold"
-                         defaultValue={dueDate ? new Date(dueDate).toISOString().split('T')[0] : ''}
+                         defaultValue={dueDate ? format(new Date(dueDate), "yyyy-MM-dd'T'HH:mm") : ''}
                          onChange={(e) => { onUpdate(task._id, { deadline: e.target.value }); setIsItemDatePickerOpen(false); }}
                       />
                       <Button variant="ghost" className="w-full text-[10px] h-7 font-bold" onClick={() => { onUpdate(task._id, { deadline: null }); setIsItemDatePickerOpen(false); }}>Remove Date</Button>
@@ -532,8 +533,8 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
              <div className="space-y-1.5 text-left">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Due Date</span>
                 <Input 
-                  type="date" 
-                  value={dueDate ? new Date(dueDate).toISOString().split('T')[0] : ''}
+                  type="datetime-local" 
+                  value={dueDate ? format(new Date(dueDate), "yyyy-MM-dd'T'HH:mm") : ''}
                   onChange={(e) => onUpdate(task._id, { deadline: e.target.value })}
                   className="bg-white border-zinc-200 rounded-lg text-xs font-bold h-9"
                 />
