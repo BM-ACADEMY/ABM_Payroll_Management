@@ -4,8 +4,9 @@ import {
   Check, Trash2, Edit2, Send, Bell, Calendar, Clock, 
   TrendingUp, Copy
 } from 'lucide-react';
-import { memo, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import axios from 'axios';
+import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -332,7 +333,7 @@ const TaskDetailsModal = ({
 
   const MentionList = () => {
     if (mentionTriggerPos === null) return null;
-    const filtered = boardData.members.filter(m => 
+    const filtered = (boardData?.members || []).filter(m => 
       m.name.toLowerCase().includes(mentionSearch.toLowerCase()) || 
       m.email.toLowerCase().includes(mentionSearch.toLowerCase())
     );
@@ -605,6 +606,43 @@ const TaskDetailsModal = ({
                 </div>
 
                 <div className="relative">
+                  <Button 
+                    variant="outline" 
+                    data-date-toggle
+                    onClick={() => { setIsDatePickerOpen(!isDatePickerOpen); setIsLabelPickerOpen(false); setIsChecklistPickerOpen(false); setIsMemberPickerOpen(false); }} 
+                    className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
+                  >
+                     <Clock className="w-4 h-4 text-zinc-500" /> Dates
+                  </Button>
+                  {isDatePickerOpen && (
+                     <div ref={datePickerRef} className="absolute top-10 left-0 w-72 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
+                        <h5 className="text-[14px] font-bold text-zinc-700 pb-2 border-b border-zinc-100">Dates</h5>
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                              <label className="text-xs font-bold text-zinc-500 block">Projected Execution Target</label>
+                              <Input 
+                                type="datetime-local"
+                                value={task.deadline ? format(new Date(task.deadline), "yyyy-MM-dd'T'HH:mm") : ''}
+                                onChange={(e) => handleUpdateTask(task._id, { deadline: e.target.value })}
+                                className="h-10 rounded-md border-zinc-300 font-medium"
+                              />
+                           </div>
+                           <div className="pt-2 border-t border-zinc-50 flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-zinc-200 font-bold"
+                                onClick={() => { handleUpdateTask(task._id, { deadline: null }); setIsDatePickerOpen(false); }}
+                              >
+                                Remove
+                              </Button>
+                           </div>
+                        </div>
+                     </div>
+                  )}
+                </div>
+
+                <div className="relative">
                    <input 
                      type="file" 
                      id="attachment-upload" 
@@ -686,7 +724,7 @@ const TaskDetailsModal = ({
                                      )}
                                      <div className="space-y-2">
                                         <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Available Nodes</h5>
-                                        {boardData.members.filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => (
+                                        {(boardData?.members || []).filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => (
                                            <div 
                                              key={m._id} 
                                              onClick={() => handleUpdateTask(task._id, { assignees: [...(task.assignees?.map(a=>a._id) || []), m._id] })}
@@ -738,6 +776,28 @@ const TaskDetailsModal = ({
                           </div>
                       </div>
                   </div>
+
+                  {/* Due Date Display */}
+                  {task.deadline && (
+                    <div className="space-y-3">
+                       <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Projected Date</h4>
+                       <div 
+                         onClick={() => setIsDatePickerOpen(true)}
+                         className={cn(
+                           "flex items-center gap-3 px-4 py-1.5 rounded-xl border-2 cursor-pointer transition-all shadow-sm hover:scale-105",
+                           isOverdue(task.deadline) ? "bg-red-50 border-red-200 text-red-700 shadow-red-100" : 
+                           isDueSoon(task.deadline) ? "bg-amber-50 border-amber-200 text-amber-700 shadow-amber-100" :
+                           "bg-zinc-50 border-zinc-200 text-zinc-700 hover:border-black"
+                         )}
+                       >
+                          <Clock className={cn("w-4 h-4", isOverdue(task.deadline) ? "text-red-500" : isDueSoon(task.deadline) ? "text-amber-500" : "text-zinc-400")} />
+                          <span className="text-[13px] font-bold">
+                            {format(new Date(task.deadline), 'MMM d, HH:mm')}
+                            {isOverdue(task.deadline) && <span className="ml-2 text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Overdue</span>}
+                          </span>
+                       </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Unified Intelligence Section */}

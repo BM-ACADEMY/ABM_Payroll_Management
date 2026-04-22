@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { CheckCircle2, Calendar, MessageSquare, Bell, CheckSquare } from 'lucide-react';
+import { CheckCircle2, Calendar, MessageSquare, Bell, CheckSquare, Clock } from 'lucide-react';
+import { format } from 'date-fns';
 
 const KanbanCard = ({ task, index, onClick }) => {
   return (
@@ -81,10 +82,10 @@ const KanbanCard = ({ task, index, onClick }) => {
               )}
 
               {task.deadline && !task.isCompleted && (
-                <div className="flex items-center gap-1 text-[9px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full font-bold">
-                  <Calendar className="w-3 h-3" /> 
-                  {new Date(task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                </div>
+                 <div className={`flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${new Date(task.deadline) < new Date() ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                   {new Date(task.deadline) < new Date() ? <Bell className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                   {format(new Date(task.deadline), 'MMM d, HH:mm')}
+                 </div>
               )}
             </div>
           </div>

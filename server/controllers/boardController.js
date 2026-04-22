@@ -73,12 +73,17 @@ exports.getSpecialBoard = async (req, res) => {
         isBoardColumn: true
       }));
 
+      // Fetch all team members for assignment
+      const teamMembers = await User.find({ teams: teamId }).select('name email employeeId').lean();
+
       // Mock populated board for frontend consistency
       const mockPopulatedBoard = {
         _id: 'weekly-aggregated',
         title: 'Weekly Board',
         description: 'Aggregated view of all board sprints',
         team: await Team.findById(teamId).select('name'),
+        members: teamMembers,
+        admins: [], // Not strictly needed for UI display here
         type: 'weekly'
       };
 
