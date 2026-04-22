@@ -1,7 +1,7 @@
 import React, { useState, useEffect, memo } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { Clock, UserPlus, MoreHorizontal, Check, ChevronDown, ChevronRight, X, Plus, AlignLeft, Layout, Search } from 'lucide-react';
+import { Clock, UserPlus, MoreHorizontal, Check, ChevronDown, ChevronRight, X, Plus, AlignLeft, Layout, Search, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -24,6 +24,32 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState(task.title || task.text);
   const { toast } = useToast();
+
+  const [stagingDate, setStagingDate] = useState(task.deadline || task.dueDate || '');
+  const [manualDateText, setManualDateText] = useState('');
+
+  const parseManualDate = (text) => {
+    if (!text) return null;
+    const now = new Date();
+    // DD/MM HH:mm
+    const dmt = text.match(/^(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+    if (dmt) return new Date(now.getFullYear(), dmt[2]-1, dmt[1], dmt[3], dmt[4]);
+    // DD/MM/YYYY HH:mm
+    const dmyt = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})$/);
+    if (dmyt) return new Date(dmyt[3], dmyt[2]-1, dmyt[1], dmyt[4], dmyt[5]);
+    // Native parse
+    const native = new Date(text);
+    if (!isNaN(native.getTime())) return native;
+    return null;
+  };
+
+  useEffect(() => {
+    if (isItemDatePickerOpen) {
+      const d = task.deadline || task.dueDate;
+      setStagingDate(d || '');
+      setManualDateText(d ? format(new Date(d), 'dd/MM HH:mm') : '');
+    }
+  }, [isItemDatePickerOpen, task.deadline, task.dueDate]);
 
   const assignPickerRef = React.useRef(null);
   const datePickerRef = React.useRef(null);
@@ -209,24 +235,63 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
               >
                  <Clock className="w-4 h-4" />
               </Button>
-              {isItemDatePickerOpen && (
-                 <div ref={datePickerRef} className="absolute top-10 right-0 w-[240px] bg-white border border-zinc-200 rounded-xl shadow-2xl z-[90] p-4 scale-in-center animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex items-center justify-between mb-3">
-                       <span className="text-[12px] font-black text-zinc-900 uppercase tracking-tight">Due Date</span>
-                       <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsItemDatePickerOpen(false)} />
-                    </div>
-                    <Input 
-                       type="datetime-local" 
-                       autoFocus
-                       className="h-9 text-xs font-bold rounded-lg border-zinc-200"
-                       defaultValue={dueDate ? format(new Date(dueDate), "yyyy-MM-dd'T'HH:mm") : ''}
-                       onChange={(e) => { onUpdate(task._id, { dueDate: e.target.value }); setIsItemDatePickerOpen(false); }}
-                    />
-                    <div className="pt-2 flex gap-2">
-                       <Button variant="ghost" className="flex-1 text-[11px] h-8 font-bold text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-lg" onClick={() => { onUpdate(task._id, { dueDate: null }); setIsItemDatePickerOpen(false); }}>Remove</Button>
-                    </div>
-                 </div>
-              )}
+                  {isItemDatePickerOpen && (
+                     <div ref={datePickerRef} className="absolute top-10 right-0 w-[240px] bg-white border border-zinc-200 rounded-xl shadow-2xl z-[90] p-4 scale-in-center animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between mb-3 border-b border-zinc-50 pb-1">
+                           <span className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Set Due Date</span>
+                           <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsItemDatePickerOpen(false)} />
+                        </div>
+                        
+                        <div className="space-y-3">
+                           <div>
+                              <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Picker</label>
+                              <Input 
+                                 type="datetime-local" 
+                                 value={stagingDate ? format(new Date(stagingDate), "yyyy-MM-dd'T'HH:mm") : ''}
+                                 onChange={(e) => {
+                                    const val = e.target.value;
+                                    setStagingDate(val);
+                                    if(val) setManualDateText(format(new Date(val), 'dd/MM HH:mm'));
+                                 }}
+                                 className="h-8 text-[11px] font-bold rounded-lg border-zinc-200"
+                              />
+                           </div>
+
+                           <div>
+                              <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Manual (DD/MM HH:mm)</label>
+                              <Input 
+                                 placeholder="e.g. 25/04 15:00"
+                                 value={manualDateText}
+                                 onChange={(e) => {
+                                    setManualDateText(e.target.value);
+                                    const parsed = parseManualDate(e.target.value);
+                                    if (parsed) setStagingDate(parsed.toISOString());
+                                 }}
+                                 className="h-8 text-[11px] font-bold rounded-lg border-zinc-200"
+                              />
+                           </div>
+
+                           <div className="pt-2 flex gap-2">
+                              <Button 
+                                 className="flex-1 text-[10px] h-8 bg-black text-[#fffe01] font-black uppercase" 
+                                 onClick={() => { 
+                                    onUpdate(task._id, { dueDate: stagingDate }); 
+                                    setIsItemDatePickerOpen(false); 
+                                 }}
+                              >
+                                Save
+                              </Button>
+                              <Button 
+                                 variant="outline" 
+                                 className="text-[10px] h-8 font-black text-red-500 border-zinc-200" 
+                                 onClick={() => { onUpdate(task._id, { dueDate: null }); setIsItemDatePickerOpen(false); }}
+                              >
+                                Clear
+                              </Button>
+                           </div>
+                        </div>
+                     </div>
+                  )}
            </div>
 
            <div className="relative">
@@ -474,21 +539,64 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
                     {dueDate ? format(new Date(dueDate), 'MMM d, HH:mm') : 'Due date'}
                  </div>
 
-                 {isItemDatePickerOpen && (
-                   <div className="absolute top-8 left-0 w-[240px] bg-white border border-zinc-200 rounded-lg shadow-xl z-[80] p-3 space-y-2 animate-in fade-in zoom-in-95 duration-200 text-left">
-                      <div className="flex items-center justify-between">
-                         <span className="text-[11px] font-bold text-zinc-700">Set Due Date</span>
-                         <X className="w-3.5 h-3.5 text-zinc-400 cursor-pointer" onClick={()=>setIsItemDatePickerOpen(false)} />
-                      </div>
-                      <Input 
-                         type="datetime-local" 
-                         className="h-8 text-xs font-bold"
-                         defaultValue={dueDate ? format(new Date(dueDate), "yyyy-MM-dd'T'HH:mm") : ''}
-                         onChange={(e) => { onUpdate(task._id, { deadline: e.target.value }); setIsItemDatePickerOpen(false); }}
-                      />
-                      <Button variant="ghost" className="w-full text-[10px] h-7 font-bold" onClick={() => { onUpdate(task._id, { deadline: null }); setIsItemDatePickerOpen(false); }}>Remove Date</Button>
-                   </div>
-                 )}
+                  {isItemDatePickerOpen && (
+                    <div ref={datePickerRef} className="absolute top-8 left-0 w-[260px] bg-white border border-zinc-200 rounded-xl shadow-xl z-[80] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
+                       <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                          <span className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Set Due Date</span>
+                          <X className="w-3.5 h-3.5 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsItemDatePickerOpen(false)} />
+                       </div>
+                       
+                       <div className="space-y-4">
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Quick Select</label>
+                             <Input 
+                                type="datetime-local" 
+                                value={stagingDate ? format(new Date(stagingDate), "yyyy-MM-dd'T'HH:mm") : ''}
+                                onChange={(e) => {
+                                   const val = e.target.value;
+                                   setStagingDate(val);
+                                   if(val) setManualDateText(format(new Date(val), 'dd/MM HH:mm'));
+                                }}
+                                className="h-8 text-[11px] font-bold rounded-lg border-zinc-200"
+                             />
+                          </div>
+
+                          <div className="space-y-1.5">
+                             <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Manual Entry</label>
+                             <Input 
+                                placeholder="DD/MM HH:mm"
+                                value={manualDateText}
+                                onChange={(e) => {
+                                   setManualDateText(e.target.value);
+                                   const parsed = parseManualDate(e.target.value);
+                                   if (parsed) setStagingDate(parsed.toISOString());
+                                }}
+                                className="h-8 text-[11px] font-bold rounded-lg border-zinc-200"
+                             />
+                          </div>
+
+                          <div className="pt-2 flex gap-2">
+                             <Button 
+                                className="flex-1 text-[10px] h-8 bg-black text-[#fffe01] font-black uppercase tracking-widest" 
+                                onClick={() => { 
+                                   onUpdate(task._id, { deadline: stagingDate }); 
+                                   setIsItemDatePickerOpen(false); 
+                                }}
+                             >
+                                Save
+                             </Button>
+                             <Button 
+                                variant="outline" 
+                                className="h-8 text-red-500 border-zinc-200" 
+                                size="sm"
+                                onClick={() => { onUpdate(task._id, { deadline: null }); setIsItemDatePickerOpen(false); }}
+                             >
+                                <Trash2 className="w-3.5 h-3.5" />
+                             </Button>
+                          </div>
+                       </div>
+                    </div>
+                  )}
               </div>
 
               {(fullTask.checklists?.length > 0 || fullTask.description) && (
@@ -532,12 +640,14 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
              </div>
              <div className="space-y-1.5 text-left">
                 <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Due Date</span>
-                <Input 
-                  type="datetime-local" 
-                  value={dueDate ? format(new Date(dueDate), "yyyy-MM-dd'T'HH:mm") : ''}
-                  onChange={(e) => onUpdate(task._id, { deadline: e.target.value })}
-                  className="bg-white border-zinc-200 rounded-lg text-xs font-bold h-9"
-                />
+                <div className="flex gap-2">
+                   <Input 
+                     type="datetime-local" 
+                     value={dueDate ? format(new Date(dueDate), "yyyy-MM-dd'T'HH:mm") : ''}
+                     onChange={(e) => onUpdate(task._id, { deadline: e.target.value })}
+                     className="bg-white border-zinc-200 rounded-lg text-[11px] font-bold h-9 flex-1"
+                   />
+                </div>
              </div>
           </div>
 

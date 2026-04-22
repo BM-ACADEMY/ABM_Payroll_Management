@@ -77,6 +77,39 @@ const TaskDetailsModal = ({
   const [isDestLoading, setIsDestLoading] = useState(false);
 
   // Date picker staging states
+  const [stagingDeadline, setStagingDeadline] = useState(task?.deadline || '');
+  const [manualDateText, setManualDateText] = useState('');
+
+  const parseManualDate = (text) => {
+    if (!text) return null;
+    const now = new Date();
+    
+    // DD/MM HH:mm (current year)
+    const dmt = text.match(/^(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+    if (dmt) return new Date(now.getFullYear(), dmt[2]-1, dmt[1], dmt[3], dmt[4]);
+
+    // DD/MM/YYYY HH:mm
+    const dmyt = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})$/);
+    if (dmyt) return new Date(dmyt[3], dmyt[2]-1, dmyt[1], dmyt[4], dmyt[5]);
+
+    // Just DD/MM
+    const dm = text.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+    if (dm) return new Date(now.getFullYear(), dm[2]-1, dm[1], 12, 0);
+
+    // native parse
+    const native = new Date(text);
+    if (!isNaN(native.getTime())) return native;
+
+    return null;
+  };
+
+  useEffect(() => {
+    if (isDatePickerOpen) {
+      setStagingDeadline(task?.deadline || '');
+      setManualDateText(task?.deadline ? format(new Date(task.deadline), 'dd/MM HH:mm') : '');
+    }
+  }, [isDatePickerOpen, task?.deadline]);
+
   const [tempStartDate, setTempStartDate] = useState('');
   const [tempStartTime, setTempStartTime] = useState('');
   const [tempDueDate, setTempDueDate] = useState('');
@@ -615,26 +648,63 @@ const TaskDetailsModal = ({
                      <Clock className="w-4 h-4 text-zinc-500" /> Dates
                   </Button>
                   {isDatePickerOpen && (
-                     <div ref={datePickerRef} className="absolute top-10 left-0 w-72 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
-                        <h5 className="text-[14px] font-bold text-zinc-700 pb-2 border-b border-zinc-100">Dates</h5>
+                     <div ref={datePickerRef} className="absolute top-10 left-0 w-80 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-5 space-y-5 animate-in fade-in zoom-in-95 duration-200 text-left">
+                        <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+                           <h5 className="text-[14px] font-black text-zinc-900 uppercase tracking-tight">Set Date & Time</h5>
+                           <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsDatePickerOpen(false)} />
+                        </div>
+                        
                         <div className="space-y-4">
-                           <div className="space-y-2">
-                              <label className="text-xs font-bold text-zinc-500 block">Projected Execution Target</label>
+                           <div className="space-y-1.5">
+                              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Quick Select</label>
                               <Input 
                                 type="datetime-local"
-                                value={task.deadline ? format(new Date(task.deadline), "yyyy-MM-dd'T'HH:mm") : ''}
-                                onChange={(e) => handleUpdateTask(task._id, { deadline: e.target.value })}
-                                className="h-10 rounded-md border-zinc-300 font-medium"
+                                value={stagingDeadline ? format(new Date(stagingDeadline), "yyyy-MM-dd'T'HH:mm") : ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setStagingDeadline(val);
+                                  if (val) setManualDateText(format(new Date(val), 'dd/MM HH:mm'));
+                                }}
+                                className="h-10 rounded-xl border-zinc-200 font-bold text-zinc-800 focus:border-black transition-colors"
                               />
                            </div>
-                           <div className="pt-2 border-t border-zinc-50 flex gap-2">
+
+                           <div className="space-y-1.5">
+                              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Manual Entry</label>
+                              <Input 
+                                placeholder="DD/MM HH:mm (e.g. 25/04 14:30)"
+                                value={manualDateText}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setManualDateText(val);
+                                  const parsed = parseManualDate(val);
+                                  if (parsed) setStagingDeadline(parsed.toISOString());
+                                }}
+                                className="h-10 rounded-xl border-zinc-200 text-[13px] font-bold text-zinc-800 placeholder:text-zinc-300 focus:border-black transition-colors"
+                              />
+                           </div>
+
+                           <div className="pt-3 flex gap-2">
+                              <Button 
+                                className="flex-1 h-10 bg-black text-[#fffe01] font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 transition-all"
+                                onClick={() => { 
+                                  handleUpdateTask(task._id, { deadline: stagingDeadline }); 
+                                  setIsDatePickerOpen(false); 
+                                }}
+                              >
+                                Commit Schedule
+                              </Button>
                               <Button 
                                 variant="outline" 
-                                size="sm" 
-                                className="flex-1 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-zinc-200 font-bold"
-                                onClick={() => { handleUpdateTask(task._id, { deadline: null }); setIsDatePickerOpen(false); }}
+                                size="icon"
+                                className="h-10 w-10 text-red-500 border-zinc-200 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all"
+                                onClick={() => { 
+                                  handleUpdateTask(task._id, { deadline: null }); 
+                                  setIsDatePickerOpen(false); 
+                                }}
+                                title="Remove Date"
                               >
-                                Remove
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                            </div>
                         </div>

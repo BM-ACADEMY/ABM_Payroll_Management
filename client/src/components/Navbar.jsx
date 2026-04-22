@@ -189,7 +189,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
   const [showSearch, setShowSearch] = useState(false);
 
   return (
-    <nav className="h-16 border-b border-slate-100 bg-white/90 backdrop-blur-md sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between transition-all duration-300">
+    <nav className="h-16 border-b border-slate-100 bg-white/90 backdrop-blur-md sticky top-0 z-[60] px-4 md:px-8 flex items-center justify-between transition-all duration-300">
       <div className="flex items-center gap-4 flex-1">
         {(isMobile || showSearch) && (
           <Button
@@ -227,7 +227,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
           {isOpen && searchTerm && (
             <>
               <div className="fixed inset-0 z-[-1]" onClick={() => setIsOpen(false)}></div>
-              <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-100 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-100 rounded-xl shadow-xl z-[70] overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
                 {filteredLinks.length > 0 ? (
                   <div className="p-1.5">
                     <p className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Navigation</p>
@@ -298,7 +298,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
           {showNotifications && (
             <>
               <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotifications(false)}></div>
-              <div className="absolute top-full right-0 mt-2 w-[85vw] sm:w-80 bg-white border border-slate-100 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1">
+              <div className="absolute top-full right-0 mt-2 w-[85vw] sm:w-80 bg-white border border-slate-100 rounded-xl shadow-2xl z-[80] overflow-hidden animate-in fade-in slide-in-from-top-1">
                 <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Security Notifications</h3>
                   <Badge variant="secondary" className="text-[9px] font-bold bg-[#fffe01] text-black px-1.5 py-0 rounded">{notifUnread} NEW</Badge>
