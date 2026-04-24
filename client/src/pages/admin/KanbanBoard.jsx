@@ -1052,7 +1052,7 @@ const KanbanBoard = () => {
         onValueChange={setActiveTab} 
         className="flex-1 flex flex-col min-h-0"
       >
-        <div className="px-10 py-4 border-b border-zinc-100 bg-white/50 backdrop-blur-sm sticky top-0 z-40 flex items-center justify-between overflow-x-auto scrollbar-hide">
+        <div className="px-6 py-2.5 border-b border-zinc-100 bg-white/50 backdrop-blur-sm sticky top-0 z-40 flex items-center justify-between overflow-x-auto scrollbar-hide">
           <TabsList className="bg-zinc-100/50 p-1 rounded-2xl border-none shadow-inner">
             {boardData?.type !== 'weekly' && (
               <TabsTrigger value="backlog" className="rounded-xl px-6 py-2 h-10 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-lg font-black uppercase text-[10px] tracking-widest">Backlog</TabsTrigger>
@@ -1068,10 +1068,10 @@ const KanbanBoard = () => {
           <div className="flex items-center gap-4">
              <div className="relative group/search">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-black transition-colors" />
-               <Input 
-                 placeholder="Search nodes..." 
-                 className="pl-9 h-10 w-48 bg-zinc-50 border-none rounded-xl focus:ring-2 focus:ring-black/5 transition-all text-xs font-medium"
-               />
+                <Input 
+                  placeholder="Search nodes..." 
+                  className="pl-9 h-10 w-64 bg-zinc-100/50 border-zinc-200/50 focus:bg-white rounded-xl focus:ring-2 focus:ring-[#fffe01]/20 transition-all text-xs font-semibold shadow-sm"
+                />
              </div>
              {activeTab === 'sprint' && (
                <Button 
@@ -1088,7 +1088,7 @@ const KanbanBoard = () => {
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col">
-          <TabsContent value="backlog" className="flex-1 overflow-y-auto p-10 outline-none">
+          <TabsContent value="backlog" className="flex-1 overflow-y-auto p-6 outline-none">
              <div className="h-full flex flex-col">
                <div className="flex items-center justify-between mb-10">
                   <div>
@@ -1117,11 +1117,15 @@ const KanbanBoard = () => {
                   ) : (
                     <div className="space-y-3">
                       {backlogTasks.map(task => (
-                        <div key={task._id} className="group flex items-center justify-between p-6 rounded-[2rem] hover:bg-zinc-50 transition-all border border-transparent hover:border-zinc-100">
-                           <div className="flex items-center gap-6 flex-1">
-                              <div className={`w-3 h-3 rounded-full ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-zinc-200'}`}></div>
+                        <div 
+                           key={task._id} 
+                           onClick={() => fetchTaskDetails(task._id)}
+                           className="group flex items-center justify-between p-4 rounded-2xl hover:bg-zinc-50 transition-all border border-transparent hover:border-zinc-100 cursor-pointer"
+                        >
+                           <div className="flex items-center gap-4 flex-1">
+                              <div className={`w-2.5 h-2.5 rounded-full ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-zinc-200'}`}></div>
                               <div className="flex-1">
-                                 <h3 className="text-xl font-black text-zinc-900 mb-1 group-hover:text-[#d30614] transition-colors">{task.title}</h3>
+                                 <h3 className="text-lg font-black text-zinc-900 mb-0.5 group-hover:text-[#d30614] transition-colors">{task.title}</h3>
                                  <div className="flex items-center gap-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">
                                     <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> EST: {task.estimatedTime || 0}H</span>
                                     <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> {task.assignees?.length || 0} Nodes</span>
@@ -1152,7 +1156,7 @@ const KanbanBoard = () => {
           </TabsContent>
 
           <TabsContent value="sprint" className="flex-1 overflow-hidden flex flex-col outline-none">
-            <div className="flex-1 overflow-x-auto p-6 scrollbar-style">
+            <div className="flex-1 overflow-x-auto p-4 scrollbar-style">
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="board" type="list" direction="horizontal">
             {(provided) => (
@@ -1160,7 +1164,7 @@ const KanbanBoard = () => {
                 {Array.isArray(lists) && lists.map((list, index) => (
                   <Draggable key={list._id} draggableId={list._id} index={index}>
                     {(provided) => (
-                      <div {...provided.draggableProps} ref={provided.innerRef} className="w-80 shrink-0 bg-zinc-100/80 backdrop-blur-sm rounded-[32px] flex flex-col max-h-full shadow-sm border border-zinc-200/50">
+                      <div {...provided.draggableProps} ref={provided.innerRef} className="w-[280px] shrink-0 bg-zinc-100/80 backdrop-blur-sm rounded-[24px] flex flex-col max-h-full shadow-sm border border-zinc-200/50">
                         <div {...provided.dragHandleProps} className="px-6 py-5 flex items-center justify-between">
                           <h3 className="font-black text-zinc-900 flex items-center gap-2 uppercase text-[11px] tracking-widest">
                             {boardData?.type === 'weekly' && <Layout className="w-3.5 h-3.5 text-zinc-400" />}
@@ -1193,7 +1197,7 @@ const KanbanBoard = () => {
                   </Draggable>
                 ))}
                 {provided.placeholder}
-                <Button onClick={()=>setIsListModalOpen(true)} className="h-14 w-80 shrink-0 bg-white/50 backdrop-blur-sm border-2 border-dashed border-zinc-200 rounded-[32px] text-zinc-500 hover:text-black hover:border-zinc-400 hover:bg-white transition-all text-sm font-bold flex gap-2">
+                <Button onClick={()=>setIsListModalOpen(true)} className="h-14 w-[280px] shrink-0 bg-white/50 backdrop-blur-sm border-2 border-dashed border-zinc-200 rounded-[24px] text-zinc-500 hover:text-black hover:border-zinc-400 hover:bg-white transition-all text-sm font-bold flex gap-2">
                   <Plus className="w-5 h-5" /> Add another list
                 </Button>
               </div>
@@ -1484,7 +1488,7 @@ const KanbanBoard = () => {
             onClose={() => { setIsDetailsOpen(false); setTaskDetails(null); }}
             taskDetails={taskDetails}
             boardData={boardData}
-            currentBoardId={boardData._id}
+            currentBoardId={boardData?._id}
             lists={lists}
             isAdmin={isAdmin}
             handleUpdateTask={handleUpdateTask}

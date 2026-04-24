@@ -47,9 +47,9 @@
     @apply bg-black/90 backdrop-blur-md border border-white/10 shadow-xl transition-all;
   }
 
-  /* Remove excessive bolding as requested */
+  /* Balance bold weights for hierarchy as requested */
   .font-black, .font-extrabold {
-    font-weight: 500 !important;
+    font-weight: 700 !important;
   }
   
   .font-bold {

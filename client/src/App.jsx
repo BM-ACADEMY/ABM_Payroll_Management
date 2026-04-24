@@ -104,25 +104,25 @@ function AppContent() {
               user={user} 
             />
             {/* Floating Toggle Buttons */}
-            <div className="fixed bottom-8 right-8 flex flex-col gap-4 z-[90]">
+            <div className="fixed bottom-10 right-10 flex flex-col gap-5 z-[40]">
               {/* Tracker Toggle */}
               <button 
                 onClick={() => setIsTrackerOpen(!isTrackerOpen)}
-                className="w-16 h-16 bg-[#fffe01] text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative"
+                className="w-14 h-14 bg-[#fffe01] text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative"
               >
-                <Timer className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-                <div className="absolute right-full mr-4 bg-black text-[#fffe01] text-[10px] font-bold px-2 py-1 rounded-full border border-[#fffe01] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                <Timer className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+                <div className="absolute right-full mr-4 bg-black text-[#fffe01] text-[10px] font-black px-3 py-1.5 rounded-xl border border-[#fffe01]/20 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0 whitespace-nowrap shadow-xl">
                   TRACKER
                 </div>
               </button>
-
+ 
               {/* Site Photo Toggle */}
               <button 
                 onClick={() => setIsSitePhotoOpen(!isSitePhotoOpen)}
-                className="w-16 h-16 bg-white text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative border border-zinc-200"
+                className="w-14 h-14 bg-white text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative border border-zinc-100"
               >
-                <Camera className="w-8 h-8 group-hover:scale-110 transition-transform text-zinc-800" />
-                <div className="absolute right-full mr-4 bg-black text-white text-[10px] font-bold px-2 py-1 rounded-full border border-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                <Camera className="w-6 h-6 group-hover:scale-110 transition-transform text-zinc-800" />
+                <div className="absolute right-full mr-4 bg-black text-white text-[10px] font-black px-3 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0 whitespace-nowrap shadow-xl">
                   SITE PHOTOS
                 </div>
               </button>

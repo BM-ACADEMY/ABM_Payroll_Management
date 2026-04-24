@@ -11,9 +11,9 @@ const KanbanCard = ({ task, index, onClick }) => {
           {...provided.draggableProps} 
           {...provided.dragHandleProps} 
           ref={provided.innerRef} 
-          onClick={onClick} 
-          className="bg-white p-4 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)] transition-all hover:-translate-y-1 cursor-pointer group border border-zinc-100 hover:border-yellow-400 active:scale-[0.98] duration-300"
+          className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 cursor-pointer group border border-zinc-100 hover:border-[#fffe01] active:scale-[0.97] duration-300 overflow-hidden"
         >
+          <div onClick={(e) => { e.stopPropagation(); onClick(); }} className="p-3.5 h-full w-full">
           {/* Label section */}
           {task.labels && task.labels.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
@@ -90,8 +90,9 @@ const KanbanCard = ({ task, index, onClick }) => {
             </div>
           </div>
         </div>
-      )}
-    </Draggable>
+      </div>
+    )}
+  </Draggable>
   );
 };
 

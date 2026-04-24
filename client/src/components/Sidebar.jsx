@@ -40,7 +40,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen transition-all duration-500 ease-in-out bg-black border-r border-white/5 z-[70] flex flex-col p-4 shadow-2xl ${isMobile
+        className={`fixed left-0 top-0 h-screen transition-all duration-500 ease-in-out bg-black border-r border-white/5 z-30 flex flex-col p-4 shadow-2xl ${isMobile
             ? (isCollapsed ? '-translate-x-full w-64' : 'translate-x-0 w-64')
             : (isCollapsed ? 'w-20' : 'w-64')
           }`}
@@ -58,7 +58,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
           {!isMobile && (
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className={`absolute -right-3 top-24 w-6 h-6 bg-[#fffe01] rounded-full flex items-center justify-center text-black border-2 border-black hover:scale-110 transition-all shadow-xl z-[60]`}
+              className={`absolute -right-3 top-24 w-6 h-6 bg-[#fffe01] rounded-full flex items-center justify-center text-black border-2 border-black hover:scale-110 transition-all shadow-xl z-20`}
             >
               {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
             </button>

@@ -664,7 +664,9 @@ exports.getTaskDetails = async (req, res) => {
     const task = await Task.findById(req.params.id)
       .populate('assignees', 'name email')
       .populate('checklists.items.assignedTo', 'name email')
-      .populate('parentTask', 'title');
+      .populate('parentTask', 'title')
+      .populate('list', 'title')
+      .populate('board', 'title');
     
     if (!task) return res.status(404).json({ msg: 'Task not found' });
 
