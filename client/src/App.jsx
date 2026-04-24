@@ -223,6 +223,10 @@ function AppContent() {
                   element={(['admin', 'subadmin'].includes(user?.role?.name)) ? <Profile setUser={handleSetUser} /> : <Navigate to="/login" />}
                 />
                 <Route
+                  path="/dashboard/profile"
+                  element={user ? <Profile setUser={handleSetUser} /> : <Navigate to="/login" />}
+                />
+                <Route
                   path="/dashboard"
                   element={user ? <EmployeeDashboard /> : <Navigate to="/login" />}
                 />

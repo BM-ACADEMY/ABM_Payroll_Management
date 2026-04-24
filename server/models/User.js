@@ -12,6 +12,11 @@ const UserSchema = new mongoose.Schema({
   },
   employeeId: { type: String, unique: true, sparse: true },
   baseSalary: { type: Number, default: 0 },
+  dob: { type: Date },
+  qualification: { type: String },
+  experienceYears: { type: Number },
+  designation: { type: String },
+  joiningDate: { type: Date },
   timingSettings: {
     loginTime: { type: String, default: '09:30' },
     logoutTime: { type: String, default: '18:30' },

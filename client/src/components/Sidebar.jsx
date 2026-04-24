@@ -97,7 +97,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
 
       <div className="mt-auto pt-6 border-t border-white/5">
         <NavLink 
-          to={(['admin', 'subadmin'].includes(user?.role?.name)) ? "/admin/profile" : "/dashboard/settings"}
+          to={(['admin', 'subadmin'].includes(user?.role?.name)) ? "/admin/profile" : "/dashboard/profile"}
           className={({ isActive }) => `
             p-3 flex items-center gap-3 rounded-xl transition-all duration-300 group
             ${isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}
