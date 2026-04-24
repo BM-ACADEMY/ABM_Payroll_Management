@@ -10,6 +10,17 @@ const BoardSchema = new mongoose.Schema({
   status: { type: String, enum: ['Active', 'On Hold', 'Completed', 'Archived'], default: 'Active' },
   startDate: { type: Date },
   endDate: { type: Date },
+  sop: {
+    gitLinks: [{ label: { type: String }, url: { type: String } }],
+    googleDocLinks: [{ label: { type: String }, url: { type: String } }],
+    description: { type: String },
+    attachments: [{
+      name: { type: String },
+      url: { type: String },
+      fileType: { type: String },
+      uploadedAt: { type: Date, default: Date.now }
+    }]
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

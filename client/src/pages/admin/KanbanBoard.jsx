@@ -27,6 +27,7 @@ import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import KanbanCard from './kanban/KanbanCard';
 const TaskDetailsModal = lazy(() => import('./kanban/TaskDetailsModal'));
 import TimelineEngine from './kanban/TimelineEngine';
+import SOPTab from './kanban/SOPTab';
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -1063,6 +1064,7 @@ const KanbanBoard = () => {
             <TabsTrigger value="timeline" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">Timeline</TabsTrigger>
             <TabsTrigger value="analytics" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">Analytics</TabsTrigger>
             <TabsTrigger value="team" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">Team</TabsTrigger>
+            <TabsTrigger value="sop" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">SOP</TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-4">
@@ -1392,6 +1394,10 @@ const KanbanBoard = () => {
                   )})}
                 </div>
               </div>
+           </TabsContent>
+
+           <TabsContent value="sop" className="flex-1 overflow-y-auto p-10 outline-none custom-scrollbar">
+              <SOPTab boardData={boardData} onUpdate={fetchData} />
            </TabsContent>
         </div>
       </Tabs>
