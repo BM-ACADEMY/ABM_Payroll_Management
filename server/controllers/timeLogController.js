@@ -1,6 +1,7 @@
 const TimeLog = require('../models/TimeLog');
 const Settings = require('../models/Settings');
 const User = require('../models/User');
+const Task = require('../models/Task');
 
 exports.startTimeTracking = async (req, res) => {
   const { taskName } = req.body;
@@ -91,13 +92,21 @@ exports.resumeTimeTracking = async (req, res) => {
     if (!timeLog) return res.status(404).json({ msg: 'Time log not found' });
     if (timeLog.user.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
 
-    if (timeLog.status !== 'paused') return res.status(400).json({ msg: 'Task is not paused' });
+    if (!['paused', 'pending'].includes(timeLog.status)) {
+       return res.status(400).json({ msg: 'Task cannot be started' });
+    }
 
-    timeLog.status = 'running';
-    const lastPause = timeLog.pauses[timeLog.pauses.length - 1];
+    const wasPending = timeLog.status === 'pending';
     const now = new Date();
-    if (lastPause && !lastPause.pauseEnd) {
-      lastPause.pauseEnd = now;
+    timeLog.status = 'running';
+    
+    if (wasPending) {
+       timeLog.startTime = now;
+    } else {
+       const lastPause = timeLog.pauses[timeLog.pauses.length - 1];
+       if (lastPause && !lastPause.pauseEnd) {
+         lastPause.pauseEnd = now;
+       }
     }
 
     // Handle activityLog: Start new 'play' session
@@ -162,6 +171,38 @@ exports.stopTimeTracking = async (req, res) => {
     timeLog.duration = Math.floor((now - startTime - totalPauseDuration) / 1000);
 
     await timeLog.save();
+
+    // Sync with Kanban if it originated from a task or checklist item
+    if (timeLog.originChecklistItemId || timeLog.originTaskId) {
+      try {
+        let kanbanTask;
+        if (timeLog.originChecklistItemId) {
+          kanbanTask = await Task.findOne({ "checklists.items._id": timeLog.originChecklistItemId });
+        } else {
+          kanbanTask = await Task.findById(timeLog.originTaskId);
+        }
+
+        if (kanbanTask) {
+          if (timeLog.originChecklistItemId) {
+            kanbanTask.checklists.forEach(checklist => {
+              const item = checklist.items.id(timeLog.originChecklistItemId);
+              if (item) {
+                if (label) item.timeLogLabel = label;
+                if (label === 'done') item.isCompleted = true;
+              }
+            });
+          } else {
+            if (label) kanbanTask.timeLogLabel = label;
+            if (label === 'done') kanbanTask.isCompleted = true;
+          }
+          await kanbanTask.save();
+          if (req.io) req.io.emit('task_updated', kanbanTask);
+        }
+      } catch (syncErr) {
+        console.error('Failed to sync with Kanban on stop:', syncErr);
+      }
+    }
+    
     if (req.io) req.io.emit('time_log_updated', timeLog);
     res.json(timeLog);
   } catch (err) {
@@ -212,6 +253,37 @@ exports.updateStatus = async (req, res) => {
 
     timeLog.label = label;
     await timeLog.save();
+
+    // Sync with Kanban if it originated from a task or checklist item
+    if (timeLog.originChecklistItemId || timeLog.originTaskId) {
+      try {
+        let kanbanTask;
+        if (timeLog.originChecklistItemId) {
+          kanbanTask = await Task.findOne({ "checklists.items._id": timeLog.originChecklistItemId });
+        } else {
+          kanbanTask = await Task.findById(timeLog.originTaskId);
+        }
+
+        if (kanbanTask) {
+          if (timeLog.originChecklistItemId) {
+            kanbanTask.checklists.forEach(checklist => {
+              const item = checklist.items.id(timeLog.originChecklistItemId);
+              if (item) {
+                item.timeLogLabel = label;
+                if (label === 'done') item.isCompleted = true;
+              }
+            });
+          } else {
+            kanbanTask.timeLogLabel = label;
+            if (label === 'done') kanbanTask.isCompleted = true;
+          }
+          await kanbanTask.save();
+          if (req.io) req.io.emit('task_updated', kanbanTask);
+        }
+      } catch (syncErr) {
+        console.error('Failed to sync with Kanban status:', syncErr);
+      }
+    }
     
     if (req.io) req.io.emit('time_log_updated', timeLog);
     res.json(timeLog);
@@ -284,10 +356,15 @@ exports.getTimeLogs = async (req, res) => {
     let query = { user: req.user.id };
 
     if (startDate && endDate) {
-      query.startTime = {
-        $gte: new Date(`${startDate}T00:00:00+05:30`),
-        $lte: new Date(`${endDate}T23:59:59+05:30`)
-      };
+      const start = new Date(`${startDate}T00:00:00+05:30`);
+      const end = new Date(`${endDate}T23:59:59+05:30`);
+      query.$or = [
+        { startTime: { $gte: start, $lte: end } },
+        { 
+          status: 'pending',
+          createdAt: { $gte: start, $lte: end }
+        }
+      ];
     }
 
     if (taskName) {
@@ -299,7 +376,7 @@ exports.getTimeLogs = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const logs = await TimeLog.find(query)
-      .sort({ startTime: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -321,8 +398,8 @@ exports.getActiveTimeLogs = async (req, res) => {
   try {
     const logs = await TimeLog.find({ 
       user: req.user.id, 
-      status: { $in: ['running', 'paused'] } 
-    }).sort({ startTime: -1 });
+      status: { $in: ['pending', 'running', 'paused'] } 
+    }).sort({ createdAt: -1 });
     res.json(logs);
   } catch (err) {
     console.error(err.message);
@@ -336,10 +413,15 @@ exports.getAllTimeLogs = async (req, res) => {
     let query = {};
 
     if (startDate && endDate) {
-      query.startTime = {
-        $gte: new Date(`${startDate}T00:00:00+05:30`),
-        $lte: new Date(`${endDate}T23:59:59+05:30`)
-      };
+      const start = new Date(`${startDate}T00:00:00+05:30`);
+      const end = new Date(`${endDate}T23:59:59+05:30`);
+      query.$or = [
+        { startTime: { $gte: start, $lte: end } },
+        { 
+          status: 'pending',
+          createdAt: { $gte: start, $lte: end }
+        }
+      ];
     }
 
     if (userName) {
@@ -358,7 +440,7 @@ exports.getAllTimeLogs = async (req, res) => {
 
     const logs = await TimeLog.find(query)
       .populate('user', 'name employeeId')
-      .sort({ startTime: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 

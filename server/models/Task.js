@@ -14,6 +14,7 @@ const TaskSchema = new mongoose.Schema({
   isCompleted: { type: Boolean, default: false },
   originTaskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
   originChecklistItemId: { type: mongoose.Schema.Types.ObjectId },
+  timeLogLabel: { type: String },
   labels: [{
     text: String,
     color: String
@@ -24,7 +25,8 @@ const TaskSchema = new mongoose.Schema({
       text: String,
       isCompleted: { type: Boolean, default: false },
       assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-      dueDate: { type: Date }
+      dueDate: { type: Date },
+      timeLogLabel: { type: String }
     }]
   }],
   attachments: [{

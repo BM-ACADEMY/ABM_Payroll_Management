@@ -11,8 +11,7 @@ const TimeLogSchema = new mongoose.Schema({
     required: true
   },
   startTime: {
-    type: Date,
-    required: true
+    type: Date
   },
   endTime: {
     type: Date
@@ -23,13 +22,13 @@ const TimeLogSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['running', 'paused', 'completed'],
+    enum: ['pending', 'running', 'paused', 'completed'],
     default: 'running'
   },
   label: {
     type: String,
-    enum: ['pending', 'qc', 'requirement needed', 'in process', 'done', 'holded'],
-    default: 'in process'
+    enum: ['not yet started', 'pending', 'qc', 'requirement needed', 'in process', 'done', 'holded'],
+    default: 'not yet started'
   },
   comments: [{
     text: { type: String, required: true },

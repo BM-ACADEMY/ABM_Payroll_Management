@@ -2,8 +2,27 @@ import React, { memo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { CheckCircle2, Calendar, MessageSquare, Bell, CheckSquare, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
 
 const KanbanCard = ({ task, index, onClick }) => {
+  const getStatusBadge = (label) => {
+    if (!label) return null;
+    const styles = {
+      'done': 'bg-green-50 text-green-600 border-green-100',
+      'qc': 'bg-blue-50 text-blue-600 border-blue-100',
+      'pending': 'bg-yellow-50 text-yellow-600 border-yellow-100',
+      'in process': 'bg-slate-50 text-slate-600 border-slate-100',
+      'holded': 'bg-red-50 text-red-600 border-red-100',
+      'not yet started': 'bg-slate-50 text-slate-400 border-slate-100',
+      'requirement needed': 'bg-purple-50 text-purple-600 border-purple-100'
+    };
+    return (
+      <Badge variant="outline" className={`px-1.5 py-0 text-[8px] font-normal capitalize h-4 ${styles[label] || 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+        {label}
+      </Badge>
+    );
+  };
+
   return (
     <Draggable draggableId={task._id} index={index}>
       {(provided) => (
@@ -11,88 +30,84 @@ const KanbanCard = ({ task, index, onClick }) => {
           {...provided.draggableProps} 
           {...provided.dragHandleProps} 
           ref={provided.innerRef} 
-          className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1 cursor-pointer group border border-zinc-100 hover:border-[#fffe01] active:scale-[0.97] duration-300 overflow-hidden"
+          className="bg-white rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-1 cursor-pointer group border border-slate-200 hover:border-yellow-400 active:scale-[0.98] duration-300"
         >
-          <div onClick={(e) => { e.stopPropagation(); onClick(); }} className="p-3.5 h-full w-full">
-          {/* Label section */}
-          {task.labels && task.labels.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {task.labels.map((l, i) => (
-                <div 
-                  key={i} 
-                  style={{ backgroundColor: l.color }} 
-                  className="h-1.5 w-8 rounded-full shadow-sm"
-                  title={l.text}
-                />
-              ))}
+          <div onClick={(e) => { e.stopPropagation(); onClick(); }} className="p-4 flex flex-col gap-3">
+            {/* Header: Status Line */}
+            <div className="flex items-start justify-between min-w-0 gap-2">
+              <div className="flex flex-col gap-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {task.originTaskId && <Badge variant="outline" className="text-[7px] font-normal bg-slate-50 text-slate-400 px-1 py-0 h-3.5 uppercase border-slate-100">Copied</Badge>}
+                  {getStatusBadge(task.timeLogLabel)}
+                </div>
+                <h4 className={`text-[13px] font-normal text-slate-700 leading-snug break-words ${task.isCompleted ? 'text-slate-300 line-through' : ''}`}>
+                  {task.title}
+                </h4>
+              </div>
+              {task.isCompleted && <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />}
             </div>
-          )}
-          
-          <div className="flex items-start justify-between mb-2">
-            <h4 className={`text-sm font-semibold text-zinc-900 group-hover:text-[#d30614] transition-all leading-snug ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}>
-              {task.title}
-            </h4>
-            <div className="flex items-center gap-1 shrink-0">
-               {task.originTaskId && <div className="text-[7px] font-black bg-zinc-100 text-zinc-400 px-1 py-0.5 rounded border border-zinc-200 uppercase tracking-tighter">Copied</div>}
-               {task.isCompleted && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-            </div>
-          </div>
-          
 
-          <div className="flex items-center justify-between">
-            <div className="flex -space-x-1.5">
-              {task.assignees?.map((a, i) => (
-                <div 
-                  key={i} 
-                  className="w-6 h-6 rounded-full border-2 border-white bg-zinc-800 text-[#fffe01] flex items-center justify-center text-[8px] font-bold shadow-sm" 
-                  title={a.name}
-                >
-                  {a.name.charAt(0)}
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex items-center gap-2 text-zinc-400">
-              {task.isCompleted && (
-                <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Done
-                </div>
-              )}
-              {task.mentionCount > 0 && (
-                <div className="flex items-center gap-0.5 text-[9px] text-white font-bold bg-red-500 px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">
-                  <Bell className="w-3 h-3 fill-current" />
-                  {task.mentionCount}
-                </div>
-              )}
+            {/* Labels (Modern Pills) */}
+            {task.labels && task.labels.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {task.labels.map((l, i) => (
+                  <div 
+                    key={i} 
+                    style={{ backgroundColor: l.color }} 
+                    className="h-1 w-6 rounded-full opacity-60"
+                    title={l.text}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Footer: Meta Info */}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex -space-x-1.5">
+                {task.assignees?.slice(0,3).map((a, i) => (
+                  <div 
+                    key={i} 
+                    className="w-5.5 h-5.5 rounded-full border-2 border-white bg-slate-800 text-yellow-300 flex items-center justify-center text-[7px] font-normal shadow-sm" 
+                    title={a.name}
+                  >
+                    {a.name.charAt(0)}
+                  </div>
+                ))}
+                {task.assignees?.length > 3 && (
+                  <div className="w-5.5 h-5.5 rounded-full border-2 border-white bg-slate-100 text-slate-500 flex items-center justify-center text-[7px]">
+                    +{task.assignees.length - 3}
+                  </div>
+                )}
+              </div>
               
-              {task.checklists?.some(cl => cl.items?.length > 0) && (
-                <div className="flex items-center gap-1 text-[10px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full font-bold border border-zinc-200">
-                  <CheckSquare className="w-3 h-3" />
-                  {task.checklists.reduce((acc, cl) => acc + (cl.items?.filter(i => i.isCompleted).length || 0), 0)}/
-                  {task.checklists.reduce((acc, cl) => acc + (cl.items?.length || 0), 0)}
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {task.checklists?.some(cl => cl.items?.length > 0) && (
+                  <div className="flex items-center gap-1 text-[9px] text-slate-400 font-normal">
+                    <CheckSquare className="w-3 h-3" />
+                    {task.checklists.reduce((acc, cl) => acc + (cl.items?.filter(i => i.isCompleted).length || 0), 0)}/
+                    {task.checklists.reduce((acc, cl) => acc + (cl.items?.length || 0), 0)}
+                  </div>
+                )}
 
-              {task.commentCount > 0 && (
-                <div className="flex items-center gap-1 text-[10px] bg-zinc-50 text-zinc-500 px-1.5 py-0.5 rounded-full font-bold">
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  {task.commentCount}
-                </div>
-              )}
+                {task.commentCount > 0 && (
+                  <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <MessageSquare className="w-3 h-3" />
+                    {task.commentCount}
+                  </div>
+                )}
 
-              {task.deadline && !task.isCompleted && (
-                 <div className={`flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${new Date(task.deadline) < new Date() ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
-                   {new Date(task.deadline) < new Date() ? <Bell className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                   {format(new Date(task.deadline), 'MMM d, HH:mm')}
-                 </div>
-              )}
+                {task.deadline && !task.isCompleted && (
+                   <div className={`flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-normal ${new Date(task.deadline) < new Date() ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
+                     <Clock className="w-2.5 h-2.5" />
+                     {format(new Date(task.deadline), 'MMM d')}
+                   </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
-  </Draggable>
+      )}
+    </Draggable>
   );
 };
 
