@@ -11,13 +11,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from 'date-fns';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 
-const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChange, settings, onUpdateComment, onDeleteComment }) => {
+const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChange, settings, onUpdateComment, onDeleteComment, allUsers }) => {
   const [seconds, setSeconds] = useState(0);
   const [label, setLabel] = useState(log.label || 'not yet started');
   const [newComment, setNewComment] = useState('');
-  const [editingCommentId, setEditingCommentId] = useState(null);
-  const [editValue, setEditValue] = useState('');
-  const timerRef = useRef(null);
+  
+  // Mention states
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [showMentions, setShowMentions] = useState(false);
+  const [cursorPos, setCursorPos] = useState(0);
+  const mentionRef = useRef(null);
 
   useEffect(() => {
     const calculateSeconds = () => {
@@ -148,21 +151,68 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
                 )}
             </div>
 
-            <div className="flex gap-1.5 pt-2">
-                <Input 
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Type an update..."
-                    className="h-9 text-xs bg-white border-slate-200 text-slate-700 shadow-none focus:ring-0"
-                    onKeyPress={(e) => e.key === 'Enter' && (onAddComment(log._id, newComment), setNewComment(''))}
-                />
+            <div className="flex flex-col gap-1.5 pt-2">
+                <div className="relative">
+                    <Input 
+                        value={newComment}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setNewComment(val);
+                            const pos = e.target.selectionStart;
+                            setCursorPos(pos);
+                            
+                            const lastAt = val.lastIndexOf('@', pos - 1);
+                            if (lastAt !== -1 && !val.slice(lastAt, pos).includes(' ')) {
+                                setShowMentions(true);
+                                setMentionSearch(val.slice(lastAt + 1, pos));
+                            } else {
+                                setShowMentions(false);
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                           if (e.key === 'Enter' && !showMentions) {
+                              onAddComment(log._id, newComment);
+                              setNewComment('');
+                           }
+                        }}
+                        placeholder="Type an update..."
+                        className="h-9 text-xs bg-white border-slate-200 text-slate-700 shadow-none focus:ring-0 w-full"
+                    />
+                    {showMentions && allUsers.length > 0 && (
+                        <div ref={mentionRef} className="absolute bottom-full left-0 w-full mb-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-[150px] overflow-y-auto">
+                            {allUsers
+                                .filter(u => u.name.toLowerCase().includes(mentionSearch.toLowerCase()) || u.email.toLowerCase().includes(mentionSearch.toLowerCase()))
+                                .map(u => (
+                                    <div 
+                                        key={u._id}
+                                        className="p-2 hover:bg-slate-50 cursor-pointer flex flex-col"
+                                        onClick={() => {
+                                            const before = newComment.slice(0, newComment.lastIndexOf('@', cursorPos - 1));
+                                            const after = newComment.slice(cursorPos);
+                                            // The user wanted @name, but we use @[name](email) internally for unique identification in backend
+                                            // but to satisfy "eg: @snega", we'll make sure it looks like @snega to the user if they were just typing.
+                                            // Actually, @[Name](email) format is best for backend parsing.
+                                            const mention = `@[${u.name}](${u.email}) `;
+                                            setNewComment(before + mention + after);
+                                            setShowMentions(false);
+                                        }}
+                                    >
+                                        <span className="text-[11px] font-medium text-slate-900">{u.name}</span>
+                                        <span className="text-[9px] text-slate-400">{u.email}</span>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    )}
+                </div>
                 <Button 
                     size="sm" 
                     onClick={() => { onAddComment(log._id, newComment); setNewComment(''); }}
                     disabled={!newComment.trim()}
-                    className="h-9 w-9 bg-slate-900 border-none shadow-none text-white hover:bg-slate-800 transition-colors shrink-0"
+                    className="h-9 bg-slate-900 border-none shadow-none text-white hover:bg-slate-800 transition-colors w-full flex items-center justify-center gap-2"
                 >
                     <Send className="w-3 h-3" />
+                    <span className="text-[10px] uppercase tracking-widest font-medium">Send Update</span>
                 </Button>
             </div>
         </div>
@@ -215,6 +265,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const [activeLogs, setActiveLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
   const { toast } = useToast();
 
   const fetchActiveTasks = async () => {
@@ -241,10 +292,23 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
     }
   };
 
+  const fetchAllUsers = async () => {
+    try {
+        const token = sessionStorage.getItem('token');
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/members/search`, {
+          headers: { 'x-auth-token': token }
+        });
+        setAllUsers(res.data);
+    } catch (err) {
+        console.error('Failed to fetch users', err);
+    }
+  };
+
   useEffect(() => {
     if (user && isOpen) {
       fetchActiveTasks();
       fetchSettings();
+      fetchAllUsers();
     }
   }, [user, isOpen]);
 
@@ -446,6 +510,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
                      onDeleteComment={handleDeleteComment}
                      onStatusChange={handleStatusChange}
                      settings={settings}
+                     allUsers={allUsers}
                   />
                 ))}
             </div>

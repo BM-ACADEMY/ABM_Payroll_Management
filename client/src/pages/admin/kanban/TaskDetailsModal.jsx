@@ -226,9 +226,9 @@ const TaskDetailsModal = ({
   const insertMention = (user) => {
     const textToUpdate = activeInput === 'comment' ? commentText : activeInput === 'desc' ? tempDesc : editCommentText;
     const prefix = textToUpdate.substring(0, mentionTriggerPos);
-    // Format as @Name@email.com for internal parsing but clear for user
-    const mention = `@${user.name.replace(/\s/g, '')}@${user.email} `;
-    const newText = prefix + mention;
+    const suffix = textToUpdate.substring(textToUpdate.indexOf(' ', mentionTriggerPos) === -1 ? textToUpdate.length : textToUpdate.indexOf(' ', mentionTriggerPos));
+    const mention = `@[${user.name}](${user.email}) `;
+    const newText = prefix + mention + suffix;
     
     if (activeInput === 'comment') setCommentText(newText);
     else if (activeInput === 'desc') setTempDesc(newText);

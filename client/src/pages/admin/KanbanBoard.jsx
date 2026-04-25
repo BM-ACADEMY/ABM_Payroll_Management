@@ -1268,7 +1268,7 @@ const KanbanBoard = () => {
                      </div>
                    ))}
                 </div>
-div>
+
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-zinc-100 relative overflow-hidden group">
