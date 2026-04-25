@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from 'date-fns';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 
-const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChange, settings }) => {
+const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChange, settings, onUpdateComment, onDeleteComment }) => {
   const [seconds, setSeconds] = useState(0);
-  const [label, setLabel] = useState(log.label || 'in process');
+  const [label, setLabel] = useState(log.label || 'not yet started');
   const [newComment, setNewComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -57,120 +57,110 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-
-
   const isOverLimit = settings && seconds > settings.taskTimeLimit * 3600;
 
   return (
-    <div className="bg-[#121214] border border-zinc-800/80 rounded-2xl p-4 space-y-4 shadow-xl group transition-all hover:bg-[#18181b]">
-      <div className="flex justify-between items-center gap-2 pb-2 border-b border-zinc-800/50">
-        <div className="flex items-center gap-2 flex-1 truncate">
-            <div className={`w-2 h-2 rounded-full ${isOverLimit ? 'bg-red-500 animate-pulse' : log.status === 'running' ? 'bg-[#fffe01]' : 'bg-zinc-600'}`} />
-            <h3 className="text-sm font-semibold text-white/90 truncate">{log.taskName}</h3>
+    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4 shadow-sm transition-all hover:border-slate-300">
+      <div className="flex justify-between items-start gap-2 pb-3 border-b border-slate-50">
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+            <h3 className="text-sm font-normal text-slate-900 truncate tracking-tight">{log.taskName}</h3>
+            <div className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${isOverLimit ? 'bg-red-500 animate-pulse' : log.status === 'running' ? 'bg-green-500' : 'bg-slate-300'}`} />
+                <span className="text-[10px] text-slate-400 capitalize">{log.status}</span>
+            </div>
         </div>
-        <span className={`text-xs font-mono font-bold tracking-wider ${isOverLimit ? 'text-red-500' : 'text-[#fffe01]'}`}>
-          {formatTime(seconds)}
+        <span className={`text-xs font-mono font-normal ${isOverLimit ? 'text-red-500' : log.status === 'pending' ? 'text-slate-400' : 'text-slate-900'}`}>
+          {log.status === 'pending' ? '00:00:00' : formatTime(seconds)}
         </span>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest whitespace-nowrap">Current Status</span>
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+            <label className="text-[10px] text-slate-400">Current Status</label>
             <Select value={label} onValueChange={(val) => {
               setLabel(val);
               onStatusChange(log._id, val);
             }}>
-              <SelectTrigger className="w-[140px] h-8 text-[11px] font-bold bg-zinc-900 border-zinc-800 text-white hover:border-[#fffe01] transition-all">
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className="w-full h-9 text-xs font-normal bg-slate-50 border-slate-200 text-slate-700 shadow-none hover:bg-slate-100 transition-colors">
+                <SelectValue placeholder="Select Status" />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                <SelectItem value="in process">In Process</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="qc">QC</SelectItem>
-                <SelectItem value="requirement needed">Requirement Needed</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
-                <SelectItem value="holded">Holded</SelectItem>
+              <SelectContent className="bg-white border-slate-200 text-slate-700 shadow-lg rounded-lg p-1">
+                <SelectItem value="not yet started" className="focus:bg-slate-50 rounded-md py-2 text-xs font-normal">Not Yet Started</SelectItem>
+                <SelectItem value="in process" className="focus:bg-slate-50 rounded-md py-2 text-xs font-normal">In Process</SelectItem>
+                <SelectItem value="pending" className="focus:bg-slate-50 rounded-md py-2 text-xs font-normal">Pending (On Hold)</SelectItem>
+                <SelectItem value="qc" className="focus:bg-slate-50 rounded-md py-2 text-xs font-normal">Quality Check (QC)</SelectItem>
+                <SelectItem value="requirement needed" className="focus:bg-slate-50 rounded-md py-2 text-xs font-normal">Requirements Needed</SelectItem>
+                <SelectItem value="done" className="focus:bg-slate-50 rounded-md py-2 text-xs font-normal">Completed / Done</SelectItem>
+                <SelectItem value="holded" className="focus:bg-slate-50 rounded-md py-2 text-xs font-normal">Critical Block</SelectItem>
               </SelectContent>
             </Select>
         </div>
 
         {/* Comments Section */}
-        <div className="space-y-2">
-            <div className="flex items-center gap-1.5 px-0.5">
-                <MessageSquare className="w-3 h-3 text-zinc-500" />
-                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">History & Comments</span>
+        <div className="space-y-3">
+            <div className="flex items-center gap-1.5 px-0.5 border-t border-slate-50 pt-3">
+                <MessageSquare className="w-3 h-3 text-slate-400" />
+                <span className="text-[10px] text-slate-400">Comments History</span>
             </div>
             
-            <div className="max-h-[100px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            <div className="max-h-[120px] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                 {log.comments?.length > 0 ? (
                     log.comments.map((c, i) => (
-                        <div key={i} className="flex flex-col gap-1 bg-zinc-900/50 p-2 rounded-xl border border-zinc-800/30 group/comment relative">
+                        <div key={i} className="flex flex-col gap-1.5 bg-slate-50/50 p-2.5 rounded-lg border border-slate-100 group/comment relative hover:bg-slate-50 transition-colors">
                             <div className="flex items-center justify-between">
-                                <span className="text-[9px] font-bold text-[#fffe01]/70">{c.author}</span>
+                                <span className="text-[10px] text-slate-500">{c.author}</span>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[8px] text-zinc-600">{formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}</span>
+                                    <span className="text-[9px] text-slate-300">{formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}</span>
                                     {((settings?.userName === c.author) || (settings?.userRole === 'admin')) && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
-                                            <button onClick={() => { setEditingCommentId(c._id); setEditValue(c.text); }} className="text-zinc-500 hover:text-[#fffe01]">
+                                            <button onClick={() => { setEditingCommentId(c._id); setEditValue(c.text); }} className="p-1 text-slate-300 hover:text-slate-600 transition-colors">
                                                 <Pencil className="w-2.5 h-2.5" />
                                             </button>
-                                            <button onClick={() => onStop && onStop(log._id, label) /* placeholder for delete */ } className="text-zinc-500 hover:text-red-500">
-                                                {/* Wait, I should use a proper delete prop */}
+                                            <button onClick={() => onDeleteComment(log._id, c._id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors">
+                                                <Trash2 className="w-2.5 h-2.5" />
                                             </button>
                                         </div>
                                     )}
                                 </div>
                             </div>
                             {editingCommentId === c._id ? (
-                                <div className="flex gap-1 mt-1">
+                                <div className="flex gap-1">
                                     <Input 
                                         value={editValue}
                                         onChange={(e) => setEditValue(e.target.value)}
-                                        className="h-6 text-[9px] bg-zinc-900 border-zinc-700"
+                                        className="h-7 text-[11px] border-slate-200 focus:ring-0"
                                         autoFocus
                                     />
-                                    <Button size="icon" className="h-6 w-6 bg-[#fffe01] text-black" onClick={() => { onUpdateComment(log._id, c._id, editValue); setEditingCommentId(null); }}>
-                                        <Check className="w-2.5 h-2.5" />
+                                    <Button size="sm" className="h-7 w-7 p-0 bg-slate-900 shadow-none border-none" onClick={() => { onUpdateComment(log._id, c._id, editValue); setEditingCommentId(null); }}>
+                                        <Check className="w-3 h-3" />
                                     </Button>
-                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-zinc-500" onClick={() => setEditingCommentId(null)}>
-                                        <X className="w-2.5 h-2.5" />
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400" onClick={() => setEditingCommentId(null)}>
+                                        <X className="w-3 h-3" />
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="text-[10px] leading-relaxed text-zinc-400 font-medium"><MarkdownRenderer content={c.text} /></div>
-                            )}
-                            
-                            {/* Improved Action Overlay */}
-                            {!editingCommentId && ((log.currentUser === c.author) || (log.isAdmin)) && (
-                                <div className="absolute top-1.5 right-1.5 flex items-center gap-1.5 opacity-0 group-hover/comment:opacity-100 transition-opacity bg-zinc-900/80 p-1 rounded-md backdrop-blur-sm">
-                                     <button onClick={() => { setEditingCommentId(c._id); setEditValue(c.text); }} className="text-zinc-400 hover:text-[#fffe01] transition-colors">
-                                        <Pencil className="w-2.5 h-2.5" />
-                                     </button>
-                                     <button onClick={() => onDeleteComment(log._id, c._id)} className="text-zinc-400 hover:text-red-500 transition-colors">
-                                        <Trash2 className="w-2.5 h-2.5" />
-                                     </button>
-                                </div>
+                                <div className="text-[11px] leading-relaxed text-slate-600 font-normal"><MarkdownRenderer content={c.text} /></div>
                             )}
                         </div>
                     ))
                 ) : (
-                    <p className="text-[9px] text-zinc-600 italic px-1">No comments yet</p>
+                    <p className="text-[10px] text-slate-400 italic px-1">No updates registered yet.</p>
                 )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 pt-2">
                 <Input 
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Add a comment..."
-                    className="h-8 text-[10px] bg-zinc-900 border-zinc-800 text-zinc-300 placeholder:text-zinc-600"
+                    placeholder="Type an update..."
+                    className="h-9 text-xs bg-white border-slate-200 text-slate-700 shadow-none focus:ring-0"
                     onKeyPress={(e) => e.key === 'Enter' && (onAddComment(log._id, newComment), setNewComment(''))}
                 />
                 <Button 
-                    size="icon" 
+                    size="sm" 
                     onClick={() => { onAddComment(log._id, newComment); setNewComment(''); }}
                     disabled={!newComment.trim()}
-                    className="h-8 w-8 min-w-[32px] bg-zinc-800 hover:bg-[#fffe01] hover:text-black transition-all"
+                    className="h-9 w-9 bg-slate-900 border-none shadow-none text-white hover:bg-slate-800 transition-colors shrink-0"
                 >
                     <Send className="w-3 h-3" />
                 </Button>
@@ -178,37 +168,41 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/30">
+      <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
         <div className="flex gap-2">
           {log.status === 'running' ? (
             <Button 
-              size="icon"
+              size="sm"
               onClick={() => onPause(log._id, label)}
-              className="w-10 h-10 rounded-xl bg-zinc-800 hover:bg-black text-white hover:text-[#fffe01] border border-zinc-800 hover:border-[#fffe01]/50 transition-all font-black"
+              className="h-10 px-4 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 shadow-none transition-colors"
             >
-              <Pause className="w-4 h-4 fill-current" />
+              <Pause className="w-3.5 h-3.5 mr-2" />
+              <span className="text-xs font-normal">Pause</span>
             </Button>
           ) : (
             <Button 
-              size="icon"
+              size="sm"
               onClick={() => onResume(log._id)}
-              className="w-10 h-10 rounded-xl bg-[#fffe01] hover:bg-black text-black hover:text-[#fffe01] transition-all border border-[#fffe01]"
+              className="h-10 px-4 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-black border-none shadow-none transition-colors"
             >
-              <Play className="w-4 h-4 fill-current" />
+              <Play className="w-3.5 h-3.5 mr-2" />
+              <span className="text-xs font-normal">Resume</span>
             </Button>
           )}
           <Button 
-            size="icon"
+            size="sm"
+            variant="ghost"
             onClick={() => onStop(log._id, label)}
-            className="w-10 h-10 rounded-xl bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 hover:border-red-600 transition-all"
+            className="h-10 px-3 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
           >
-            <Square className="w-4 h-4 fill-current" />
+            <Square className="w-3.5 h-3.5 mr-2" />
+            <span className="text-xs font-normal">Finish</span>
           </Button>
         </div>
         
         {isOverLimit && (
-          <Badge variant="destructive" className="text-[9px] uppercase tracking-tighter px-2 h-5 animate-pulse rounded-full">
-            Overtime!
+          <Badge variant="destructive" className="text-[9px] font-normal px-2 py-0.5 rounded-full animate-pulse shadow-none border-none">
+            Limit Over
           </Badge>
         )}
       </div>
@@ -258,7 +252,6 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
     if (!user) return;
 
     const handleUpdate = (updatedLog) => {
-      // If employee, only update their own logs. If admin, update all.
       const isOwnLog = updatedLog.user === user._id || updatedLog.user?._id === user._id;
       const isAdmin = user.role?.name === 'admin';
 
@@ -271,7 +264,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
           if (exists) {
             return prev.map(log => log._id === updatedLog._id ? updatedLog : log);
           }
-          if (updatedLog.status === 'running' || updatedLog.status === 'paused') {
+          if (updatedLog.status === 'running' || updatedLog.status === 'paused' || updatedLog.status === 'pending') {
             return [updatedLog, ...prev];
           }
           return prev;
@@ -285,7 +278,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 
   const handleStart = async () => {
     if (!taskName.trim()) {
-      toast({ variant: "destructive", title: "Error", description: "Please enter a task name" });
+      toast({ variant: "destructive", title: "Missing Input", description: "Please enter a task name" });
       return;
     }
     setLoading(true);
@@ -296,9 +289,9 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
       });
       setActiveLogs(prev => [res.data, ...prev]);
       setTaskName('');
-      toast({ title: "Started", description: `Tracking: ${taskName}` });
+      toast({ title: "Tracking Started", description: taskName });
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: err.response?.data?.msg || "Failed to start task" });
+      toast({ variant: "destructive", title: "System Error", description: err.response?.data?.msg || "Failed to start task" });
     } finally {
       setLoading(false);
     }
@@ -319,7 +312,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const handleResume = async (id) => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
         headers: { 'x-auth-token': token }
       });
       setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));
@@ -335,7 +328,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
         headers: { 'x-auth-token': token }
       });
       setActiveLogs(prev => prev.filter(log => log._id !== id));
-      toast({ title: "Completed", description: "Task logged successfully" });
+      toast({ title: "Task Completed", description: "Data logged successfully" });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to stop task" });
     }
@@ -349,7 +342,6 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
           headers: { 'x-auth-token': token }
         });
         setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));
-        toast({ title: "Comment Added", description: "Update sent successfully" });
     } catch (err) {
         toast({ variant: "destructive", title: "Error", description: "Failed to add comment" });
     }
@@ -362,7 +354,6 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
           headers: { 'x-auth-token': token }
         });
         setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));
-        toast({ title: "Comment Updated", description: "Changes saved" });
     } catch (err) {
         toast({ variant: "destructive", title: "Error", description: "Failed to update comment" });
     }
@@ -376,7 +367,6 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
           headers: { 'x-auth-token': token }
         });
         setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));
-        toast({ title: "Comment Deleted", description: "Update removed" });
     } catch (err) {
         toast({ variant: "destructive", title: "Error", description: "Failed to delete comment" });
     }
@@ -389,59 +379,54 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
           headers: { 'x-auth-token': token }
         });
         setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));
-        // No toast for silent auto-save
     } catch (err) {
         toast({ variant: "destructive", title: "Error", description: "Failed to update status" });
     }
   };
 
   return (
-    <div className={`fixed right-0 top-0 h-screen transition-all duration-300 ease-in-out bg-black border-l border-zinc-800 z-[60] flex flex-col p-6 shadow-2xl ${isOpen ? 'w-80 translate-x-0' : 'w-0 translate-x-full overflow-hidden'}`}>
-      <div className="flex items-center justify-between mb-8">
+    <div className={`fixed right-0 top-0 h-screen transition-all duration-300 ease-in-out bg-white border-l border-slate-200 z-[60] flex flex-col shadow-2xl ${isOpen ? 'w-80 translate-x-0' : 'w-0 translate-x-full overflow-hidden'}`}>
+      <div className="flex items-center justify-between p-6 border-b border-slate-50">
         <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-[#fffe01]" />
-          <h2 className="text-lg font-medium text-white italic tracking-tight">Task Tracker</h2>
+          <Clock className="w-5 h-5 text-yellow-500" />
+          <h2 className="text-lg font-normal text-slate-800">Task Tracker</h2>
         </div>
-        <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-          <X className="w-6 h-6" />
+        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+          <X className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="space-y-3 mb-8">
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] px-1">Start New Task</label>
+      <div className="flex flex-col flex-1 min-h-0 p-6">
+        <div className="space-y-2.5 mb-8">
+          <label className="text-[10px] text-slate-400 pl-1 uppercase tracking-wider">Add Task Manually</label>
           <div className="flex gap-2">
             <Input 
-              placeholder="What's next?" 
+              placeholder="What are you working on?" 
               value={taskName}
               onChange={(e) => setTaskName(e.target.value)}
-              className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-600 h-11 rounded-xl focus:ring-[#fffe01] focus:border-[#fffe01] flex-1"
+              className="bg-slate-50 border-slate-200 text-slate-700 h-10 px-4 rounded-lg focus:ring-0 shadow-none text-xs font-normal"
             />
             <Button 
               size="icon"
               onClick={handleStart} 
               disabled={loading || !taskName.trim()}
-              className="w-11 h-11 bg-[#fffe01] hover:bg-yellow-400 text-black rounded-xl shadow-lg shadow-yellow-400/5 flex-shrink-0"
+              className="w-10 h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-lg shadow-none flex-shrink-0 border-none"
             >
-              <Plus className="w-5 h-5 font-bold" />
+              <Plus className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-1 -mr-3 space-y-4 custom-scrollbar">
-          <div className="flex items-center justify-between mb-1 px-1">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Ongoing Tasks</span>
-            <Badge variant="outline" className="text-[10px] bg-zinc-900 border-zinc-800 text-zinc-400 px-2 rounded-md h-5 capitalize">
-               {activeLogs.length} Active
-            </Badge>
+        <div className="flex-1 overflow-y-auto pr-1 -mr-2 space-y-4 custom-scrollbar">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Current Deployments</span>
+            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{activeLogs.length} active</span>
           </div>
           
           {activeLogs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center bg-zinc-900/30 rounded-2xl border border-dashed border-zinc-800">
-               <div className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center mb-3">
-                  <Play className="w-4 h-4 text-zinc-600 fill-current opacity-30" />
-               </div>
-               <p className="text-xs text-zinc-500 font-medium">No tasks running.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+               <Play className="w-6 h-6 text-slate-200 mb-2" />
+               <p className="text-[11px] text-slate-400 font-normal">No active tasks being tracked.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -467,14 +452,14 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
           )}
         </div>
 
-        <div className="mt-6 border-t border-zinc-800 pt-6">
+        <div className="mt-6 pt-6 border-t border-slate-100">
            <Button 
              variant="ghost" 
-             className="w-full text-zinc-400 hover:text-[#fffe01] hover:bg-zinc-900 justify-start gap-3 h-12 rounded-xl"
+             className="w-full text-slate-500 hover:text-slate-900 hover:bg-slate-50 justify-start gap-3 h-11 rounded-lg border border-transparent"
              onClick={() => window.location.href = user?.role?.name === 'admin' ? '/admin/time-history' : '/dashboard/time-history'}
            >
-             <History className="w-5 h-5" />
-             <span className="text-xs font-medium uppercase tracking-wider">Full History</span>
+             <History className="w-4 h-4" />
+             <span className="text-xs font-normal">View Full History</span>
            </Button>
         </div>
       </div>
@@ -487,11 +472,11 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #27272a;
+          background: #e2e8f0;
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #3f3f46;
+          background: #cbd5e1;
         }
       `}</style>
     </div>
@@ -499,4 +484,3 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
 };
 
 export default TaskTrackerSidebar;
-

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { 
   User,
   Shield, 
@@ -25,7 +26,13 @@ const Profile = ({ setUser }) => {
   const [userData, setUserData] = useState({
     name: '',
     email: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    dob: '',
+    qualification: '',
+    experienceYears: '',
+    baseSalary: '',
+    designation: '',
+    joiningDate: ''
   });
   
   const [passwordData, setPasswordData] = useState({
@@ -39,10 +46,38 @@ const Profile = ({ setUser }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('profile'); // 'profile' or 'password'
+  const [attendanceStatus, setAttendanceStatus] = useState({ type: 'offline', text: 'OFFLINE' });
 
   useEffect(() => {
     fetchProfile();
+    fetchAttendanceStatus();
   }, []);
+
+  const fetchAttendanceStatus = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/today`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const attendance = res.data;
+      if (attendance && attendance.checkIn) {
+        if (attendance.checkOut && attendance.checkOut.time) {
+          setAttendanceStatus({ type: 'offline', text: 'OFFLINE' });
+        } else if (attendance.lunch && attendance.lunch.out && !attendance.lunch.in) {
+          setAttendanceStatus({ type: 'break', text: 'ON BREAK' });
+        } else if (attendance.checkIn.time) {
+          setAttendanceStatus({ type: 'online', text: 'ONLINE' });
+        }
+      } else {
+        setAttendanceStatus({ type: 'offline', text: 'OFFLINE' });
+      }
+    } catch (err) {
+      console.error("Error fetching attendance status:", err);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -53,7 +88,13 @@ const Profile = ({ setUser }) => {
       setUserData({
         name: res.data.name || '',
         email: res.data.email || '',
-        phoneNumber: res.data.phoneNumber || ''
+        phoneNumber: res.data.phoneNumber || '',
+        dob: res.data.dob ? new Date(res.data.dob).toISOString().split('T')[0] : '',
+        qualification: res.data.qualification || '',
+        experienceYears: res.data.experienceYears || '',
+        baseSalary: res.data.baseSalary || 0,
+        designation: res.data.designation || 'Staff',
+        joiningDate: res.data.joiningDate ? new Date(res.data.joiningDate).toISOString().split('T')[0] : ''
       });
       // Sync names just in case
       sessionStorage.setItem('userName', res.data.name);
@@ -79,7 +120,6 @@ const Profile = ({ setUser }) => {
 
     // Force lowercase for email
     if (name === 'email') {
-      setUserData({ ...userData, [name]: value.toLowerCase() });
       return;
     }
     
@@ -109,13 +149,17 @@ const Profile = ({ setUser }) => {
     try {
       const token = sessionStorage.getItem('token');
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
-        ...userData,
-        email: normalizedEmail
+        name: userData.name,
+        phoneNumber: userData.phoneNumber,
+        dob: userData.dob,
+        qualification: userData.qualification,
+        experienceYears: userData.experienceYears
       }, {
         headers: { 'x-auth-token': token }
       });
       
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setIsEditMode(false);
       // Update sessionStorage to reflect new name/email
       sessionStorage.setItem('userName', res.data.name);
       
@@ -190,133 +234,217 @@ const Profile = ({ setUser }) => {
           </h1>
           <p className="text-slate-500 font-medium max-w-2xl text-sm md:text-base leading-relaxed text-zinc-400 uppercase tracking-widest text-[10px]">Configure your administrative vector and cryptographic credentials.</p>
         </div>
+
+        <div className="flex bg-zinc-100 p-2 rounded-[1.5rem] gap-2 border border-zinc-200 shadow-sm">
+          <button 
+            onClick={() => setActiveTab('profile')}
+            className={`px-8 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'profile' ? 'bg-black text-[#fffe01] shadow-lg' : 'text-zinc-400 hover:text-black'}`}
+          >
+            Operational Profile
+          </button>
+          <button 
+            onClick={() => setActiveTab('password')}
+            className={`px-8 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'password' ? 'bg-[#d30614] text-white shadow-lg' : 'text-zinc-400 hover:text-black'}`}
+          >
+            Change Password
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
-        <div className="lg:col-span-8 space-y-12">
-          {/* Identity Info Card */}
-          <form onSubmit={handleProfileSubmit} className="space-y-8">
-            <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden group">
-              <div className="h-2 bg-black w-1/4 group-hover:w-full transition-all duration-1000"></div>
-              <CardHeader className="p-8 md:p-12 pb-6">
-                <CardTitle className="text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-4 text-slate-800">
-                  <div className="p-3 bg-zinc-50 rounded-2xl group-hover:bg-[#fffe01] group-hover:text-black transition-all">
-                    <CheckCircle2 className="w-6 h-6" />
+        <div className="lg:col-span-8 space-y-12 animate-in slide-in-from-bottom-5 duration-500">
+          {activeTab === 'profile' ? (
+            <form onSubmit={handleProfileSubmit} className="space-y-8">
+              <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden group">
+                <div className="h-2 bg-black w-1/4 group-hover:w-full transition-all duration-1000"></div>
+                <CardHeader className="p-8 md:p-12 pb-6 flex flex-row items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-4 text-slate-800">
+                      <div className="p-3 bg-zinc-50 rounded-2xl group-hover:bg-[#fffe01] group-hover:text-black transition-all">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      Identity Parameters
+                    </CardTitle>
+                    <CardDescription className="font-bold text-zinc-400 uppercase tracking-widest text-[10px] mt-2">Adjust your public identification parameters.</CardDescription>
                   </div>
-                  Basic Identity
-                </CardTitle>
-                <CardDescription className="font-bold text-zinc-400 uppercase tracking-widest text-[10px] mt-2">Adjust your public identification parameters.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-8 md:p-12 pt-0 space-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
-                      Full Legal Name
-                    </Label>
-                    <Input
-                      type="text"
-                      name="name"
-                      value={userData.name}
-                      onChange={handleProfileChange}
-                      required
-                      className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-[1.5rem] font-bold text-zinc-900 px-8 focus:bg-white focus:border-black transition-all shadow-inner"
-                    />
+                  <Button 
+                    type="button"
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    className={`h-12 rounded-xl px-6 font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isEditMode ? 'bg-zinc-50 border-zinc-200 text-zinc-400 hover:text-black' : 'bg-black text-[#fffe01] border-black shadow-lg hover:-translate-y-1'}`}
+                  >
+                    {isEditMode ? 'Cancel Edit' : 'Modify Core'}
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-8 md:p-12 pt-0 space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Full Legal Name
+                      </Label>
+                      <Input
+                        type="text"
+                        name="name"
+                        value={userData.name}
+                        onChange={handleProfileChange}
+                        readOnly={!isEditMode}
+                        required
+                        className={`h-16 rounded-[1.5rem] font-bold text-zinc-900 px-8 transition-all shadow-inner border-2 ${isEditMode ? 'bg-white border-black ring-4 ring-zinc-50' : 'bg-zinc-50 border-zinc-50 cursor-default'}`}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Phone Coordinate
+                      </Label>
+                      <Input
+                        type="text"
+                        name="phoneNumber"
+                        value={userData.phoneNumber}
+                        onChange={handleProfileChange}
+                        readOnly={!isEditMode}
+                        maxLength={10}
+                        placeholder="10-digit numeric ID"
+                        className={`h-16 rounded-[1.5rem] font-bold text-zinc-900 px-8 transition-all shadow-inner border-2 ${isEditMode ? 'bg-white border-black ring-4 ring-zinc-50' : 'bg-zinc-50 border-zinc-50 cursor-default'}`}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
-                      Phone Coordinate
-                    </Label>
-                    <Input
-                      type="text"
-                      name="phoneNumber"
-                      value={userData.phoneNumber}
-                      onChange={handleProfileChange}
-                      maxLength={10}
-                      placeholder="10-digit numeric ID"
-                      className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-[1.5rem] font-bold text-zinc-900 px-8 focus:bg-white focus:border-black transition-all shadow-inner"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Verified Email Index
+                      </Label>
+                      <Input
+                        type="email"
+                        name="email"
+                        value={userData.email}
+                        readOnly
+                        className="h-16 bg-zinc-100 border-2 border-zinc-100 rounded-[1.5rem] font-bold text-zinc-400 px-8 cursor-not-allowed opacity-60"
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Compensation Vector
+                      </Label>
+                      <Input
+                        type="text"
+                        value={`₹${userData.baseSalary?.toLocaleString()}`}
+                        readOnly
+                        className="h-16 bg-zinc-100 border-2 border-zinc-100 rounded-[1.5rem] font-bold text-zinc-400 px-8 cursor-not-allowed opacity-60"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
-                    Verified Email Index
-                  </Label>
-                  <Input
-                    type="email"
-                    name="email"
-                    value={userData.email}
-                    onChange={handleProfileChange}
-                    required
-                    className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-[1.5rem] font-bold text-zinc-900 px-8 focus:bg-white focus:border-black transition-all shadow-inner"
-                  />
-                </div>
-              </CardContent>
-            </Card>
 
-            <Button 
-              type="submit" 
-              disabled={profileLoading}
-              className="w-full h-20 bg-black hover:bg-zinc-900 text-[#fffe01] rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] group"
-            >
-              {profileLoading ? (
-                <Loader size="md" color="red" />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Save className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                  <span>Update Profile Parameters</span>
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Date of Birth
+                      </Label>
+                      <Input
+                        type="date"
+                        name="dob"
+                        value={userData.dob}
+                        onChange={handleProfileChange}
+                        readOnly={!isEditMode}
+                        className={`h-16 rounded-[1.5rem] font-bold text-zinc-900 px-8 transition-all shadow-inner border-2 ${isEditMode ? 'bg-white border-black ring-4 ring-zinc-50' : 'bg-zinc-50 border-zinc-50 cursor-default'}`}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Highest Qualification
+                      </Label>
+                      <Input
+                        type="text"
+                        name="qualification"
+                        value={userData.qualification}
+                        onChange={handleProfileChange}
+                        readOnly={!isEditMode}
+                        placeholder="e.g. Bachelor of Engineering"
+                        className={`h-16 rounded-[1.5rem] font-bold text-zinc-900 px-8 transition-all shadow-inner border-2 ${isEditMode ? 'bg-white border-black ring-4 ring-zinc-50' : 'bg-zinc-50 border-zinc-50 cursor-default'}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Professional Experience (Years)
+                      </Label>
+                      <Input
+                        type="number"
+                        name="experienceYears"
+                        value={userData.experienceYears}
+                        onChange={handleProfileChange}
+                        readOnly={!isEditMode}
+                        min="0"
+                        className={`h-16 rounded-[1.5rem] font-bold text-zinc-900 px-8 transition-all shadow-inner border-2 ${isEditMode ? 'bg-white border-black ring-4 ring-zinc-50' : 'bg-zinc-50 border-zinc-50 cursor-default'}`}
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Designation (Static)
+                      </Label>
+                      <Input
+                        type="text"
+                        value={userData.designation}
+                        readOnly
+                        className="h-16 bg-zinc-100 border-2 border-zinc-100 rounded-[1.5rem] font-bold text-zinc-400 px-8 cursor-not-allowed opacity-60"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                      System Activation Date (Joining Date)
+                    </Label>
+                    <Input
+                      type="text"
+                      value={userData.joiningDate}
+                      readOnly
+                      className="h-16 bg-zinc-100 border-2 border-zinc-100 rounded-[1.5rem] font-bold text-zinc-400 px-8 cursor-not-allowed opacity-60"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {isEditMode && (
+                <Button 
+                  type="submit" 
+                  disabled={profileLoading}
+                  className="w-full h-20 bg-black hover:bg-zinc-900 text-[#fffe01] rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] group"
+                >
+                  {profileLoading ? (
+                    <Loader size="md" color="red" />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Save className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                      <span>Sync All Global Changes</span>
+                    </div>
+                  )}
+                </Button>
               )}
-            </Button>
-          </form>
-
-          {/* Security Form */}
-          <form onSubmit={handlePasswordSubmit} className="space-y-8">
-            <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden group">
-              <div className="h-2 bg-[#d30614] w-1/4 group-hover:w-full transition-all duration-1000"></div>
-              <CardHeader className="p-8 md:p-12 pb-6">
-                <CardTitle className="text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-4 text-slate-800">
-                  <div className="p-3 bg-zinc-50 rounded-2xl group-hover:bg-[#d30614] group-hover:text-white transition-all">
-                    <Lock className="w-6 h-6" />
-                  </div>
-                  Cipher Manifest
-                </CardTitle>
-                <CardDescription className="font-bold text-zinc-400 uppercase tracking-widest text-[10px] mt-2">Adjust your administrative cryptographic keys.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-8 md:p-12 pt-0 space-y-10">
-                <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
-                    Current Key
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type={showCurrentPassword ? "text" : "password"}
-                      name="currentPassword"
-                      value={passwordData.currentPassword}
-                      onChange={handlePasswordChangeInput}
-                      placeholder="••••••••••••"
-                      required
-                      className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-[1.5rem] font-bold text-zinc-900 px-8 pr-16 focus:bg-white focus:border-black transition-all shadow-inner"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors p-2 rounded-xl"
-                    >
-                      {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            </form>
+          ) : (
+            <form onSubmit={handlePasswordSubmit} className="space-y-8 animate-in slide-in-from-right-10 duration-500">
+              <Card className="border-0 shadow-2xl shadow-zinc-200/50 rounded-[2.5rem] bg-white overflow-hidden group">
+                <div className="h-2 bg-[#d30614] w-1/4 group-hover:w-full transition-all duration-1000"></div>
+                <CardHeader className="p-8 md:p-12 pb-6">
+                  <CardTitle className="text-2xl md:text-3xl font-black tracking-tighter flex items-center gap-4 text-slate-800">
+                    <div className="p-3 bg-zinc-50 rounded-2xl group-hover:bg-[#d30614] group-hover:text-white transition-all">
+                      <Lock className="w-6 h-6" />
+                    </div>
+                    Change Password
+                  </CardTitle>
+                  <CardDescription className="font-bold text-zinc-400 uppercase tracking-widest text-[10px] mt-2">Adjust your administrative cryptographic keys.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 md:p-12 pt-0 space-y-10">
                   <div className="space-y-4">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
-                      Initialization Vector
+                      Current Key
                     </Label>
                     <div className="relative">
                       <Input
-                        type={showNewPassword ? "text" : "password"}
-                        name="newPassword"
-                        value={passwordData.newPassword}
+                        type={showCurrentPassword ? "text" : "password"}
+                        name="currentPassword"
+                        value={passwordData.currentPassword}
                         onChange={handlePasswordChangeInput}
                         placeholder="••••••••••••"
                         required
@@ -324,55 +452,81 @@ const Profile = ({ setUser }) => {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                         className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors p-2 rounded-xl"
                       >
-                        {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
-                      Verify Vector
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        type={showConfirmPassword ? "text" : "password"}
-                        name="confirmPassword"
-                        value={passwordData.confirmPassword}
-                        onChange={handlePasswordChangeInput}
-                        placeholder="••••••••••••"
-                        required
-                        className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-[1.5rem] font-bold text-zinc-900 px-8 pr-16 focus:bg-white focus:border-black transition-all shadow-inner"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors p-2 rounded-xl"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            <Button 
-              type="submit" 
-              disabled={passwordLoading}
-              className="w-full h-20 bg-zinc-900 hover:bg-black text-[#fffe01] rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] group"
-            >
-              {passwordLoading ? (
-                <Loader size="md" color="red" />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span>Seal New Cryptographic Key</span>
-                </div>
-              )}
-            </Button>
-          </form>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Initialization Vector
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          type={showNewPassword ? "text" : "password"}
+                          name="newPassword"
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordChangeInput}
+                          placeholder="••••••••••••"
+                          required
+                          className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-[1.5rem] font-bold text-zinc-900 px-8 pr-16 focus:bg-white focus:border-black transition-all shadow-inner"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors p-2 rounded-xl"
+                        >
+                          {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">
+                        Verify Vector
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          type={showConfirmPassword ? "text" : "password"}
+                          name="confirmPassword"
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordChangeInput}
+                          placeholder="••••••••••••"
+                          required
+                          className="h-16 bg-zinc-50 border-2 border-zinc-50 rounded-[1.5rem] font-bold text-zinc-900 px-8 pr-16 focus:bg-white focus:border-black transition-all shadow-inner"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black transition-colors p-2 rounded-xl"
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Button 
+                type="submit" 
+                disabled={passwordLoading}
+                className="w-full h-20 bg-zinc-900 hover:bg-black text-[#fffe01] rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] group"
+              >
+                {passwordLoading ? (
+                  <Loader size="md" color="red" />
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <span>Seal New Cryptographic Key</span>
+                  </div>
+                )}
+              </Button>
+            </form>
+          )}
         </div>
 
         <div className="lg:col-span-4 space-y-8">
@@ -395,17 +549,33 @@ const Profile = ({ setUser }) => {
                   <Badge className="mt-2 bg-[#fffe01] text-black hover:bg-[#fffe01] font-black uppercase tracking-widest text-[8px] px-3 py-1 rounded-lg">{userRole}</Badge>
                 </div>
               </div>
-              <div className="p-6 bg-white/5 rounded-[1.5rem] border border-white/5 space-y-4">
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-40">
-                  <span>Last Synchronization</span>
-                  <span>Encryption State</span>
-                </div>
+              <div className="p-6 bg-white/5 rounded-[2rem] border border-white/5 space-y-6">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold font-mono">20 APR 2026</span>
-                  <span className="text-[10px] font-black tracking-widest text-emerald-400 flex items-center gap-2 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                    AES-256 ACTIVE
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Protocol State</span>
+                  <span className={`text-[10px] font-black tracking-widest flex items-center gap-2 px-4 py-2 rounded-full border shadow-xl ${
+                    attendanceStatus.type === 'online' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' :
+                    attendanceStatus.type === 'break' ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' :
+                    'text-rose-400 bg-rose-400/10 border-rose-400/20'
+                  }`}>
+                    <div className={`w-2 h-2 rounded-full shadow-2xl ${
+                      attendanceStatus.type === 'online' ? 'bg-emerald-400 animate-pulse shadow-emerald-400' :
+                      attendanceStatus.type === 'break' ? 'bg-amber-400 animate-bounce' :
+                      'bg-rose-400'
+                    }`} />
+                    {attendanceStatus.text}
                   </span>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-40">
+                    <span>Last Synchronization</span>
+                    <span>Encryption State</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold font-mono text-[#fffe01]">20 APR 2026</span>
+                    <span className="text-[10px] font-black tracking-widest text-[#fffe01] flex items-center gap-2 bg-[#fffe01]/10 px-3 py-1.5 rounded-full border border-[#fffe01]/20">
+                      AES-256 ACTIVE
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>

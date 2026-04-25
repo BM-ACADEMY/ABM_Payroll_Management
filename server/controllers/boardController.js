@@ -2,6 +2,7 @@ const Board = require('../models/Board');
 const List = require('../models/List');
 const Task = require('../models/Task');
 const Comment = require('../models/Comment');
+const TimeLog = require('../models/TimeLog');
 const CardHistory = require('../models/CardHistory');
 const User = require('../models/User');
 const Team = require('../models/Team');
@@ -448,62 +449,102 @@ exports.createTask = async (req, res) => {
     } = req.body;
     
     try {
-      if (!listId || !boardId) {
-        return res.status(400).json({ msg: 'List ID and Board ID are required' });
+      // Validate IDs
+      if (!boardId || !mongoose.Types.ObjectId.isValid(boardId)) {
+        return res.status(400).json({ msg: 'Valid Board ID is required' });
+      }
+
+      if (listId && !mongoose.Types.ObjectId.isValid(listId)) {
+        return res.status(400).json({ msg: 'Invalid List ID provided' });
+      }
+
+      let finalListId = listId;
+      if (!finalListId) {
+        const targetBoardLists = await List.find({ board: boardId }).sort('position');
+        if (targetBoardLists.length > 0) {
+          finalListId = targetBoardLists[0]._id;
+        } else {
+          const newList = new List({ title: 'Backlog', board: boardId, position: 0 });
+          await newList.save();
+          finalListId = newList._id;
+        }
       }
 
       const task = new Task({
         title,
         description,
-        list: listId,
+        list: finalListId,
         board: boardId,
         position: position || 0,
         parentTask: parentTaskId || null,
-        originTaskId: originTaskId || null,
-        originChecklistItemId: originChecklistItemId || null,
+        originTaskId: (originTaskId && mongoose.Types.ObjectId.isValid(originTaskId)) ? originTaskId : null,
+        originChecklistItemId: (originChecklistItemId && mongoose.Types.ObjectId.isValid(originChecklistItemId)) ? originChecklistItemId : null,
         assignees: assignees || [],
         deadline: deadline || null,
         labels: labels || [],
         checklists: checklists || []
       });
-    await task.save();
+      await task.save();
 
-    // Log History
-    const history = new CardHistory({
-      task: task._id,
-      user: req.user.id,
-      action: 'CREATED',
-      details: `Created task "${title}"`
-    });
-    await history.save();
+      // Log History
+      const history = new CardHistory({
+        task: task._id,
+        user: req.user.id,
+        action: 'CREATED',
+        details: `Created task "${title || 'Untitled'}"`
+      });
+      await history.save();
 
-    if (req.io) {
-      req.io.to(boardId).emit('board_updated', { type: 'TASK_CREATED', boardId });
-    }
-
-    // --- Task Assignment Emails ---
-    if (assignees && assignees.length > 0) {
-      const board = await Board.findById(boardId);
-      const admin = await User.findById(req.user.id);
-      const assignedUsers = await User.find({ _id: { $in: assignees } });
-
-      for (const aUser of assignedUsers) {
-        await emailService.sendTaskAssignmentEmail(aUser.email, {
-          title: task.title,
-          boardName: board.title,
-          adminName: admin.name,
-          dueDate: task.deadline,
-          priority: task.priority,
-          description: task.description
-        });
+      if (req.io) {
+        req.io.to(boardId).emit('board_updated', { type: 'TASK_CREATED', boardId });
       }
-    }
 
-    res.json(task);
-  } catch (err) {
-    console.error('Create Task Error:', err);
-    res.status(500).json({ msg: 'Server Error', error: err.message });
-  }
+      // --- Create Tracking Log if Converted ---
+      if (originChecklistItemId || originTaskId) {
+        try {
+          const newTimeLog = new TimeLog({
+            user: req.user.id,
+            taskName: title || 'Converted Task',
+            status: 'pending',
+            label: 'not yet started'
+          });
+          const savedLog = await newTimeLog.save();
+          if (req.io) req.io.emit('time_log_updated', savedLog);
+        } catch (logErr) {
+          console.error('Failed to create initial time log:', logErr.message);
+          // Don't fail the whole request if time log fails
+        }
+      }
+
+      // --- Task Assignment Emails ---
+      if (assignees && assignees.length > 0) {
+        try {
+          const board = await Board.findById(boardId);
+          const admin = await User.findById(req.user.id);
+          const assignedUsers = await User.find({ _id: { $in: assignees } });
+
+          for (const aUser of assignedUsers) {
+            if (aUser.email) {
+              await emailService.sendTaskAssignmentEmail(aUser.email, {
+                title: task.title,
+                boardName: board?.title || 'Unknown Board',
+                adminName: admin?.name || 'Admin',
+                dueDate: task.deadline,
+                priority: task.priority,
+                description: task.description
+              });
+            }
+          }
+        } catch (emailErr) {
+          console.error('Failed to send assignment emails:', emailErr.message);
+        }
+      }
+
+      res.json(task);
+    } catch (err) {
+      console.error('Create Task Final Catch Error:', err);
+      res.status(500).json({ msg: 'Server Error', error: err.message });
+    }
 };
 
 exports.updateTask = async (req, res) => {
@@ -664,7 +705,9 @@ exports.getTaskDetails = async (req, res) => {
     const task = await Task.findById(req.params.id)
       .populate('assignees', 'name email')
       .populate('checklists.items.assignedTo', 'name email')
-      .populate('parentTask', 'title');
+      .populate('parentTask', 'title')
+      .populate('list', 'title')
+      .populate('board', 'title');
     
     if (!task) return res.status(404).json({ msg: 'Task not found' });
 

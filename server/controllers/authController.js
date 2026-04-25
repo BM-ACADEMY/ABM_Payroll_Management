@@ -249,7 +249,13 @@ exports.getUser = async (req, res) => {
       permissions: user.permissions || [],
       phoneNumber: user.phoneNumber,
       isEmailVerified: user.isEmailVerified,
-      timingSettings: user.timingSettings
+      timingSettings: user.timingSettings,
+      baseSalary: user.baseSalary,
+      dob: user.dob,
+      qualification: user.qualification,
+      experienceYears: user.experienceYears,
+      designation: user.designation,
+      joiningDate: user.joiningDate
     });
   } catch (err) {
     console.error(err.message);
@@ -285,7 +291,7 @@ exports.changePassword = async (req, res) => {
 // @desc    Update user profile
 // @route   PUT /api/auth/profile
 exports.updateProfile = async (req, res) => {
-  let { name, email, phoneNumber } = req.body;
+  let { name, phoneNumber, dob, qualification, experienceYears } = req.body;
 
   try {
     let user = await User.findById(req.user.id);
@@ -299,18 +305,11 @@ exports.updateProfile = async (req, res) => {
       }
     }
 
-    // Check if email is already taken by another user
-    if (email) {
-      email = email.toLowerCase();
-      if (email !== user.email) {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ msg: 'Email already exists' });
-        user.email = email;
-      }
-    }
-
     if (name) user.name = name;
     if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
+    if (dob) user.dob = dob;
+    if (qualification) user.qualification = qualification;
+    if (experienceYears !== undefined) user.experienceYears = experienceYears;
     
     user.updatedAt = Date.now();
     await user.save();

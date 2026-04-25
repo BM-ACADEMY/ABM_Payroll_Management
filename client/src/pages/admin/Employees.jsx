@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Users, UserPlus, Phone, Edit, Trash2, Search, Check, Shield, ShieldCheck, Lock, Mail, CreditCard, Clock, Calendar, CheckCircle2, X } from "lucide-react";
+import { Users, UserPlus, Eye, Phone, Edit, Trash2, Search, Check, Shield, ShieldCheck, Lock, Mail, CreditCard, Clock, Calendar, CheckCircle2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PaginationControl from '@/components/ui/PaginationControl';
 import { hasPermission } from '@/utils/permissionUtils';
@@ -54,6 +54,11 @@ const Employees = () => {
     phoneNumber: '',
     password: '',
     baseSalary: '',
+    dob: '',
+    qualification: '',
+    experienceYears: '',
+    designation: '',
+    joiningDate: '',
     timingSettings: { loginTime: '09:30', logoutTime: '18:30', graceTime: 15, lunchStart: '13:30', lunchEnd: '14:30', fromDate: '', toDate: '' },
     teams: [],
     role: 'employee',
@@ -65,6 +70,7 @@ const Employees = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({
     id: '', employeeId: '', name: '', email: '', phoneNumber: '', password: '', baseSalary: '',
+    dob: '', qualification: '', experienceYears: '', designation: '', joiningDate: '',
     timingSettings: { loginTime: '', logoutTime: '', graceTime: '', lunchStart: '', lunchEnd: '', fromDate: '', toDate: '' },
     teams: [],
     role: '',
@@ -76,6 +82,10 @@ const Employees = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // View Employee State
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewEmployee, setViewEmployee] = useState(null);
 
   const fetchEmployees = async (page = 1) => {
     try {
@@ -183,6 +193,7 @@ const Employees = () => {
       
       setFormData({ 
         employeeId: '', name: '', email: '', phoneNumber: '', password: '', baseSalary: '',
+        dob: '', qualification: '', experienceYears: '', designation: '', joiningDate: '',
         timingSettings: { loginTime: '09:30', logoutTime: '18:30', graceTime: 15, lunchStart: '13:30', lunchEnd: '14:30', fromDate: '', toDate: '' },
         teams: [],
         role: 'employee',
@@ -217,11 +228,21 @@ const Employees = () => {
         fromDate: emp.timingSettings?.fromDate ? new Date(emp.timingSettings.fromDate).toISOString().split('T')[0] : '',
         toDate: emp.timingSettings?.toDate ? new Date(emp.timingSettings.toDate).toISOString().split('T')[0] : ''
       },
+      dob: emp.dob ? new Date(emp.dob).toISOString().split('T')[0] : '',
+      qualification: emp.qualification || '',
+      experienceYears: emp.experienceYears || '',
+      designation: emp.designation || '',
+      joiningDate: emp.joiningDate ? new Date(emp.joiningDate).toISOString().split('T')[0] : '',
       teams: emp.teams?.map(t => typeof t === 'object' ? t._id : t) || [],
       role: emp.role?.name || 'employee',
       permissions: emp.permissions || []
     });
     setEditOpen(true);
+  };
+
+  const openViewModal = (emp) => {
+    setViewEmployee(emp);
+    setViewOpen(true);
   };
 
   const handleEditChange = (e) => {
@@ -343,7 +364,33 @@ const Employees = () => {
                        <Input name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required placeholder="+91 XXXX" className="h-12 border-gray-100 rounded-xl focus:bg-white" />
                     </div>
                  </div>
-                 {/* Simplified remaining fields for the Add modal similarly to Edit for consistency */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-50">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">DOB</Label>
+                       <Input name="dob" type="date" value={formData.dob} onChange={handleChange} className="h-12 border-gray-100 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Qualification</Label>
+                       <Input name="qualification" value={formData.qualification} onChange={handleChange} placeholder="e.g. B.Tech" className="h-12 border-gray-100 rounded-xl" />
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Experience (Years)</Label>
+                       <Input name="experienceYears" type="number" value={formData.experienceYears} onChange={handleChange} className="h-12 border-gray-100 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Designation</Label>
+                       <Input name="designation" value={formData.designation} onChange={handleChange} placeholder="Software Engineer" className="h-12 border-gray-100 rounded-xl" />
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Joining Date</Label>
+                       <Input name="joiningDate" type="date" value={formData.joiningDate} onChange={handleChange} className="h-12 border-gray-100 rounded-xl" />
+                    </div>
+                 </div>
+                 {/* Password and Salary fields follow */}
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-50">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Password</Label>
@@ -456,6 +503,9 @@ const Employees = () => {
                       </TableCell>
                       <TableCell className="pr-8 text-right">
                          <div className="flex justify-end gap-1">
+                            <Button onClick={() => openViewModal(emp)} variant="ghost" size="icon" className="h-9 w-9 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-xl">
+                              <Eye className="w-4 h-4" />
+                            </Button>
                             {hasPermission(currentUser, 'employees:update') && (
                               <Button onClick={() => openEditModal(emp)} variant="ghost" size="icon" className="h-9 w-9 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl">
                                 <Edit className="w-4 h-4" />
@@ -512,6 +562,31 @@ const Employees = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">DOB</Label>
+                  <Input name="dob" type="date" value={editFormData.dob} onChange={handleEditChange} className="h-12 border-gray-200 rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Qualification</Label>
+                  <Input name="qualification" value={editFormData.qualification} onChange={handleEditChange} className="h-12 border-gray-200 rounded-xl" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Experience</Label>
+                  <Input name="experienceYears" type="number" value={editFormData.experienceYears} onChange={handleEditChange} className="h-12 border-gray-200 rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Designation</Label>
+                  <Input name="designation" value={editFormData.designation} onChange={handleEditChange} className="h-12 border-gray-200 rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Joining Date</Label>
+                  <Input name="joiningDate" type="date" value={editFormData.joiningDate} onChange={handleEditChange} className="h-12 border-gray-200 rounded-xl" />
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                    <Users className="w-3.5 h-3.5" /> Assigned Teams
@@ -521,7 +596,7 @@ const Employees = () => {
                     <Badge
                       key={team._id}
                       variant={editFormData.teams.includes(team._id) ? "default" : "outline"}
-                      className={`cursor-pointer px-4 py-1.5 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all ${editFormData.teams.includes(team._id) ? 'bg-gray-900 border-gray-900' : 'bg-white border-gray-200 text-gray-400'}`}
+                      className={`cursor-pointer px-4 py-1.5 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all ${editFormData.teams.includes(team._id) ? 'bg-gray-200 border-gray-900' : 'bg-white border-gray-200 text-gray-400'}`}
                       onClick={() => toggleTeam(team._id, true)}
                     >
                       {team.name}
@@ -644,6 +719,115 @@ const Employees = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* View Modal */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-0 border-none shadow-2xl">
+          <div className="bg-gray-900 p-8 md:p-12 text-white sticky top-0 z-10 flex justify-between items-center">
+            <div>
+              <DialogTitle className="text-3xl font-bold tracking-tight">{viewEmployee?.name}</DialogTitle>
+              <DialogDescription className="text-gray-400 text-xs mt-1 uppercase tracking-widest">Complete Personnel Operational File</DialogDescription>
+            </div>
+            <Badge className="bg-[#fffe01] text-black hover:bg-[#fffe01] font-black uppercase tracking-widest text-[10px] px-4 py-2 rounded-xl">
+              {viewEmployee?.role?.name || 'Staff'}
+            </Badge>
+          </div>
+          
+          <div className="p-8 md:p-12 space-y-12">
+            {/* Identity & Contact Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+              <div className="lg:col-span-1 flex flex-col items-center gap-6">
+                <div className="w-32 h-32 rounded-[2.5rem] bg-gray-50 border-4 border-gray-100 flex items-center justify-center text-5xl font-black text-gray-900 shadow-inner">
+                  {viewEmployee?.name?.charAt(0)}
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="font-black text-gray-400 uppercase tracking-widest text-[10px]">Registry ID</p>
+                  <p className="font-bold text-gray-900">{viewEmployee?.employeeId || 'NOT ASSIGNED'}</p>
+                </div>
+              </div>
+              
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <p className="font-black text-gray-400 uppercase tracking-widest text-[10px]">Email Address</p>
+                  <p className="text-lg font-bold text-gray-900 break-all">{viewEmployee?.email}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-black text-gray-400 uppercase tracking-widest text-[10px]">Phone Coordinate</p>
+                  <p className="text-lg font-bold text-gray-900">{viewEmployee?.phoneNumber}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-black text-gray-400 uppercase tracking-widest text-[10px]">Designation</p>
+                  <p className="text-lg font-bold text-gray-900 uppercase tracking-wider">{viewEmployee?.designation || 'Operational Staff'}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-black text-gray-400 uppercase tracking-widest text-[10px]">System Status</p>
+                  <Badge className={`${viewEmployee?.isEmailVerified ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'} border-none font-bold uppercase tracking-widest text-[9px]`}>
+                    {viewEmployee?.isEmailVerified ? 'Security Verified' : 'Vetting Pending'}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-50 pt-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="p-6 bg-gray-50 rounded-3xl space-y-2">
+                <p className="font-black text-gray-400 uppercase tracking-widest text-[9px]">Base Compensation</p>
+                <p className="text-2xl font-black text-emerald-600">₹{viewEmployee?.baseSalary?.toLocaleString()}</p>
+              </div>
+              <div className="p-6 bg-gray-50 rounded-3xl space-y-2">
+                <p className="font-black text-gray-400 uppercase tracking-widest text-[9px]">Activation Date</p>
+                <p className="text-xl font-bold text-gray-900">{viewEmployee?.joiningDate ? new Date(viewEmployee.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'NOT RECORDED'}</p>
+              </div>
+              <div className="p-6 bg-gray-50 rounded-3xl space-y-2">
+                <p className="font-black text-gray-400 uppercase tracking-widest text-[9px]">Experience Ledger</p>
+                <p className="text-xl font-bold text-gray-900">{viewEmployee?.experienceYears || 0} Professional Years</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-4">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-[#d30614]" />
+                  <h3 className="font-black uppercase tracking-widest text-xs text-gray-900">Personal Background</h3>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end border-b border-gray-50 pb-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date of Birth</span>
+                    <span className="font-bold text-gray-900">{viewEmployee?.dob ? new Date(viewEmployee.dob).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-end border-b border-gray-50 pb-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Qualification</span>
+                    <span className="font-bold text-gray-900 uppercase">{viewEmployee?.qualification || 'Not Specified'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-[#d30614]" />
+                  <h3 className="font-black uppercase tracking-widest text-xs text-gray-900">Team Assignments</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {viewEmployee?.teams?.length > 0 ? (
+                    viewEmployee.teams.map((team, idx) => (
+                      <Badge key={idx} className="bg-gray-900 text-white font-bold uppercase tracking-widest text-[9px] px-4 py-1.5 rounded-lg border-none shadow-md">
+                        {typeof team === 'object' ? team.name : 'Unknown Team'}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-xs font-medium italic">No active team assignments found.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-10 border-t border-gray-50 flex justify-end">
+               <Button onClick={() => setViewOpen(false)} className="bg-gray-900 hover:bg-[#d30614] text-white rounded-2xl h-14 px-12 font-black uppercase tracking-[0.2em] text-[10px] transition-all shadow-xl">
+                 Secure File
+               </Button>
+            </div>
+          </div>
+        </DialogContent>
+       </Dialog>
 
       {/* Delete Confirmation */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

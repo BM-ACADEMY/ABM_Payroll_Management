@@ -90,19 +90,19 @@ const AdminDashboard = () => {
         </div>
         
         <div className="flex items-center gap-4">
-          <Button 
+          {/* <Button 
             variant="outline" 
             size="icon" 
             className="rounded-xl bg-white border-slate-200 hover:bg-slate-50 text-slate-600 shadow-sm"
           >
             <Bell className="w-4 h-4" />
-          </Button>
-          <Button 
+          </Button> */}
+          {/* <Button 
             onClick={() => navigate('/admin/emails')} 
             className="bg-[#fffe01] hover:bg-black hover:text-white text-black font-bold rounded-xl px-8 h-12 shadow-sm transition-all"
           >
             <UserPlus className="w-4 h-4 mr-2" /> Enroll Staff
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -172,7 +172,7 @@ const AdminDashboard = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigate('/admin/employees')}
-                className="text-[10px] font-bold text-white hover:text-black hover:bg-[#fffe01] border-white/10 uppercase tracking-widest rounded px-5 h-9 transition-all"
+                className="text-[10px] font-bold bg-grey-200 text-white hover:text-black hover:bg-[#fffe01] border-white/10 uppercase tracking-widest rounded px-5 h-9 transition-all"
             >
               All Records <ChevronRight className="w-3 h-3 ml-2" />
             </Button>
