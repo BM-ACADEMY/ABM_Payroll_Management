@@ -61,7 +61,7 @@ const TimelineEngine = ({ tasks, listData }) => {
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#fbfcff] rounded-[2rem] border border-zinc-200/50 shadow-sm overflow-hidden animate-in fade-in duration-500">
       {/* Precision Header */}
-      <div className="px-8 py-6 flex items-center justify-between bg-white border-b border-zinc-100">
+      <div className="px-4 md:px-8 py-4 md:py-6 flex flex-col sm:flex-row sm:items-center justify-between bg-white border-b border-zinc-100 gap-4">
         <div className="flex items-center gap-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black shadow-lg relative overflow-hidden group">
             <Zap className="h-5 w-5 text-[#fffe01] relative z-10" />
@@ -232,8 +232,8 @@ const TimelineEngine = ({ tasks, listData }) => {
       </div>
       
       {/* Dynamic Summary */}
-      <div className="px-10 py-5 bg-white border-t border-zinc-100 flex items-center justify-between">
-         <div className="flex items-center gap-8">
+      <div className="px-4 md:px-10 py-5 bg-white border-t border-zinc-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+         <div className="flex flex-wrap items-center gap-4 md:gap-8">
             {[
               { label: 'Essential', color: 'bg-zinc-400' },
               { label: 'Moderate', color: 'bg-blue-500' },
@@ -248,7 +248,7 @@ const TimelineEngine = ({ tasks, listData }) => {
          </div>
          <div className="flex items-center gap-3">
             <TrendingUp className="h-4 w-4 text-zinc-300" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Total Structural Throughput</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Structural Throughput</span>
          </div>
       </div>
     </div>

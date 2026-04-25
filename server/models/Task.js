@@ -26,7 +26,8 @@ const TaskSchema = new mongoose.Schema({
       isCompleted: { type: Boolean, default: false },
       assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       dueDate: { type: Date },
-      timeLogLabel: { type: String }
+      timeLogLabel: { type: String },
+      estimatedDuration: { type: Number, default: 0 } // In minutes
     }]
   }],
   attachments: [{

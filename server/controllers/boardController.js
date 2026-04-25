@@ -770,9 +770,13 @@ exports.addComment = async (req, res) => {
     });
 
     // Populate mentions
-    const mentionsMatches = text.match(/@\S+@\S+\.\S+/g);
+    const mentionsMatches = text.match(/@\S+@\S+@\S+\.\S+/g) || text.match(/@\S+@\S+\.\S+/g);
     if (mentionsMatches) {
-      const emails = mentionsMatches.map(m => m.split('@').pop());
+      const emails = mentionsMatches.map(m => {
+        const parts = m.split('@');
+        // Based on @Name@user@domain.com format
+        return parts.slice(-2).join('@');
+      });
       const mentionedUsers = await User.find({ email: { $in: emails } });
       comment.mentions = mentionedUsers
         .filter(mUser => mUser._id.toString() !== req.user.id)
@@ -780,21 +784,42 @@ exports.addComment = async (req, res) => {
     }
 
     await comment.save();
-    // Tag Notifications
-    if (comment.mentions.length > 0 && req.io) {
-      comment.mentions.forEach(mention => {
-        req.io.emit('notification', {
-          userId: mention.user,
-          type: 'MENTION',
-          message: `${req.user.name} mentioned you in a comment`,
-          taskId: taskId
-        });
+
+    // Fetch commenter details and task/board context for the email
+    const commenter = await User.findById(req.user.id).select('name');
+    const task = await Task.findById(taskId).populate('board', 'title');
+
+    // Tag Notifications & Emails
+    if (comment.mentions.length > 0) {
+      const mentionedUserIds = comment.mentions.map(m => m.user);
+      const mentionedUsers = await User.find({ _id: { $in: mentionedUserIds } }).select('email');
+
+      mentionedUsers.forEach(async (mUser) => {
+        // App Notification
+        if (req.io) {
+          req.io.emit('notification', {
+            userId: mUser._id,
+            type: 'MENTION',
+            message: `${req.user.name} mentioned you in a comment`,
+            taskId: taskId
+          });
+        }
+        
+        // Email Notification
+        if (mUser.email) {
+          await emailService.sendMentionEmail(mUser.email, {
+            commenterName: commenter?.name || 'A user',
+            taskTitle: task?.title || 'a task',
+            commentText: text,
+            boardName: task?.board?.title || 'Project Board',
+            taskId: taskId
+          });
+        }
       });
     }
 
-    const task = await Task.findById(taskId);
     if (req.io && task) {
-      req.io.to(task.board.toString()).emit('board_updated', { type: 'COMMENT_ADDED', boardId: task.board, taskId });
+      req.io.to(task.board._id.toString()).emit('board_updated', { type: 'COMMENT_ADDED', boardId: task.board._id, taskId });
     }
 
     res.json(comment);
@@ -812,10 +837,13 @@ exports.updateComment = async (req, res) => {
     if (comment.user.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
 
     // Recalculate mentions for updated comment
-    const mentionsMatches = text.match(/@\S+@\S+\.\S+/g);
+    const mentionsMatches = text.match(/@\S+@\S+@\S+\.\S+/g) || text.match(/@\S+@\S+\.\S+/g);
     let mentions = [];
     if (mentionsMatches) {
-      const emails = mentionsMatches.map(m => m.split('@').pop());
+      const emails = mentionsMatches.map(m => {
+        const parts = m.split('@');
+        return parts.slice(-2).join('@');
+      });
       const mentionedUsers = await User.find({ email: { $in: emails } });
       mentions = mentionedUsers
         .filter(mUser => mUser._id.toString() !== req.user.id)
@@ -824,21 +852,41 @@ exports.updateComment = async (req, res) => {
 
     comment = await Comment.findByIdAndUpdate(req.params.id, { text, mentions, updatedAt: Date.now() }, { new: true });
     
-    // Tag Notifications for updated comment
-    if (comment.mentions.length > 0 && req.io) {
-      comment.mentions.forEach(mention => {
-        req.io.emit('notification', {
-          userId: mention.user,
-          type: 'MENTION',
-          message: `${req.user.name} updated a mention in a comment`,
-          taskId: comment.task
-        });
+    // Fetch commenter details and task/board context for the email
+    const commenter = await User.findById(req.user.id).select('name');
+    const task = await Task.findById(comment.task).populate('board', 'title');
+
+    // Tag Notifications & Emails
+    if (comment.mentions.length > 0) {
+      const mentionedUserIds = comment.mentions.map(m => m.user);
+      const mentionedUsers = await User.find({ _id: { $in: mentionedUserIds } }).select('email');
+
+      mentionedUsers.forEach(async (mUser) => {
+        // App Notification
+        if (req.io) {
+          req.io.emit('notification', {
+            userId: mUser._id,
+            type: 'MENTION',
+            message: `${req.user.name} updated a mention in a comment`,
+            taskId: comment.task
+          });
+        }
+        
+        // Email Notification
+        if (mUser.email) {
+          await emailService.sendMentionEmail(mUser.email, {
+            commenterName: commenter?.name || 'A user',
+            taskTitle: task?.title || 'a task',
+            commentText: text,
+            boardName: task?.board?.title || 'Project Board',
+            taskId: comment.task
+          });
+        }
       });
     }
 
-    const task = await Task.findById(comment.task);
     if (req.io && task) {
-       req.io.to(task.board.toString()).emit('board_updated', { type: 'COMMENT_UPDATED', boardId: task.board, taskId: comment.task });
+       req.io.to(task.board._id.toString()).emit('board_updated', { type: 'COMMENT_UPDATED', boardId: task.board._id, taskId: comment.task });
     }
     res.json(comment);
   } catch (err) {
@@ -905,13 +953,14 @@ exports.addChecklistItem = async (req, res) => {
 };
 
 exports.updateChecklistItem = async (req, res) => {
-  const { checklistId, itemId, isCompleted, text, assignedTo, dueDate } = req.body;
+  const { checklistId, itemId, isCompleted, text, assignedTo, dueDate, estimatedDuration } = req.body;
   try {
     const updateFields = {};
     if (isCompleted !== undefined) updateFields["checklists.$[].items.$[elem].isCompleted"] = isCompleted;
     if (text !== undefined) updateFields["checklists.$[].items.$[elem].text"] = text;
     if (assignedTo !== undefined) updateFields["checklists.$[].items.$[elem].assignedTo"] = assignedTo;
     if (dueDate !== undefined) updateFields["checklists.$[].items.$[elem].dueDate"] = dueDate;
+    if (estimatedDuration !== undefined) updateFields["checklists.$[].items.$[elem].estimatedDuration"] = estimatedDuration;
 
     const task = await Task.findOneAndUpdate(
       { _id: req.params.taskId, "checklists.items._id": itemId },

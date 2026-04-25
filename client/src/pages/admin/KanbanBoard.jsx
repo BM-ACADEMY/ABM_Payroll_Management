@@ -843,14 +843,14 @@ const KanbanBoard = () => {
 
   return (
     <div className="h-[calc(100vh-80px)] overflow-hidden flex flex-col bg-zinc-50/50">
-      <header className="px-6 py-4 flex items-center justify-between border-b bg-white shadow-sm z-10">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban`)} className="p-2 h-auto text-zinc-400 hover:text-black hover:bg-zinc-100 rounded-xl">
+      <header className="px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between border-b bg-white shadow-sm z-10 gap-4 md:gap-0">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <Button variant="ghost" onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban`)} className="p-2 h-auto text-zinc-400 hover:text-black hover:bg-zinc-100 rounded-xl shrink-0">
             <X className="w-5 h-5" />
           </Button>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-normal text-zinc-900 tracking-tight">{boardData?.title}</h1>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-3 mb-0.5 md:mb-1 overflow-hidden">
+              <h1 className="text-lg md:text-xl font-normal text-zinc-900 tracking-tight truncate">{boardData?.title}</h1>
               {isAdmin && type && teamsForAdmin.length > 0 ? (
                 <Select value={String(selectedTeamId || '').toLowerCase()} onValueChange={(val) => { setSelectedTeamId(String(val).toLowerCase()); setLoading(true); }}>
                   <SelectTrigger className="h-8 min-w-[180px] bg-zinc-50 border-zinc-200 text-[11px] font-normal tracking-widest rounded-xl hover:bg-zinc-100 transition-all shadow-sm px-4">
@@ -878,7 +878,7 @@ const KanbanBoard = () => {
             )}
           </div>
         </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto px-1 md:px-0">
           <div className="flex -space-x-2 mr-2">
              {boardData?.members?.slice(0, 3).map((m, i) => (
                <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-zinc-200 flex items-center justify-center text-[10px] font-normal shadow-sm" title={m?.name}>{m?.name?.charAt(0) || '?'}</div>
@@ -961,15 +961,15 @@ const KanbanBoard = () => {
                             return matchesSearch && notInBoard && isInSameTeam;
                           })
                           .map(u => (
-                            <div key={u._id} className="flex items-center justify-between p-4 rounded-[24px] hover:bg-zinc-50 border border-transparent hover:border-zinc-200 transition-all group/user">
-                               <div className="flex items-center gap-4">
-                                 <div className="w-10 h-10 rounded-2xl bg-white border border-zinc-100 flex items-center justify-center text-sm font-normal shadow-sm group-hover/user:bg-black group-hover/user:text-white transition-all">{u.name.charAt(0)}</div>
-                                 <div className="flex flex-col">
-                                   <span className="text-sm font-normal text-zinc-900 leading-none mb-1">{u.name}</span>
-                                   <span className="text-[10px] text-zinc-400 font-medium">{u.email}</span>
+                            <div key={u._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[24px] hover:bg-zinc-50 border border-transparent hover:border-zinc-200 transition-all group/user gap-4">
+                               <div className="flex items-center gap-4 min-w-0">
+                                 <div className="w-10 h-10 rounded-2xl bg-white border border-zinc-100 flex items-center justify-center text-sm font-normal shadow-sm group-hover/user:bg-black group-hover/user:text-white transition-all shrink-0">{u.name.charAt(0)}</div>
+                                 <div className="flex flex-col min-w-0">
+                                   <span className="text-sm font-normal text-zinc-900 leading-none mb-1 truncate">{u.name}</span>
+                                   <span className="text-[10px] text-zinc-400 font-medium truncate">{u.email}</span>
                                  </div>
                                </div>
-                               <Button size="sm" onClick={() => handleAddMember(u._id)} className="h-9 rounded-xl bg-black text-[#fffe01] hover:bg-zinc-800 px-6 font-normal text-[10px] tracking-widest shadow-lg active:scale-95 transition-all">INVITE</Button>
+                               <Button size="sm" onClick={() => handleAddMember(u._id)} className="h-9 rounded-xl bg-black text-[#fffe01] hover:bg-zinc-800 px-6 font-normal text-[10px] tracking-widest shadow-lg active:scale-95 transition-all w-full sm:w-auto">INVITE</Button>
                             </div>
                           ))
                        ) : (
@@ -1053,26 +1053,26 @@ const KanbanBoard = () => {
         onValueChange={setActiveTab} 
         className="flex-1 flex flex-col min-h-0"
       >
-        <div className="px-6 py-2.5 border-b border-zinc-100 bg-white/50 backdrop-blur-sm sticky top-0 z-40 flex items-center justify-between overflow-x-auto scrollbar-hide">
-          <TabsList className="bg-zinc-100/50 p-1 rounded-xl border border-zinc-200/50 shadow-sm">
+        <div className="px-4 md:px-6 py-2.5 border-b border-zinc-100 bg-white/50 backdrop-blur-sm sticky top-0 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <TabsList className="bg-zinc-100/50 p-1 rounded-xl border border-zinc-200/50 shadow-sm overflow-x-auto scrollbar-hide flex-nowrap justify-start">
             {boardData?.type !== 'weekly' && (
-              <TabsTrigger value="backlog" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">Backlog</TabsTrigger>
+              <TabsTrigger value="backlog" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Backlog</TabsTrigger>
             )}
-            <TabsTrigger value="sprint" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">
-              {boardData?.type === 'weekly' ? 'Weekly Stream' : 'Sprint'}
+            <TabsTrigger value="sprint" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">
+              {boardData?.type === 'weekly' ? 'Streams' : 'Sprint'}
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">Timeline</TabsTrigger>
-            <TabsTrigger value="analytics" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">Analytics</TabsTrigger>
-            <TabsTrigger value="team" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">Team</TabsTrigger>
-            <TabsTrigger value="sop" className="rounded-lg px-5 py-2 h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[9px] tracking-widest transition-all">SOP</TabsTrigger>
+            <TabsTrigger value="timeline" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Timeline</TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Analytics</TabsTrigger>
+            <TabsTrigger value="team" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all text-nowrap">Team</TabsTrigger>
+            <TabsTrigger value="sop" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">SOP</TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-4">
-             <div className="relative group/search">
-               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-black transition-colors" />
+          <div className="flex items-center gap-3">
+             <div className="relative group/search flex-1 sm:flex-none">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-black transition-colors" />
                 <Input 
-                  placeholder="Search nodes..." 
-                  className="pl-9 h-10 w-64 bg-zinc-100/50 border-zinc-200/50 focus:bg-white rounded-xl focus:ring-2 focus:ring-[#fffe01]/20 transition-all text-xs font-semibold shadow-sm"
+                  placeholder="Search..." 
+                  className="pl-9 h-9 w-full sm:w-48 bg-zinc-100/50 border-zinc-200/50 focus:bg-white rounded-xl focus:ring-2 focus:ring-[#fffe01]/20 transition-all text-xs font-semibold shadow-sm"
                 />
              </div>
              {activeTab === 'sprint' && (
@@ -1090,19 +1090,19 @@ const KanbanBoard = () => {
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col">
-          <TabsContent value="backlog" className="flex-1 overflow-y-auto p-6 outline-none">
+          <TabsContent value="backlog" className="flex-1 overflow-y-auto p-4 md:p-10 outline-none">
              <div className="h-full flex flex-col">
-               <div className="flex items-center justify-between mb-10">
+               <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-6">
                   <div>
-                     <h2 className="text-4xl font-normal tracking-tight text-zinc-900 mb-2">Backlog <span className="text-zinc-300">Quarantine</span></h2>
-                     <p className="text-zinc-500 font-medium tracking-tight">Phase 0: Operational Analysis & Scheduling</p>
+                     <h2 className="text-2xl md:text-4xl font-normal tracking-tight text-zinc-900 mb-2">Backlog <span className="text-zinc-300">Quarantine</span></h2>
+                     <p className="text-zinc-500 font-medium tracking-tight text-sm">Phase 0: Operational Analysis & Scheduling</p>
                   </div>
                   <Button 
                     onClick={() => {
                       setNewTaskData(prev => ({ ...prev, listId: lists[0]?._id }));
                       setIsTaskModalOpen(true);
                     }}
-                    className="bg-black text-[#fffe01] hover:bg-zinc-800 rounded-2xl h-14 px-8 font-normal uppercase tracking-widest text-xs shadow-2xl active:scale-95 transition-all"
+                    className="bg-black text-[#fffe01] hover:bg-zinc-800 rounded-2xl h-11 md:h-14 px-6 md:px-8 font-normal uppercase tracking-widest text-[10px] md:text-xs shadow-2xl active:scale-95 transition-all w-full md:w-auto"
                   >
                     <Plus className="w-5 h-5 mr-3" /> Initialize Vector
                   </Button>
@@ -1122,7 +1122,7 @@ const KanbanBoard = () => {
                         <div 
                            key={task._id} 
                            onClick={() => fetchTaskDetails(task._id)}
-                           className="group flex items-center justify-between p-4 rounded-2xl hover:bg-zinc-50 transition-all border border-transparent hover:border-zinc-100 cursor-pointer"
+                           className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl hover:bg-zinc-50 transition-all border border-transparent hover:border-zinc-100 cursor-pointer gap-4"
                         >
                            <div className="flex items-center gap-4 flex-1">
                               <div className={`w-2.5 h-2.5 rounded-full ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-zinc-200'}`}></div>
@@ -1134,21 +1134,21 @@ const KanbanBoard = () => {
                                  </div>
                               </div>
                            </div>
-                           <div className="flex items-center gap-3">
-                              <Button 
-                                variant="ghost" 
-                                onClick={() => fetchTaskDetails(task._id)}
-                                className="h-12 w-12 rounded-2xl hover:bg-white hover:shadow-md transition-all text-zinc-400 hover:text-black"
-                              >
-                                 <Edit className="w-5 h-5" />
-                              </Button>
-                              <Button 
-                                onClick={() => handleMoveToSprint(task._id)}
-                                className="bg-black text-[#fffe01] hover:bg-[#fffe01] hover:text-black rounded-2xl h-12 px-6 font-normal uppercase tracking-widest text-[10px] shadow-sm active:scale-95 transition-all flex items-center gap-2"
-                              >
-                                 <Plus className="w-4 h-4" /> Deploy to Sprint
-                              </Button>
-                           </div>
+                            <div className="flex items-center justify-end gap-3 w-full sm:w-auto">
+                               <Button 
+                                 variant="ghost" 
+                                 onClick={() => fetchTaskDetails(task._id)}
+                                 className="h-10 md:h-12 w-10 md:w-12 rounded-xl md:rounded-2xl hover:bg-white hover:shadow-md transition-all text-zinc-400 hover:text-black"
+                               >
+                                  <Edit className="w-5 h-5" />
+                               </Button>
+                               <Button 
+                                 onClick={() => handleMoveToSprint(task._id)}
+                                 className="flex-1 sm:flex-none justify-center bg-black text-[#fffe01] hover:bg-[#fffe01] hover:text-black rounded-xl md:rounded-2xl h-10 md:h-12 px-4 md:px-6 font-normal uppercase tracking-widest text-[9px] md:text-[10px] shadow-sm active:scale-95 transition-all flex items-center gap-2"
+                               >
+                                  <Plus className="w-4 h-4" /> Deploy
+                               </Button>
+                            </div>
                         </div>
                       ))}
                     </div>
@@ -1219,12 +1219,12 @@ const KanbanBoard = () => {
              </div>
           </TabsContent>
 
-          <TabsContent value="analytics" className="flex-1 overflow-y-auto p-10 outline-none">
+          <TabsContent value="analytics" className="flex-1 overflow-y-auto p-4 md:p-10 outline-none">
              <div className="h-full flex flex-col space-y-10">
-               <div className="flex items-center justify-between">
+               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div>
-                     <h2 className="text-4xl font-normal tracking-tight text-zinc-900 mb-2">Performance <span className="text-zinc-300">Analytics</span></h2>
-                     <p className="text-zinc-500 font-medium tracking-tight">Real-time Operational Efficiency Tracking</p>
+                     <h2 className="text-2xl md:text-4xl font-normal tracking-tight text-zinc-900 mb-2">Performance <span className="text-zinc-300">Analytics</span></h2>
+                     <p className="text-zinc-500 font-medium tracking-tight text-sm">Real-time Operational Efficiency Tracking</p>
                   </div>
                   <div className="flex items-center gap-3 bg-zinc-50 p-2 rounded-2xl border border-zinc-100">
                       {isAdmin && (
@@ -1249,25 +1249,26 @@ const KanbanBoard = () => {
                    </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                    {[
                      { label: 'Total Vectors', value: analyticsData.total, icon: Layout, color: 'text-zinc-900', bg: 'bg-zinc-50' },
                      { label: 'Completed', value: analyticsData.completed, icon: CheckSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                      { label: 'Active Sprint', value: analyticsData.inSprint, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
                      { label: 'Blocked Nodes', value: analyticsData.blocked, icon: Activity, color: 'text-red-600', bg: 'bg-red-50' }
                    ].map((stat, i) => (
-                     <div key={i} className="bg-white p-8 rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-zinc-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                     <div key={i} className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border border-zinc-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                         <div className="flex items-center justify-between mb-6">
-                           <div className={`w-14 h-14 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
-                              <stat.icon className="w-6 h-6" />
+                           <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
+                              <stat.icon className="w-5 h-5 md:w-6 md:h-6" />
                            </div>
                            <TrendingUp className="w-4 h-4 text-zinc-200" />
                         </div>
                         <span className="text-[10px] font-normal text-zinc-400 uppercase tracking-[0.2em]">{stat.label}</span>
-                        <h4 className="text-4xl font-normal text-zinc-900 mt-2 tracking-tighter">{stat.value}</h4>
+                        <h4 className="text-3xl md:text-4xl font-normal text-zinc-900 mt-2 tracking-tighter">{stat.value}</h4>
                      </div>
                    ))}
                 </div>
+div>
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-zinc-100 relative overflow-hidden group">
@@ -1315,12 +1316,12 @@ const KanbanBoard = () => {
              </div>
           </TabsContent>
 
-          <TabsContent value="team" className="flex-1 overflow-y-auto p-10 outline-none">
+          <TabsContent value="team" className="flex-1 overflow-y-auto p-4 md:p-10 outline-none">
              <div className="h-full flex flex-col">
-               <div className="flex items-center justify-between mb-10">
+               <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                   <div>
-                     <h2 className="text-4xl font-normal tracking-tight text-zinc-900 mb-2">Team <span className="text-zinc-300">Nodes</span></h2>
-                     <p className="text-zinc-500 font-medium tracking-tight">Active Operation Contributors</p>
+                     <h2 className="text-2xl md:text-4xl font-normal tracking-tight text-zinc-900 mb-2">Team <span className="text-zinc-300">Nodes</span></h2>
+                     <p className="text-zinc-500 font-medium tracking-tight text-sm">Active Operation Contributors</p>
                   </div>
                </div>
 
@@ -1345,16 +1346,16 @@ const KanbanBoard = () => {
                     const efficiency = total ? Math.round((completed / total) * 100) : 0;
 
                     return (
-                    <div key={m._id} className="bg-white p-10 rounded-[3.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] border border-zinc-100 relative overflow-hidden group hover:-translate-y-2 transition-all duration-500">
-                       <div className="absolute top-0 right-0 w-48 h-48 bg-zinc-50 rounded-bl-[100%] transition-all group-hover:bg-[#fffe01]/20 -z-10 group-hover:scale-110 duration-700"></div>
+                    <div key={m._id} className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] border border-zinc-100 relative overflow-hidden group hover:-translate-y-2 transition-all duration-500">
+                       <div className="absolute top-0 right-0 w-32 md:w-48 h-32 md:h-48 bg-zinc-50 rounded-bl-[100%] transition-all group-hover:bg-[#fffe01]/20 -z-10 group-hover:scale-110 duration-700"></div>
                        
-                       <div className="flex items-center gap-6 mb-10">
-                          <div className="w-20 h-20 rounded-[2.2rem] bg-zinc-900 shadow-2xl relative overflow-hidden flex items-center justify-center transform group-hover:rotate-6 transition-transform duration-500">
+                       <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-[1.8rem] md:rounded-[2.2rem] bg-zinc-900 shadow-2xl relative overflow-hidden flex items-center justify-center transform group-hover:rotate-6 transition-transform duration-500">
                              <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent"></div>
-                             <span className="text-3xl font-normal text-[#fffe01] relative z-10 uppercase">{m.name.charAt(0)}</span>
+                             <span className="text-2xl md:text-3xl font-normal text-[#fffe01] relative z-10 uppercase">{m.name.charAt(0)}</span>
                           </div>
-                          <div>
-                             <h4 className="text-2xl font-normal text-zinc-900 tracking-tight leading-none mb-2">{m.name}</h4>
+                          <div className="min-w-0">
+                             <h4 className="text-xl md:text-2xl font-normal text-zinc-900 tracking-tight leading-none mb-2 truncate">{m.name}</h4>
                              <Badge className="bg-zinc-50 text-zinc-400 border-zinc-100 font-normal text-[9px] tracking-widest px-3">ACTIVE AGENT</Badge>
                           </div>
                        </div>
@@ -1496,6 +1497,7 @@ const KanbanBoard = () => {
             boardData={boardData}
             currentBoardId={boardData?._id}
             lists={lists}
+            allUsers={allUsers}
             isAdmin={isAdmin}
             handleUpdateTask={handleUpdateTask}
             handleDeleteTask={handleDeleteTask}
@@ -1510,7 +1512,6 @@ const KanbanBoard = () => {
             handleRemoveChecklist={handleRemoveChecklist}
             handleAddSubTask={handleAddSubTask}
             getTimeAgo={getTimeAgo}
-
           />
         </Suspense>
       )}

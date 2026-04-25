@@ -348,7 +348,7 @@ const Attendance = () => {
       {activeTab === 'terminal' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Active Status Card */}
-          <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl bg-white overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-8 md:p-12 relative text-center">
+          <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl bg-white overflow-hidden min-h-[400px] md:min-h-[500px] flex flex-col items-center justify-center p-6 md:p-12 relative text-center">
             {loading && (
               <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
                 <Loader size="lg" color="red" />
@@ -362,7 +362,7 @@ const Attendance = () => {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Current Status</span>
-                  <div className="text-4xl font-bold text-gray-900 uppercase tracking-tight">{statusConfig.label}</div>
+                  <div className="text-3xl md:text-4xl font-bold text-gray-900 uppercase tracking-tight">{statusConfig.label}</div>
                 </div>
               </div>
 
@@ -384,45 +384,45 @@ const Attendance = () => {
                       </button>
                     </div>
                     
-                    <Button
-                      disabled={loading}
-                      onClick={() => handleAction('check-in')}
-                      className="w-full py-10 bg-gray-900 hover:bg-[#d30614] text-white text-xl font-bold rounded-2xl shadow-xl transition-all active:scale-95"
-                    >
-                      Process Check-in
-                    </Button>
+                      <Button
+                        disabled={loading}
+                        onClick={() => handleAction('check-in')}
+                        className="w-full py-6 md:py-10 bg-gray-900 hover:bg-[#d30614] text-white text-lg md:text-xl font-bold rounded-2xl shadow-xl transition-all active:scale-95"
+                      >
+                        Process Check-in
+                      </Button>
                   </div>
                 )}
 
                 {attendanceState === 'working' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {!sessionTimes.lunchIn && (
+                        <Button
+                          disabled={loading}
+                          onClick={() => handleAction('lunch-out')}
+                          className="py-6 md:py-8 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow-md transition-all h-auto flex flex-col"
+                        >
+                          <Coffee className="w-5 h-5 md:w-6 md:h-6 mb-2" /> Lunch Break
+                        </Button>
+                    )}
                       <Button
                         disabled={loading}
-                        onClick={() => handleAction('lunch-out')}
-                        className="py-8 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow-md transition-all h-auto flex flex-col"
+                        onClick={() => handleAction('check-out')}
+                        className={`py-6 md:py-8 bg-zinc-900 hover:bg-rose-600 text-white font-bold rounded-2xl shadow-md transition-all h-auto flex flex-col ${sessionTimes.lunchIn ? 'col-span-2' : ''}`}
                       >
-                        <Coffee className="w-6 h-6 mb-2" /> Lunch Break
+                        <LogOut className="w-5 h-5 md:w-6 md:h-6 mb-2" /> End Shift
                       </Button>
-                    )}
-                    <Button
-                      disabled={loading}
-                      onClick={() => handleAction('check-out')}
-                      className={`py-8 bg-zinc-900 hover:bg-rose-600 text-white font-bold rounded-2xl shadow-md transition-all h-auto flex flex-col ${sessionTimes.lunchIn ? 'col-span-2' : ''}`}
-                    >
-                      <LogOut className="w-6 h-6 mb-2" /> End Shift
-                    </Button>
                   </div>
                 )}
 
                 {attendanceState === 'lunch' && (
-                  <Button
-                    disabled={loading}
-                    onClick={() => handleAction('lunch-in')}
-                    className="w-full py-10 bg-emerald-500 hover:bg-emerald-600 text-white text-xl font-bold rounded-2xl shadow-xl transition-all active:scale-95"
-                  >
-                    Resume Working
-                  </Button>
+                    <Button
+                      disabled={loading}
+                      onClick={() => handleAction('lunch-in')}
+                      className="w-full py-6 md:py-10 bg-emerald-500 hover:bg-emerald-600 text-white text-lg md:text-xl font-bold rounded-2xl shadow-xl transition-all active:scale-95"
+                    >
+                      Resume Working
+                    </Button>
                 )}
 
                 {attendanceState === 'completed' && (
@@ -586,12 +586,23 @@ const Attendance = () => {
                                     <Clock className="w-3.5 h-3.5" />
                                     <span className="text-[10px] font-bold">{format(new Date(log.timestamp), 'hh:mm a')}</span>
                                  </div>
-                                 {log.checkIn?.mode && (
-                                   <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-                                      <MapPin className="w-3 h-3 text-red-400" />
+                                  {log.checkIn?.location ? (
+                                    <a 
+                                      href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-tighter hover:text-[#d30614] transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MapPin className="w-3 h-3 text-red-400 animate-pulse" />
                                       {log.checkIn.mode}
-                                   </div>
-                                 )}
+                                    </a>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
+                                       <MapPin className="w-3 h-3 text-red-400 opacity-40" />
+                                       {log.checkIn.mode}
+                                    </div>
+                                  )}
                               </div>
                            </div>
                         </Card>
@@ -646,10 +657,23 @@ const Attendance = () => {
                                  )}
                               </TableCell>
                               <TableCell>
-                                 <div className="flex items-center gap-2">
-                                    <MapPin className="w-3 h-3 text-red-500 opacity-50" />
-                                    <span className="text-[10px] font-bold uppercase text-gray-500 tracking-tight">{log.checkIn?.mode || 'LOCAL_IP'}</span>
-                                 </div>
+                                  {log.checkIn?.location ? (
+                                    <a 
+                                      href={`https://www.google.com/maps?q=${log.checkIn.location.lat},${log.checkIn.location.lng}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 hover:text-[#d30614] transition-colors"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                       <MapPin className="w-3 h-3 text-red-500 animate-pulse" />
+                                       <span className="text-[10px] font-bold uppercase text-gray-500 tracking-tight decoration-dotted underline-offset-2 hover:underline">{log.checkIn?.mode || 'LOCAL_IP'}</span>
+                                    </a>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                       <MapPin className="w-3 h-3 text-red-500 opacity-20" />
+                                       <span className="text-[10px] font-bold uppercase text-gray-400 tracking-tight">{log.checkIn?.mode || 'LOCAL_IP'}</span>
+                                    </div>
+                                  )}
                               </TableCell>
                               <TableCell className="text-right pr-10">
                                  <Badge className={`text-[9px] font-black uppercase ${log.status?.includes('late') ? 'bg-amber-100 text-amber-700 shadow-sm' : log.type === 'audit' ? 'bg-zinc-900 text-[#fffe01]' : 'bg-emerald-100 text-emerald-700 shadow-sm'}`}>

@@ -34,13 +34,13 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
       {/* Mobile Overlay */}
       {isMobile && !isCollapsed && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[45] animate-in fade-in duration-500"
+          className="fixed inset-0 bg-black/60 z-[50] animate-in fade-in duration-500"
           onClick={() => setIsCollapsed(true)}
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-screen transition-all duration-500 ease-in-out bg-black border-r border-white/5 z-30 flex flex-col p-4 shadow-2xl ${isMobile
+        className={`fixed left-0 top-0 h-screen transition-all duration-500 ease-in-out bg-black border-r border-white/5 z-[60] flex flex-col p-4 shadow-2xl ${isMobile
             ? (isCollapsed ? '-translate-x-full w-64' : 'translate-x-0 w-64')
             : (isCollapsed ? 'w-20' : 'w-64')
           }`}
@@ -70,6 +70,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
             <NavLink
               key={i}
               to={link.path}
+              onClick={() => isMobile && setIsCollapsed(true)}
               end={link.end || link.path === '/admin' || link.path === '/dashboard'}
               className={({ isActive }) => `
               flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative
@@ -98,6 +99,7 @@ const Sidebar = ({ user, isMobile, isCollapsed, setIsCollapsed }) => {
       <div className="mt-auto pt-6 border-t border-white/5">
         <NavLink 
           to={(['admin', 'subadmin'].includes(user?.role?.name)) ? "/admin/profile" : "/dashboard/profile"}
+          onClick={() => isMobile && setIsCollapsed(true)}
           className={({ isActive }) => `
             p-3 flex items-center gap-3 rounded-xl transition-all duration-300 group
             ${isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}
