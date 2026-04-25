@@ -184,6 +184,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
     navigate(path);
     setSearchTerm('');
     setIsOpen(false);
+    if (isMobile) setIsSidebarCollapsed(true);
   };
 
   const [showSearch, setShowSearch] = useState(false);

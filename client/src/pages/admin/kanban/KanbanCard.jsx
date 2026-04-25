@@ -40,7 +40,7 @@ const KanbanCard = ({ task, index, onClick }) => {
                   {task.originTaskId && <Badge variant="outline" className="text-[7px] font-normal bg-slate-50 text-slate-400 px-1 py-0 h-3.5 uppercase border-slate-100">Copied</Badge>}
                   {getStatusBadge(task.timeLogLabel)}
                 </div>
-                <h4 className={`text-[13px] font-normal text-slate-700 leading-snug break-words ${task.isCompleted ? 'text-slate-300 line-through' : ''}`}>
+                <h4 className={`text-[13px] md:text-sm font-normal text-slate-700 leading-snug break-words ${task.isCompleted ? 'text-slate-300 line-through' : ''}`}>
                   {task.title}
                 </h4>
               </div>

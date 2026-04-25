@@ -312,7 +312,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const handleResume = async (id) => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
+      const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
         headers: { 'x-auth-token': token }
       });
       setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));

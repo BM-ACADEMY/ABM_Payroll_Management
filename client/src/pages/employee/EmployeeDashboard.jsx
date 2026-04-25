@@ -276,8 +276,8 @@ const EmployeeDashboard = () => {
           <CardContent className="p-10 space-y-10">
             <div className="space-y-1">
               <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Estimated Net</div>
-              <div className="text-5xl font-bold text-[#fffe01] tracking-tighter flex items-start gap-1 tabular-nums">
-                <span className="text-xl mt-1.5 opacity-30 font-medium">₹</span>
+              <div className="text-3xl md:text-5xl font-bold text-[#fffe01] tracking-tighter flex items-start gap-1 tabular-nums">
+                <span className="text-lg mt-1.5 opacity-30 font-medium whitespace-nowrap">₹</span>
                 {payrollSummary?.estimatedNetSalary?.toLocaleString('en-IN') || '0'}
               </div>
             </div>
@@ -338,7 +338,7 @@ const EmployeeDashboard = () => {
           <CardHeader className="bg-white/5 p-6 border-b border-white/5">
             <CardTitle className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500 text-center">UTILIZATION ANALYTICS</CardTitle>
           </CardHeader>
-          <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-12">
+          <CardContent className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
             <div className="space-y-5">
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
@@ -397,7 +397,7 @@ const EmployeeDashboard = () => {
                   </div>
                   <div className="space-y-4">
                     <div className="flex items-baseline gap-2">
-                       <span className="text-5xl font-bold tracking-tighter text-white tabular-nums">{score.totalCredits}</span>
+                       <span className="text-3xl md:text-5xl font-bold tracking-tighter text-white tabular-nums">{score.totalCredits}</span>
                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest opacity-40">credits</span>
                     </div>
                     <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">

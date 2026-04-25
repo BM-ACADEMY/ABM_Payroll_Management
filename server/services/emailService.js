@@ -241,9 +241,55 @@ const sendRequestResponseToUser = async (userEmail, responseData) => {
   }
 };
 
+const sendMentionEmail = async (toEmail, mentionDetails) => {
+  try {
+    const { commenterName, taskTitle, commentText, boardName, taskId } = mentionDetails;
+    
+    const mailOptions = {
+      from: `"BM Techx Assistant" <${process.env.EMAIL_USER || 'admin@bmtechx.in'}>`,
+      to: toEmail,
+      subject: `[MENTION] ${commenterName} tagged you in ${taskTitle}`,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #f1f5f9; border-radius: 24px; overflow: hidden; background-color: white; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+          <div style="background-color: #000000; padding: 30px; text-align: left; border-bottom: 4px solid #fffe01;">
+            <div style="color: #fffe01; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 8px;">Collaboration Feed</div>
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.02em;">New Mention</h1>
+          </div>
+          <div style="padding: 40px; background-color: #ffffff;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">Hello,</p>
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin-bottom: 32px;">
+              <strong>${commenterName}</strong> mentioned you in a comment on task <strong>${taskTitle}</strong> within the <strong>${boardName}</strong> project.
+            </p>
+            
+            <div style="background-color: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #f1f5f9; margin-bottom: 32px;">
+               <p style="color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Comment Content</p>
+               <p style="color: #1e293b; font-size: 14px; margin: 0; line-height: 1.6; font-weight: 500;">"${commentText}"</p>
+            </div>
+            
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/kanban?task=${taskId}" style="display: inline-block; background-color: #000000; color: #fffe01; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">
+              Reply in Workspace
+            </a>
+          </div>
+          <div style="padding: 24px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center;">
+            <p style="color: #94a3b8; font-size: 11px; margin: 0;">&copy; BM Techx System. Official Collaboration Vector.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Mention Email sent: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending mention email:', error);
+    return false;
+  }
+};
+
 module.exports = {
   sendOTPEmail,
   sendTaskAssignmentEmail,
   sendRequestNotificationToAdmins,
   sendRequestResponseToUser,
+  sendMentionEmail,
 };
