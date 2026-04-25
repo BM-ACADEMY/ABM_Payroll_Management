@@ -23,4 +23,12 @@ router.put('/read-all', auth, notificationController.markAllAsRead);
 // @desc    Delete notification
 router.delete('/:id', auth, notificationController.deleteNotification);
 
+// @route   POST api/notifications/subscribe
+// @desc    Subscribe to push notifications
+router.post('/subscribe', auth, notificationController.subscribe);
+
+// @route   GET api/notifications/vapid-public-key
+// @desc    Get VAPID public key
+router.get('/vapid-public-key', auth, notificationController.getVapidPublicKey);
+
 module.exports = router;

@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // @desc    Get all notifications for logged in user
 // @route   GET /api/notifications
@@ -78,4 +79,32 @@ exports.deleteNotification = async (req, res) => {
     console.error(err.message);
     res.status(500).send('Server error');
   }
+};
+
+// @desc    Subscribe to push notifications
+// @route   POST /api/notifications/subscribe
+exports.subscribe = async (req, res) => {
+  const subscription = req.body;
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    // Check if subscription already exists
+    const exists = user.pushSubscriptions.some(s => s.endpoint === subscription.endpoint);
+    if (!exists) {
+      user.pushSubscriptions.push(subscription);
+      await user.save();
+    }
+
+    res.status(201).json({ msg: 'Subscribed successfully' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+};
+
+// @desc    Get VAPID public key
+// @route   GET /api/notifications/vapid-public-key
+exports.getVapidPublicKey = async (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
 };

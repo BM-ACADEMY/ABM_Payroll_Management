@@ -6,6 +6,7 @@ const Settings = require('../models/Settings');
 const Schedule = require('../models/Schedule');
 const { format, parse, startOfDay, addMinutes, startOfMonth, endOfMonth, eachDayOfInterval, isSunday, isSaturday, isSameDay } = require('date-fns');
 const { getISTDate, getISTTime, getISTFullDate } = require('../utils/dateUtils');
+const pushService = require('../services/pushService');
 
 // @desc    Mark attendance (WFH/WFO)
 // @route   POST /api/attendance/checkin
@@ -93,6 +94,20 @@ exports.checkIn = async (req, res) => {
     });
 
     await attendance.save();
+
+    // Trigger push notifications
+    const pushPayload = {
+      title: 'Attendance: Check In',
+      body: `${user.name} checked in at ${now} (${mode})`,
+      icon: '/favicon.png',
+      data: { url: '/employee/attendance' }
+    };
+    pushService.sendPushNotification(req.user.id, pushPayload);
+    pushService.notifyAdmins({
+      ...pushPayload,
+      body: `${user.name} checked in at ${now} from ${mode}`
+    });
+
     res.json(attendance);
   } catch (err) {
     console.error(err.message);
@@ -109,8 +124,20 @@ exports.lunchOut = async (req, res) => {
     if (!attendance) return res.status(404).json({ msg: 'Attendance record not found. Please check in first.' });
     if (attendance.lunch.out) return res.status(400).json({ msg: 'Lunch out already marked' });
 
+
     attendance.lunch.out = now;
     await attendance.save();
+
+    const user = await User.findById(req.user.id);
+    const pushPayload = {
+      title: 'Attendance: Lunch Out',
+      body: `${user.name} marked lunch out at ${now}`,
+      icon: '/favicon.png',
+      data: { url: '/employee/attendance' }
+    };
+    pushService.sendPushNotification(req.user.id, pushPayload);
+    pushService.notifyAdmins(pushPayload);
+
     res.json(attendance);
   } catch (err) {
     console.error(err.message);
@@ -196,6 +223,17 @@ exports.lunchIn = async (req, res) => {
     }
 
     await attendance.save();
+
+    // Use the user object already fetched at the beginning of the function
+    const pushPayload = {
+      title: 'Attendance: Lunch In',
+      body: `${user.name} marked lunch in at ${now}`,
+      icon: '/favicon.png',
+      data: { url: '/employee/attendance' }
+    };
+    pushService.sendPushNotification(req.user.id, pushPayload);
+    pushService.notifyAdmins(pushPayload);
+
     res.json(attendance);
   } catch (err) {
     console.error(err.message);
@@ -275,8 +313,19 @@ exports.checkOut = async (req, res) => {
       totalMinutes -= lunchMinutes;
     }
 
+
     attendance.totalWorkingMinutes = Math.max(0, totalMinutes);
     await attendance.save();
+
+    const pushPayload = {
+      title: 'Attendance: Check Out',
+      body: `${user.name} checked out at ${now}`,
+      icon: '/favicon.png',
+      data: { url: '/employee/attendance' }
+    };
+    pushService.sendPushNotification(req.user.id, pushPayload);
+    pushService.notifyAdmins(pushPayload);
+
     res.json(attendance);
   } catch (err) {
     console.error(err.message);

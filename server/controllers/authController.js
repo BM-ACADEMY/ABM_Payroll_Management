@@ -6,6 +6,7 @@ const { sendOTPEmail } = require('../services/emailService');
 const CompanyLeave = require('../models/CompanyLeave');
 const Attendance = require('../models/Attendance');
 const AuditLog = require('../models/AuditLog');
+const pushService = require('../services/pushService');
 
 
 // Helper function to generate OTP
@@ -229,6 +230,17 @@ exports.login = async (req, res) => {
         console.error('Error creating login audit log:', logErr.message);
       }
 
+
+      // Trigger push notification
+      const pushPayload = {
+        title: 'Auth Alert: Login',
+        body: `${user.name} logged into the system`,
+        icon: '/favicon.png',
+        data: { url: '/' }
+      };
+      pushService.sendPushNotification(user.id, pushPayload);
+      pushService.notifyAdmins(pushPayload);
+
       res.json({ token, user: { id: user.id, name: user.name, role: user.role, permissions: user.permissions || [], timingSettings: user.timingSettings } });
     });
   } catch (err) {
@@ -333,6 +345,18 @@ exports.logout = async (req, res) => {
       location: location || null
     });
     await newAuditLog.save();
+
+    // Trigger push notification
+    const user = await User.findById(req.user.id);
+    const pushPayload = {
+      title: 'Auth Alert: Logout',
+      body: `${user?.name || 'User'} logged out of the system`,
+      icon: '/favicon.png',
+      data: { url: '/login' }
+    };
+    if (user) pushService.sendPushNotification(user._id, pushPayload);
+    pushService.notifyAdmins(pushPayload);
+
     res.status(200).json({ msg: 'Logged out successfully' });
   } catch (err) {
     console.error(err.message);

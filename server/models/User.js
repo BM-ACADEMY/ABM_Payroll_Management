@@ -32,6 +32,7 @@ const UserSchema = new mongoose.Schema({
   otpExpires: { type: Date },
   teams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Team' }],
   permissions: [{ type: String }], // For granular subadmin permissions
+  pushSubscriptions: [Object], // Store browser push subscriptions
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
