@@ -37,6 +37,7 @@ const SitePhotoHistory = lazy(() => import('./pages/SitePhotoHistory'));
 const PerformanceHistory = lazy(() => import('./pages/employee/PerformanceHistory'));
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from './components/ui/toaster';
+import { subscribeToPush } from './utils/pushNotification';
 
 function AppContent() {
   const { user, setUser, loading } = useAuth();
@@ -55,6 +56,12 @@ function AppContent() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      subscribeToPush();
+    }
+  }, [user]);
 
   const handleSetUser = (u) => {
     setUser(u);

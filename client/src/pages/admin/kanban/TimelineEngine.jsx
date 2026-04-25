@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const TimelineEngine = ({ tasks, listData }) => {
+const TimelineEngine = ({ tasks, listData, isWeekly }) => {
   // 1. Calculate tactical range
   const { startDate, endDate, daysCount, calendarDays } = useMemo(() => {
     if (!tasks || tasks.length === 0) {
@@ -41,11 +41,12 @@ const TimelineEngine = ({ tasks, listData }) => {
     const groups = {};
     listData.forEach(l => { groups[l._id] = { title: l.title, tasks: [] }; });
     tasks.forEach(t => {
-      const listId = t.list?._id || t.list;
-      if (groups[listId]) groups[listId].tasks.push(t);
+      // In weekly mode, we group by board ID which is used as the virtual list ID
+      const matchId = isWeekly ? (t.board?._id || t.board) : (t.list?._id || t.list);
+      if (groups[matchId]) groups[matchId].tasks.push(t);
     });
     return Object.values(groups).filter(g => g.tasks.length > 0);
-  }, [tasks, listData]);
+  }, [tasks, listData, isWeekly]);
 
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {

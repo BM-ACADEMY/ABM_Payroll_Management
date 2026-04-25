@@ -89,6 +89,13 @@ const KanbanCard = ({ task, index, onClick }) => {
                   </div>
                 )}
 
+                {task.mentionCount > 0 && (
+                  <div className="flex items-center gap-1 text-[9px] text-red-500 font-bold animate-pulse">
+                    <Bell className="w-3 h-3 fill-red-500" />
+                    {task.mentionCount}
+                  </div>
+                )}
+
                 {task.commentCount > 0 && (
                   <div className="flex items-center gap-1 text-[9px] text-slate-400">
                     <MessageSquare className="w-3 h-3" />

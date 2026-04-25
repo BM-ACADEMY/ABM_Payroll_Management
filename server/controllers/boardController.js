@@ -445,7 +445,7 @@ exports.deleteList = async (req, res) => {
 exports.createTask = async (req, res) => {
     const { 
       title, description, listId, boardId, position, 
-      parentTaskId, originTaskId, originChecklistItemId, 
+      parentTaskId, originChecklistItemId, 
       assignees, deadline, labels, checklists 
     } = req.body;
     
@@ -478,7 +478,6 @@ exports.createTask = async (req, res) => {
         board: boardId,
         position: position || 0,
         parentTask: parentTaskId || null,
-        originTaskId: (originTaskId && mongoose.Types.ObjectId.isValid(originTaskId)) ? originTaskId : null,
         originChecklistItemId: (originChecklistItemId && mongoose.Types.ObjectId.isValid(originChecklistItemId)) ? originChecklistItemId : null,
         assignees: assignees || [],
         deadline: deadline || null,
@@ -501,7 +500,7 @@ exports.createTask = async (req, res) => {
       }
 
       // --- Create Tracking Log if Converted ---
-      if (originChecklistItemId || originTaskId) {
+      if (originChecklistItemId) {
         try {
           const newTimeLog = new TimeLog({
             user: req.user.id,
@@ -608,17 +607,7 @@ exports.updateTask = async (req, res) => {
     if (req.body.isCompleted !== undefined) {
       const isCompleted = req.body.isCompleted;
 
-      // 1. Sync with Origin Task (if current task is the converted card)
-      if (task.originTaskId) {
-        await Task.findByIdAndUpdate(task.originTaskId, { isCompleted, updatedAt: Date.now() });
-        // Emit update for the origin board
-        const originTask = await Task.findById(task.originTaskId);
-        if (req.io && originTask) {
-          req.io.to(originTask.board.toString()).emit('board_updated', { type: 'TASK_UPDATED', boardId: originTask.board, taskId: originTask._id });
-        }
-      }
-
-      // 2. Sync with Origin Checklist Item
+      // 1. Sync with Origin Checklist Item
       if (task.originChecklistItemId) {
         const parentTask = await Task.findOne({ "checklists.items._id": task.originChecklistItemId });
         if (parentTask) {
@@ -630,15 +619,6 @@ exports.updateTask = async (req, res) => {
           if (req.io) {
             req.io.to(parentTask.board.toString()).emit('board_updated', { type: 'CHECKLIST_ITEM_UPDATED', boardId: parentTask.board, taskId: parentTask._id });
           }
-        }
-      }
-
-      // 3. Sync with all "children" cards (if current task is the source)
-      const linkedCards = await Task.find({ originTaskId: task._id });
-      for (const card of linkedCards) {
-        await Task.findByIdAndUpdate(card._id, { isCompleted, updatedAt: Date.now() });
-        if (req.io) {
-          req.io.to(card.board.toString()).emit('board_updated', { type: 'TASK_UPDATED', boardId: card.board, taskId: card._id });
         }
       }
     }
@@ -960,6 +940,27 @@ exports.deleteChecklist = async (req, res) => {
   }
 };
 
+exports.renameChecklist = async (req, res) => {
+  const { name } = req.body;
+  try {
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.taskId, "checklists._id": req.params.checklistId },
+      { $set: { "checklists.$.name": name } },
+      { new: true }
+    );
+
+    if (!task) return res.status(404).json({ msg: 'Task or checklist not found' });
+
+    if (req.io) {
+      req.io.to(task.board.toString()).emit('board_updated', { type: 'CHECKLIST_RENAMED', boardId: task.board, taskId: req.params.taskId });
+    }
+
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ msg: 'Server Error', error: err.message });
+  }
+};
+
 // --- Member Operations ---
 
 exports.addMemberToBoard = async (req, res) => {
@@ -1128,5 +1129,20 @@ exports.getBoardDestinations = async (req, res) => {
   } catch (err) {
     console.error('getBoardDestinations Error:', err.message);
     res.status(500).json({ msg: 'Server Error', error: err.message });
+  }
+};
+
+exports.markMentionsAsRead = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+    await Comment.updateMany(
+      { task: taskId, "mentions.user": req.user.id },
+      { $set: { "mentions.$[elem].isRead": true } },
+      { arrayFilters: [{ "elem.user": req.user.id }] }
+    );
+    res.json({ msg: 'Mentions marked as read' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server Error');
   }
 };

@@ -10,7 +10,7 @@ import {
   Plus, Users, Search, MoreHorizontal, Calendar, 
   MessageSquare, CheckSquare, Clock, Layout, X, UserPlus,
   Settings, Trash2, Edit, Save, ChevronDown, TrendingUp,
-  Target, Zap, Activity, Info
+  Target, Zap, Activity, Info, CheckCircle2
 } from 'lucide-react';
 import socket from '@/services/socket';
 import { useToast } from "@/hooks/use-toast";
@@ -76,8 +76,9 @@ const KanbanBoard = () => {
   useEffect(() => { isDetailsOpenRef.current = isDetailsOpen; }, [isDetailsOpen]);
   useEffect(() => { taskDetailsRef.current = taskDetails; }, [taskDetails]);
 
-  const backlogTasks = useMemo(() => tasks.filter(t => !t.isInSprint && !t.parentTask), [tasks]);
-  const sprintTasks = useMemo(() => tasks.filter(t => t.isInSprint && !t.parentTask), [tasks]);
+  const backlogTasks = useMemo(() => tasks.filter(t => !t.isInSprint && !t.isCompleted && !t.parentTask), [tasks]);
+  const sprintTasks = useMemo(() => tasks.filter(t => t.isInSprint && !t.isCompleted && !t.parentTask), [tasks]);
+  const doneTasks = useMemo(() => tasks.filter(t => t.isCompleted && !t.parentTask), [tasks]);
 
   const tasksByList = useMemo(() => {
     const map = {};
@@ -121,9 +122,15 @@ const KanbanBoard = () => {
     let filteredTasks = tasks;
     
     if (!isAdminView) {
-      filteredTasks = tasks.filter(t => t.assignees?.some(a => (a._id || a) === currentUserId));
+      filteredTasks = tasks.filter(t => 
+        t.assignees?.some(a => (a._id || a) === currentUserId) ||
+        t.checklists?.some(cl => cl.items?.some(item => (item.assignedTo?._id || item.assignedTo) === currentUserId))
+      );
     } else if (selectedAnalyticsUser && selectedAnalyticsUser !== 'all') {
-      filteredTasks = tasks.filter(t => t.assignees?.some(a => (a._id || a) === selectedAnalyticsUser));
+      filteredTasks = tasks.filter(t => 
+        t.assignees?.some(a => (a._id || a) === selectedAnalyticsUser) ||
+        t.checklists?.some(cl => cl.items?.some(item => (item.assignedTo?._id || item.assignedTo) === selectedAnalyticsUser))
+      );
     }
 
     const total = filteredTasks.length;
@@ -131,11 +138,20 @@ const KanbanBoard = () => {
     const blocked = filteredTasks.filter(t => t.blocker).length;
     const inSprint = filteredTasks.filter(t => t.isInSprint).length;
     
-    const listStats = lists.map(l => ({
-      name: l.title,
-      tasks: filteredTasks.filter(t => (t.list?._id || t.list) === l._id).length,
-      completed: filteredTasks.filter(t => (t.list?._id || t.list) === l._id && t.isCompleted).length
-    })).filter(l => l.tasks > 0);
+    const listStats = lists.map(l => {
+      const matchTasks = filteredTasks.filter(t => {
+        const matchId = boardData?.type === 'weekly' 
+          ? (t.board?._id || t.board) 
+          : (t.list?._id || t.list);
+        return String(matchId) === String(l._id);
+      });
+      
+      return {
+        name: l.title,
+        tasks: matchTasks.length,
+        completed: matchTasks.filter(t => t.isCompleted).length
+      };
+    }).filter(l => l.tasks > 0);
 
     const statsToDisplay = (!isAdminView) 
       ? deduplicatedMembers.filter(m => String(m._id || m) === String(currentUserId))
@@ -395,6 +411,15 @@ const KanbanBoard = () => {
       });
       setTaskDetails(res.data);
       setIsDetailsOpen(true);
+
+      // Mark mentions as read
+      if (res.data.mentionCount > 0) {
+        await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/mark-mentions-read`, {}, {
+          headers: { 'x-auth-token': token }
+        });
+        // Update local state to clear count immediately
+        setTasks(prev => prev.map(t => t._id === taskId ? { ...t, mentionCount: 0 } : t));
+      }
     } catch (err) {
       // Don't toast if the task just isn't found for a deep link, or customize it
       if (err.response?.status !== 404 && err.response?.status !== 403) {
@@ -816,6 +841,15 @@ const KanbanBoard = () => {
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to delete checklist" }); }
   };
 
+  const handleRenameChecklist = async (checklistId, newName) => {
+    try {
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskDetails.task._id}/checklists/${checklistId}/rename`, { name: newName }, {
+        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+      });
+      fetchTaskDetails(taskDetails.task._id);
+    } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to rename checklist" }); }
+  };
+
 
   if (loading) return <div className="h-full flex items-center justify-center bg-zinc-50"><Loader size="lg" color="red" /></div>;
 
@@ -1061,10 +1095,15 @@ const KanbanBoard = () => {
             <TabsTrigger value="sprint" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">
               {boardData?.type === 'weekly' ? 'Streams' : 'Sprint'}
             </TabsTrigger>
+            {boardData?.type !== 'weekly' && (
+              <TabsTrigger value="done" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Done</TabsTrigger>
+            )}
             <TabsTrigger value="timeline" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Timeline</TabsTrigger>
             <TabsTrigger value="analytics" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Analytics</TabsTrigger>
             <TabsTrigger value="team" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all text-nowrap">Team</TabsTrigger>
-            <TabsTrigger value="sop" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">SOP</TabsTrigger>
+            {boardData?.type !== 'weekly' && (
+              <TabsTrigger value="sop" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">SOP</TabsTrigger>
+            )}
           </TabsList>
 
           <div className="flex items-center gap-3">
@@ -1211,10 +1250,22 @@ const KanbanBoard = () => {
 
           <TabsContent value="timeline" className="flex-1 overflow-hidden p-0 outline-none">
              <div className="h-full flex flex-col p-6 lg:p-10">
-               
                <TimelineEngine 
-                 tasks={isAdmin ? (selectedAnalyticsUser && selectedAnalyticsUser !== 'all' ? tasks.filter(t => t.assignees?.some(a => (a._id || a) === selectedAnalyticsUser)) : tasks) : tasks.filter(t => t.assignees?.some(a => (a._id || a) === sessionStorage.getItem('userId')))} 
+                 tasks={isAdmin ? (
+                   selectedAnalyticsUser && selectedAnalyticsUser !== 'all' 
+                     ? tasks.filter(t => 
+                         t.assignees?.some(a => (a._id || a) === selectedAnalyticsUser) ||
+                         t.checklists?.some(cl => cl.items?.some(item => (item.assignedTo?._id || item.assignedTo) === selectedAnalyticsUser))
+                       ) 
+                     : tasks
+                 ) : (
+                   tasks.filter(t => 
+                     t.assignees?.some(a => (a._id || a) === sessionStorage.getItem('userId')) ||
+                     t.checklists?.some(cl => cl.items?.some(item => (item.assignedTo?._id || item.assignedTo) === sessionStorage.getItem('userId')))
+                   )
+                 )} 
                  listData={lists} 
+                 isWeekly={boardData?.type === 'weekly'}
                />
              </div>
           </TabsContent>
@@ -1396,10 +1447,64 @@ const KanbanBoard = () => {
                 </div>
               </div>
            </TabsContent>
+           
+           <TabsContent value="done" className="flex-1 overflow-y-auto p-4 md:p-10 outline-none">
+              <div className="h-full flex flex-col">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-6">
+                   <div>
+                      <h2 className="text-2xl md:text-4xl font-normal tracking-tight text-zinc-900 mb-2">Operation <span className="text-emerald-500">Resolved</span></h2>
+                      <p className="text-zinc-500 font-medium tracking-tight text-sm">Phase Final: Archive & Post-Execution Analysis</p>
+                   </div>
+                </div>
 
-           <TabsContent value="sop" className="flex-1 overflow-y-auto p-10 outline-none custom-scrollbar">
-              <SOPTab boardData={boardData} onUpdate={fetchData} />
+                <div className="bg-white rounded-[3rem] p-4 shadow-xl border border-zinc-100 flex-1 min-h-[400px] overflow-y-auto custom-scrollbar">
+                   {doneTasks.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-center p-20">
+                       <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center mb-6">
+                          <CheckCircle2 className="w-10 h-10 text-emerald-200" />
+                       </div>
+                       <p className="text-zinc-400 font-normal uppercase tracking-widest text-xs">No completed vectors in this sector</p>
+                     </div>
+                   ) : (
+                     <div className="space-y-3">
+                       {doneTasks.map(task => (
+                         <div 
+                            key={task._id} 
+                            onClick={() => fetchTaskDetails(task._id)}
+                            className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl hover:bg-zinc-50 transition-all border border-transparent hover:border-zinc-100 cursor-pointer gap-4"
+                         >
+                            <div className="flex items-center gap-4 flex-1">
+                               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                               <div className="flex-1">
+                                  <h3 className="text-lg font-normal text-zinc-500 line-through mb-0.5 group-hover:text-emerald-600 transition-colors">{task.title}</h3>
+                                  <div className="flex items-center gap-4 text-xs font-normal text-zinc-400 uppercase tracking-widest">
+                                     <span className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-2 rounded-md py-0.5 text-[9px]">RESOLVED</span>
+                                     <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {task.estimatedTime || 0}H</span>
+                                  </div>
+                               </div>
+                            </div>
+                             <div className="flex items-center justify-end gap-3 w-full sm:w-auto">
+                                <Button 
+                                  variant="ghost" 
+                                  onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(task._id, true); }}
+                                  className="h-10 md:h-12 px-4 rounded-xl md:rounded-2xl hover:bg-white hover:shadow-md transition-all text-zinc-400 hover:text-emerald-600 text-[10px] font-normal uppercase tracking-widest"
+                                >
+                                   Re-Open
+                                </Button>
+                             </div>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                </div>
+              </div>
            </TabsContent>
+
+           {boardData?.type !== 'weekly' && (
+             <TabsContent value="sop" className="flex-1 overflow-y-auto p-10 outline-none custom-scrollbar">
+                <SOPTab boardData={boardData} onUpdate={fetchData} />
+             </TabsContent>
+           )}
         </div>
       </Tabs>
       
@@ -1510,6 +1615,7 @@ const KanbanBoard = () => {
             handleAddChecklistItem={handleAddChecklistItem}
             handleUpdateChecklistItem={handleUpdateChecklistItem}
             handleRemoveChecklist={handleRemoveChecklist}
+            handleRenameChecklist={handleRenameChecklist}
             handleAddSubTask={handleAddSubTask}
             getTimeAgo={getTimeAgo}
           />
