@@ -2,6 +2,8 @@ const TimeLog = require('../models/TimeLog');
 const Settings = require('../models/Settings');
 const User = require('../models/User');
 const Task = require('../models/Task');
+const { processMentions } = require('../utils/mentionHelper');
+const emailService = require('../services/emailService');
 
 exports.startTimeTracking = async (req, res) => {
   const { taskName } = req.body;
@@ -226,9 +228,18 @@ exports.addComment = async (req, res) => {
     }
 
     const currentUser = await User.findById(req.user.id);
+    
+    // Parse mentions and notify
+    const mentions = await processMentions(text, currentUser, {
+      title: timeLog.taskName,
+      taskId: timeLog._id, // Context ID
+      boardName: 'Task Tracker'
+    }, req.io);
+
     timeLog.comments.push({
       text,
       author: currentUser.name,
+      mentions,
       createdAt: new Date()
     });
 
@@ -305,14 +316,14 @@ exports.updateComment = async (req, res) => {
     if (commentIndex === -1) return res.status(404).json({ msg: 'Comment not found' });
 
     const currentUser = await User.findById(req.user.id);
-    const isAdmin = req.user.role === 'admin';
-    
-    // Only author or admin can edit (But usually only author for editing text)
-    if (timeLog.comments[commentIndex].author !== currentUser.name && !isAdmin) {
-        return res.status(401).json({ msg: 'Not authorized' });
-    }
+    const mentions = await processMentions(text, currentUser, {
+      title: timeLog.taskName,
+      taskId: timeLog._id,
+      boardName: 'Task Tracker'
+    }, req.io);
 
     timeLog.comments[commentIndex].text = text;
+    timeLog.comments[commentIndex].mentions = mentions;
     timeLog.comments[commentIndex].updatedAt = new Date();
 
     await timeLog.save();

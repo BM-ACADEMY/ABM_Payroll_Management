@@ -33,6 +33,10 @@ const TimeLogSchema = new mongoose.Schema({
   comments: [{
     text: { type: String, required: true },
     author: { type: String, required: true },
+    mentions: [{
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      isRead: { type: Boolean, default: false }
+    }],
     createdAt: { type: Date, default: Date.now }
   }],
   pauses: [{

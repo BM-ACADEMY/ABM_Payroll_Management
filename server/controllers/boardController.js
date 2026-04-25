@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const Role = require('../models/Role');
 const emailService = require('../services/emailService');
 const { format } = require('date-fns');
+const { processMentions } = require('../utils/mentionHelper');
 
 // --- Board Operations ---
 
@@ -644,22 +645,13 @@ exports.updateTask = async (req, res) => {
 
     // Mention Notifications for Description
     if (req.body.description) {
-      const mentions = req.body.description.match(/@\S+@\S+\.\S+/g); // Match @name@email.com
-      if (mentions && req.io) {
-        const emails = mentions.map(m => m.split('@').pop());
-        const mentionedUsers = await User.find({ email: { $in: emails } });
-        
-        mentionedUsers.forEach(mUser => {
-          if (mUser._id.toString() !== req.user.id) {
-            req.io.emit('notification', {
-              userId: mUser._id,
-              type: 'MENTION',
-              message: `${req.user.name} mentioned you in ${task.title}`,
-              taskId: task._id
-            });
-          }
-        });
-      }
+      const currentUser = await User.findById(req.user.id);
+      const board = await Board.findById(task.board);
+      await processMentions(req.body.description, currentUser, {
+        title: task.title,
+        taskId: task._id,
+        boardName: board?.title
+      }, req.io);
     }
 
     if (req.io) {
@@ -769,54 +761,17 @@ exports.addComment = async (req, res) => {
       text
     });
 
-    // Populate mentions
-    const mentionsMatches = text.match(/@\S+@\S+@\S+\.\S+/g) || text.match(/@\S+@\S+\.\S+/g);
-    if (mentionsMatches) {
-      const emails = mentionsMatches.map(m => {
-        const parts = m.split('@');
-        // Based on @Name@user@domain.com format
-        return parts.slice(-2).join('@');
-      });
-      const mentionedUsers = await User.find({ email: { $in: emails } });
-      comment.mentions = mentionedUsers
-        .filter(mUser => mUser._id.toString() !== req.user.id)
-        .map(mUser => ({ user: mUser._id, isRead: false }));
-    }
+    // Tag Notifications & Emails via Helper
+    const commenter = await User.findById(req.user.id);
+    const task = await Task.findById(taskId).populate('board', 'title');
+    
+    comment.mentions = await processMentions(text, commenter, {
+      title: task?.title,
+      taskId: taskId,
+      boardName: task?.board?.title
+    }, req.io);
 
     await comment.save();
-
-    // Fetch commenter details and task/board context for the email
-    const commenter = await User.findById(req.user.id).select('name');
-    const task = await Task.findById(taskId).populate('board', 'title');
-
-    // Tag Notifications & Emails
-    if (comment.mentions.length > 0) {
-      const mentionedUserIds = comment.mentions.map(m => m.user);
-      const mentionedUsers = await User.find({ _id: { $in: mentionedUserIds } }).select('email');
-
-      mentionedUsers.forEach(async (mUser) => {
-        // App Notification
-        if (req.io) {
-          req.io.emit('notification', {
-            userId: mUser._id,
-            type: 'MENTION',
-            message: `${req.user.name} mentioned you in a comment`,
-            taskId: taskId
-          });
-        }
-        
-        // Email Notification
-        if (mUser.email) {
-          await emailService.sendMentionEmail(mUser.email, {
-            commenterName: commenter?.name || 'A user',
-            taskTitle: task?.title || 'a task',
-            commentText: text,
-            boardName: task?.board?.title || 'Project Board',
-            taskId: taskId
-          });
-        }
-      });
-    }
 
     if (req.io && task) {
       req.io.to(task.board._id.toString()).emit('board_updated', { type: 'COMMENT_ADDED', boardId: task.board._id, taskId });
@@ -836,54 +791,17 @@ exports.updateComment = async (req, res) => {
     if (!comment) return res.status(404).json({ msg: 'Comment not found' });
     if (comment.user.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
 
-    // Recalculate mentions for updated comment
-    const mentionsMatches = text.match(/@\S+@\S+@\S+\.\S+/g) || text.match(/@\S+@\S+\.\S+/g);
-    let mentions = [];
-    if (mentionsMatches) {
-      const emails = mentionsMatches.map(m => {
-        const parts = m.split('@');
-        return parts.slice(-2).join('@');
-      });
-      const mentionedUsers = await User.find({ email: { $in: emails } });
-      mentions = mentionedUsers
-        .filter(mUser => mUser._id.toString() !== req.user.id)
-        .map(mUser => ({ user: mUser._id, isRead: false }));
-    }
-
-    comment = await Comment.findByIdAndUpdate(req.params.id, { text, mentions, updatedAt: Date.now() }, { new: true });
-    
-    // Fetch commenter details and task/board context for the email
-    const commenter = await User.findById(req.user.id).select('name');
+    // Recalculate mentions & notify via Helper
+    const commenter = await User.findById(req.user.id);
     const task = await Task.findById(comment.task).populate('board', 'title');
 
-    // Tag Notifications & Emails
-    if (comment.mentions.length > 0) {
-      const mentionedUserIds = comment.mentions.map(m => m.user);
-      const mentionedUsers = await User.find({ _id: { $in: mentionedUserIds } }).select('email');
+    const mentions = await processMentions(text, commenter, {
+      title: task?.title,
+      taskId: comment.task,
+      boardName: task?.board?.title
+    }, req.io);
 
-      mentionedUsers.forEach(async (mUser) => {
-        // App Notification
-        if (req.io) {
-          req.io.emit('notification', {
-            userId: mUser._id,
-            type: 'MENTION',
-            message: `${req.user.name} updated a mention in a comment`,
-            taskId: comment.task
-          });
-        }
-        
-        // Email Notification
-        if (mUser.email) {
-          await emailService.sendMentionEmail(mUser.email, {
-            commenterName: commenter?.name || 'A user',
-            taskTitle: task?.title || 'a task',
-            commentText: text,
-            boardName: task?.board?.title || 'Project Board',
-            taskId: comment.task
-          });
-        }
-      });
-    }
+    comment = await Comment.findByIdAndUpdate(req.params.id, { text, mentions, updatedAt: Date.now() }, { new: true });
 
     if (req.io && task) {
        req.io.to(task.board._id.toString()).emit('board_updated', { type: 'COMMENT_UPDATED', boardId: task.board._id, taskId: comment.task });
