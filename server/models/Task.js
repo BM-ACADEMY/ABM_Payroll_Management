@@ -12,7 +12,6 @@ const TaskSchema = new mongoose.Schema({
   parentTask: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' }, // For sub-tasks, sub-sub-tasks
   position: { type: Number, default: 0 },
   isCompleted: { type: Boolean, default: false },
-  originTaskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
   originChecklistItemId: { type: mongoose.Schema.Types.ObjectId },
   timeLogLabel: { type: String },
   labels: [{

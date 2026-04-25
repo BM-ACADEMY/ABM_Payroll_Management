@@ -10,17 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from 'date-fns';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChange, settings, onUpdateComment, onDeleteComment, allUsers }) => {
   const [seconds, setSeconds] = useState(0);
   const [label, setLabel] = useState(log.label || 'not yet started');
   const [newComment, setNewComment] = useState('');
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editValue, setEditValue] = useState('');
   
   // Mention states
   const [mentionSearch, setMentionSearch] = useState('');
   const [showMentions, setShowMentions] = useState(false);
   const [cursorPos, setCursorPos] = useState(0);
   const mentionRef = useRef(null);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     const calculateSeconds = () => {
@@ -114,12 +121,12 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
                                 <span className="text-[10px] text-slate-500">{c.author}</span>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[9px] text-slate-300">{formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}</span>
-                                    {((settings?.userName === c.author) || (settings?.userRole === 'admin')) && (
-                                        <div className="flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+                                    {((settings?.userName === c.author) || (settings?.userRole === 'admin') || (settings?.userRole === 'subadmin')) && (
+                                        <div className="flex items-center gap-1 transition-opacity">
                                             <button onClick={() => { setEditingCommentId(c._id); setEditValue(c.text); }} className="p-1 text-slate-300 hover:text-slate-600 transition-colors">
                                                 <Pencil className="w-2.5 h-2.5" />
                                             </button>
-                                            <button onClick={() => onDeleteComment(log._id, c._id)} className="p-1 text-slate-300 hover:text-red-500 transition-colors">
+                                            <button onClick={() => { setCommentToDelete(c._id); setIsDeleteDialogOpen(true); }} className="p-1 text-slate-300 hover:text-red-500 transition-colors">
                                                 <Trash2 className="w-2.5 h-2.5" />
                                             </button>
                                         </div>
@@ -128,18 +135,27 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
                             </div>
                             {editingCommentId === c._id ? (
                                 <div className="flex gap-1">
-                                    <Input 
+                                    <Textarea 
                                         value={editValue}
                                         onChange={(e) => setEditValue(e.target.value)}
-                                        className="h-7 text-[11px] border-slate-200 focus:ring-0"
+                                        onKeyDown={(e) => {
+                                           if (e.key === 'Enter' && !e.shiftKey && editValue.trim()) {
+                                               e.preventDefault();
+                                               onUpdateComment(log._id, c._id, editValue);
+                                               setEditingCommentId(null);
+                                           }
+                                        }}
+                                        className="min-h-[60px] text-[11px] border-slate-200 focus:ring-0 w-full resize-none py-1.5"
                                         autoFocus
                                     />
-                                    <Button size="sm" className="h-7 w-7 p-0 bg-slate-900 shadow-none border-none" onClick={() => { onUpdateComment(log._id, c._id, editValue); setEditingCommentId(null); }}>
-                                        <Check className="w-3 h-3" />
-                                    </Button>
-                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400" onClick={() => setEditingCommentId(null)}>
-                                        <X className="w-3 h-3" />
-                                    </Button>
+                                    <div className="flex flex-col gap-1">
+                                        <Button size="sm" className="h-7 w-7 p-0 bg-slate-900 shadow-none border-none" onClick={() => { onUpdateComment(log._id, c._id, editValue); setEditingCommentId(null); }}>
+                                            <Check className="w-3 h-3" />
+                                        </Button>
+                                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400" onClick={() => setEditingCommentId(null)}>
+                                            <X className="w-3 h-3" />
+                                        </Button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="text-[11px] leading-relaxed text-slate-600 font-normal"><MarkdownRenderer content={c.text} /></div>
@@ -153,7 +169,7 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
 
             <div className="flex flex-col gap-1.5 pt-2">
                 <div className="relative">
-                    <Input 
+                    <Textarea 
                         value={newComment}
                         onChange={(e) => {
                             const val = e.target.value;
@@ -170,13 +186,14 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
                             }
                         }}
                         onKeyDown={(e) => {
-                           if (e.key === 'Enter' && !showMentions) {
+                           if (e.key === 'Enter' && !e.shiftKey && !showMentions && newComment.trim()) {
+                              e.preventDefault();
                               onAddComment(log._id, newComment);
                               setNewComment('');
                            }
                         }}
                         placeholder="Type an update..."
-                        className="h-9 text-xs bg-white border-slate-200 text-slate-700 shadow-none focus:ring-0 w-full"
+                        className="min-h-[60px] text-xs bg-white border-slate-200 text-slate-700 shadow-none focus-visible:ring-0 w-full resize-none py-2"
                     />
                     {showMentions && allUsers.length > 0 && (
                         <div ref={mentionRef} className="absolute bottom-full left-0 w-full mb-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-[150px] overflow-y-auto">
@@ -256,6 +273,19 @@ const TimerItem = ({ log, onPause, onResume, onStop, onAddComment, onStatusChang
           </Badge>
         )}
       </div>
+
+       <ConfirmDialog 
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={() => {
+            if(commentToDelete) {
+                onDeleteComment(log._id, commentToDelete);
+                setCommentToDelete(null);
+            }
+        }}
+        title="Delete Insight?"
+        description="This action will remove the transition log permanently."
+      />
     </div>
   );
 };

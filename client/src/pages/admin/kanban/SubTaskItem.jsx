@@ -88,6 +88,14 @@ const SubTaskItem = ({ task, boardMembers, teamId, onUpdate, onAddSubTask, onTog
     setEditNameValue(task.title || task.text);
   }, [task.title, task.text]);
 
+  const handleNameSave = () => {
+    const trimmed = editNameValue.trim();
+    if (trimmed && trimmed !== (task.title || task.text)) {
+      onUpdate(task._id, { title: trimmed });
+    }
+    setIsEditingName(false);
+  };
+
   // Existing useEffects... (truncated for brevity in instructions, I'll keep them in actual replacement)
 
   const handleConvert = async () => {

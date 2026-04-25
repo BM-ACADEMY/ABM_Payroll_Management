@@ -2,7 +2,7 @@ import {
   X, ChevronDown, ChevronRight, MoreHorizontal, Plus, Tag, CheckSquare, 
   Paperclip, Layout, MessageSquare, 
   Check, Trash2, Edit2, Send, Bell, Calendar, Clock, 
-  TrendingUp, Copy
+  TrendingUp
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, memo } from 'react';
 import axios from 'axios';
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import SubTaskItem from './SubTaskItem';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import Loader from '@/components/ui/Loader';
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const TaskDetailsModal = ({
   handleAddChecklistItem,
   handleUpdateChecklistItem,
   handleRemoveChecklist,
+  handleRenameChecklist,
   handleAddSubTask,
   getTimeAgo,
   handleUpdateComment,
@@ -44,6 +46,8 @@ const TaskDetailsModal = ({
 }) => {
   const { toast } = useToast();
   const { task, comments = [], history = [], subTasks: initialSubTasks = [] } = taskDetails || {};
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
@@ -62,6 +66,8 @@ const TaskDetailsModal = ({
   const [newChecklistTitle, setNewChecklistTitle] = useState('Checklist');
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [activeChecklistForNewItem, setActiveChecklistForNewItem] = useState(null);
+  const [editingChecklistId, setEditingChecklistId] = useState(null);
+  const [editChecklistName, setEditChecklistName] = useState('');
   const [newItemAssignee, setNewItemAssignee] = useState(null);
   const [newItemDueDate, setNewItemDueDate] = useState(null);
   const [isNewItemMemberPickerOpen, setIsNewItemMemberPickerOpen] = useState(false);
@@ -70,12 +76,6 @@ const TaskDetailsModal = ({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isAddingSubTask, setIsAddingSubTask] = useState(false);
   const moreMenuRef = useRef(null);
-
-  // Copy Flow State
-  const [copyFlowStep, setCopyFlowStep] = useState(0); // 0: main menu, 1: select type, 2: select board/list
-  const [copyTargetType, setCopyTargetType] = useState(null);
-  const [destinations, setDestinations] = useState([]);
-  const [isDestLoading, setIsDestLoading] = useState(false);
 
   // Date picker staging states
   const [stagingDeadline, setStagingDeadline] = useState(task?.deadline || '');
@@ -239,118 +239,6 @@ const TaskDetailsModal = ({
     setActiveInput(null);
   };
 
-  const handleCopyTask = async (targetType, targetBoardId = null, targetListId = null) => {
-    try {
-      const token = sessionStorage.getItem('token');
-      let finalBoardId = targetBoardId;
-      let finalListId = targetListId;
-
-      // If upcoming board was selected without a list, fetch lists for that board first
-      if (targetType === 'upcoming' && finalBoardId && (!finalListId || finalListId === 'auto')) {
-        const boardRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/${finalBoardId}`, {
-          headers: { 'x-auth-token': token }
-        });
-        const targetLists = boardRes.data.lists || [];
-        if (targetLists.length === 0) {
-          toast({ variant: "destructive", title: "Error", description: "The selected board has no columns/lists to copy into." });
-          return;
-        }
-        finalListId = targetLists[0]._id;
-      }
-
-      // If no boardId provided (special types), we need to fetch the special board
-      if (!finalBoardId && (targetType === 'weekly' || targetType === 'daily')) {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${targetType}?teamId=${boardData.team?._id || boardData.team}`, {
-          headers: { 'x-auth-token': token }
-        });
-        const targetBoard = res.data.board || res.data;
-        if (!targetBoard) throw new Error(`Could not find ${targetType} board`);
-        finalBoardId = targetBoard._id;
-        
-        if (!finalListId) {
-           const targetLists = res.data.lists || [];
-           if (targetType === 'daily') {
-             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-             const todayName = days[new Date().getDay()];
-             finalListId = targetLists.find(l => l.title === todayName)?._id || targetLists[0]?._id;
-           } else {
-             finalListId = targetLists[0]?._id;
-           }
-        }
-      }
-
-      if (!finalBoardId || !finalListId) {
-        toast({ variant: "destructive", title: "Error", description: "Destination not fully selected" });
-        return;
-      }
-      
-      const payload = {
-        title: task.title,
-        description: task.description || `Copied from ${boardData.title}`,
-        listId: finalListId,
-        boardId: finalBoardId,
-        position: 0,
-        deadline: task.deadline,
-        assignees: task.assignees?.map(a => a._id || a) || [],
-        originTaskId: task._id,
-        labels: task.labels || [],
-        checklists: task.checklists?.map(cl => ({
-          name: cl.name,
-          items: cl.items?.map(item => ({
-            text: item.text,
-            isCompleted: item.isCompleted,
-            assignedTo: item.assignedTo?._id || item.assignedTo,
-            dueDate: item.dueDate
-          }))
-        })) || []
-      };
-      
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, payload, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      toast({ 
-        title: "Success", 
-        description: `Task copied successfully.` 
-      });
-      setIsMoreMenuOpen(false);
-      setCopyFlowStep(0);
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error('Copy Error:', err);
-      toast({ variant: "destructive", title: "Error", description: "Failed to copy task" });
-    }
-  };
-
-  const fetchDestinations = async (type) => {
-    setIsDestLoading(true);
-    setCopyTargetType(type);
-    try {
-      const token = sessionStorage.getItem('token');
-      const teamId = boardData.team?._id || boardData.team;
-      
-      if (type === 'upcoming') {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/team/${teamId}`, {
-          headers: { 'x-auth-token': token }
-        });
-        setDestinations(res.data);
-        setCopyFlowStep(2);
-      } else {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/special/${type}?teamId=${teamId}`, {
-          headers: { 'x-auth-token': token }
-        });
-        setDestinations(res.data.lists || []);
-        // Save boardId for later
-        setCopyTargetType({ type, boardId: res.data.board?._id || res.data._id });
-        setCopyFlowStep(2);
-      }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch destinations" });
-    } finally {
-      setIsDestLoading(false);
-    }
-  };
-
   const Toolbar = ({ onSave, onCancel, showActions = true }) => {
     return (
       <div className={cn(
@@ -401,7 +289,8 @@ const TaskDetailsModal = ({
   if (!isOpen || !taskDetails || !task) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-[1260px] w-full md:w-[95vw] h-full md:h-[88vh] p-0 overflow-hidden border-none shadow-[0_0_80px_-15px_rgba(0,0,0,0.3)] md:rounded-[3rem] rounded-none bg-white flex flex-col custom-modal" showClose={false}>
            <DialogTitle className="sr-only">Task Details</DialogTitle>
            <DialogDescription className="sr-only">Viewing detailed information for {task.title}</DialogDescription>
@@ -473,79 +362,12 @@ const TaskDetailsModal = ({
 
                     {isMoreMenuOpen && (
                       <div ref={moreMenuRef} className="absolute right-0 top-10 w-56 bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[100] py-1 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                        {copyFlowStep === 0 && (
-                          <>
-                            <button 
-                              onClick={() => setCopyFlowStep(1)}
-                              className="w-full text-left px-4 py-3 text-[13px] font-normal text-zinc-700 hover:bg-zinc-50 flex items-center justify-between group transition-colors"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Copy className="w-4 h-4 text-zinc-400 group-hover:text-black" /> Copy Card
-                              </div>
-                              <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
-                            </button>
-                            
-                            <div className="h-px bg-zinc-100 my-1 mx-2" />
                             <button 
                               onClick={() => handleDeleteTask(task._id)}
                               className="w-full text-left px-4 py-3 text-[13px] font-normal text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" /> Delete Card
                             </button>
-                          </>
-                        )}
-
-                        {copyFlowStep === 1 && (
-                          <div className="animate-in slide-in-from-right-2 duration-200">
-                            <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
-                              <span className="text-[10px] font-normal text-zinc-400 uppercase tracking-widest">Target Mode</span>
-                              <button onClick={() => setCopyFlowStep(0)} className="text-[10px] text-zinc-500 hover:text-black font-normal uppercase">Back</button>
-                            </div>
-                            <button onClick={() => fetchDestinations('upcoming')} className="w-full text-left px-4 py-3 text-[13px] font-normal text-zinc-700 hover:bg-zinc-50 flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4 text-indigo-500" /> Upcoming
-                            </button>
-                            <button onClick={() => fetchDestinations('weekly')} className="w-full text-left px-4 py-3 text-[13px] font-normal text-zinc-700 hover:bg-zinc-50 flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-emerald-500" /> Weekly
-                            </button>
-                            <button onClick={() => fetchDestinations('daily')} className="w-full text-left px-4 py-3 text-[13px] font-normal text-zinc-700 hover:bg-zinc-50 flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-amber-500" /> Daily
-                            </button>
-                          </div>
-                        )}
-
-                        {copyFlowStep === 2 && (
-                          <div className="animate-in slide-in-from-right-2 duration-200">
-                            <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-100 flex items-center justify-between">
-                              <span className="text-[10px] font-normal text-zinc-400 uppercase tracking-widest">
-                                {copyTargetType === 'upcoming' ? 'Select Board' : 'Select List'}
-                              </span>
-                              <button onClick={() => setCopyFlowStep(1)} className="text-[10px] text-zinc-500 hover:text-black font-normal uppercase">Back</button>
-                            </div>
-                            <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                              {isDestLoading ? (
-                                <div className="p-6 flex justify-center"><Loader size="sm" /></div>
-                              ) : destinations.length === 0 ? (
-                                <div className="p-6 text-zinc-400 text-xs italic text-center">No targets found</div>
-                              ) : (
-                                destinations.map(d => (
-                                  <button 
-                                    key={d._id} 
-                                    onClick={() => {
-                                      if (copyTargetType === 'upcoming') {
-                                        handleCopyTask('upcoming', d._id, d.lists?.[0] || 'auto'); 
-                                      } else {
-                                        handleCopyTask(copyTargetType.type, copyTargetType.boardId, d._id);
-                                      }
-                                    }}
-                                    className="w-full text-left px-4 py-3 text-[12px] font-normal text-zinc-600 hover:bg-zinc-50 transition-colors border-b border-zinc-50 last:border-0 truncate"
-                                  >
-                                    {d.title}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -1058,7 +880,40 @@ const TaskDetailsModal = ({
                            <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                  <CheckSquare className="w-5 h-5 text-zinc-900" />
-                                 <h3 className="font-normal text-[17px] tracking-tight">{checklist.name}</h3>
+                                 {editingChecklistId === checklist._id ? (
+                                   <Input 
+                                     autoFocus
+                                     className="font-normal text-[17px] tracking-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent"
+                                     value={editChecklistName}
+                                     onChange={(e) => setEditChecklistName(e.target.value)}
+                                     onBlur={() => {
+                                       const trimmed = editChecklistName.trim();
+                                       if (trimmed && trimmed !== checklist.name) {
+                                         handleRenameChecklist(checklist._id, trimmed);
+                                       }
+                                       setEditingChecklistId(null);
+                                     }}
+                                     onKeyDown={(e) => {
+                                       if (e.key === 'Enter') {
+                                         const trimmed = editChecklistName.trim();
+                                         if (trimmed && trimmed !== checklist.name) {
+                                           handleRenameChecklist(checklist._id, trimmed);
+                                         }
+                                         setEditingChecklistId(null);
+                                       }
+                                       if (e.key === 'Escape') {
+                                         setEditingChecklistId(null);
+                                       }
+                                     }}
+                                   />
+                                 ) : (
+                                   <h3 
+                                     onDoubleClick={() => { setEditingChecklistId(checklist._id); setEditChecklistName(checklist.name); }}
+                                     className="font-normal text-[17px] tracking-tight cursor-text"
+                                   >
+                                     {checklist.name}
+                                   </h3>
+                                 )}
                                  <span className="text-[11px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-normal">
                                     {checklist.items?.filter(i => i.isCompleted).length || 0}/{checklist.items?.length || 0}
                                  </span>
@@ -1210,7 +1065,7 @@ const TaskDetailsModal = ({
                               setCommentText(''); 
                            } 
                         }} 
-                        className="w-full border-0 rounded-none min-h-[44px] bg-white p-4 text-[14px] focus-visible:ring-0 resize-none font-medium text-zinc-800 overflow-hidden"
+                        className="w-full border-0 rounded-none min-h-[60px] bg-white p-4 text-[14px] focus-visible:ring-0 resize-none font-medium text-zinc-800"
                       />
                      {activeInput === 'comment' && <MentionList />}
                   </div>
@@ -1244,12 +1099,12 @@ const TaskDetailsModal = ({
                                   ) : null}
                                   <span className="text-[10px] font-bold text-zinc-300 ml-1 uppercase tracking-tighter">{getTimeAgo(item.createdAt)}</span>
                                </div>
-                              {item.type === 'comment' && item.user._id === currentUser?._id && !editingCommentId && (
-                                 <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-white text-zinc-400 hover:text-black" onClick={() => { setEditingCommentId(item._id); setEditCommentText(item.text); }}><Edit2 className="w-3 h-3" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-red-50 text-zinc-400 hover:text-red-600" onClick={() => handleDeleteComment(item._id)}><Trash2 className="w-3 h-3" /></Button>
-                                 </div>
-                              )}
+                               {item.type === 'comment' && (item.user._id === currentUser?._id || currentUser?.role === 'admin' || currentUser?.role?.name === 'admin' || currentUser?.role === 'subadmin' || currentUser?.role?.name === 'subadmin') && !editingCommentId && (
+                                  <div className="flex items-center gap-1 transition-opacity">
+                                     <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-white text-zinc-400 hover:text-black" onClick={() => { setEditingCommentId(item._id); setEditCommentText(item.text); }}><Edit2 className="w-3 h-3" /></Button>
+                                     <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-red-50 text-zinc-400 hover:text-red-600" onClick={() => { setCommentToDelete(item._id); setIsDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3" /></Button>
+                                  </div>
+                               )}
                            </div>
                            
                            {item.type === 'comment' && (
@@ -1265,12 +1120,19 @@ const TaskDetailsModal = ({
                                        autoFocus
                                        value={editCommentText} 
                                        onChange={(e) => handleTextChange(e.target.value, 'editComment')}
-                                       className="w-full border-0 rounded-none p-4 text-[14px] focus-visible:ring-0 min-h-[80px] overflow-hidden"
+                                       onKeyDown={(e) => { 
+                                          if (e.key === 'Enter' && !e.shiftKey && editCommentText.trim() && !mentionTriggerPos) { 
+                                             e.preventDefault(); 
+                                             handleUpdateComment(item._id, editCommentText); 
+                                             setEditingCommentId(null); 
+                                          } 
+                                       }} 
+                                       className="w-full border-0 rounded-none p-4 text-[14px] focus-visible:ring-0 min-h-[80px] resize-none"
                                     />
                                     {activeInput === 'editComment' && <MentionList />}
                                  </div>
                                ) : (
-                                 <div className="bg-white px-4 py-3 rounded-2xl text-[14px] text-zinc-900 shadow-sm border border-zinc-200/50 leading-relaxed font-bold">
+                                 <div className="bg-white px-4 py-3 rounded-2xl text-[14px] text-zinc-900 shadow-sm border border-zinc-200/50 leading-relaxed font-bold whitespace-pre-wrap flex flex-col gap-1">
                                     <MarkdownRenderer content={item.text} />
                                  </div>
                                )}
@@ -1285,6 +1147,20 @@ const TaskDetailsModal = ({
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmDialog 
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={() => {
+            if(commentToDelete) {
+                handleDeleteComment(commentToDelete);
+                setCommentToDelete(null);
+            }
+        }}
+        title="Delete Comment?"
+        description="This action will remove the comment permanently node-wide."
+    />
+  </>
   );
 };
 

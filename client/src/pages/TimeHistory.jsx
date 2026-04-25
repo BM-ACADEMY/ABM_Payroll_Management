@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Clock, Search, Calendar, Timer, History, Filter, ChevronRight, ChevronDown, MessageSquare, Pencil, Trash2, Check, X, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
@@ -12,6 +13,7 @@ import socket from '@/services/socket';
 import PaginationControl from '@/components/ui/PaginationControl';
 import Loader from "@/components/ui/Loader";
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const TimeHistory = () => {
   const [logs, setLogs] = useState([]);
@@ -27,6 +29,13 @@ const TimeHistory = () => {
   const [editValue, setEditValue] = useState('');
   const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   const [newComments, setNewComments] = useState({});
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  // Mention states
+  const [allUsers, setAllUsers] = useState([]);
+  const [showMentions, setShowMentions] = useState(null); // logId of current active mention
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [cursorPos, setCursorPos] = useState(0);
   const { toast } = useToast();
 
   const fetchLogs = async (page = 1) => {
@@ -60,6 +69,22 @@ const TimeHistory = () => {
     }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const fetchAllUsers = async () => {
+    try {
+        const token = sessionStorage.getItem('token');
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/members/search`, {
+          headers: { 'x-auth-token': token }
+        });
+        setAllUsers(res.data);
+    } catch (err) {
+        console.error('Failed to fetch users', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllUsers();
+  }, []);
 
   const handlePageChange = (page) => {
     fetchLogs(page);
@@ -119,7 +144,6 @@ const TimeHistory = () => {
   };
 
   const handleDeleteComment = async (id, commentId) => {
-    if (!window.confirm("Delete this comment?")) return;
     try {
       const token = sessionStorage.getItem('token');
       const res = await axios.delete(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}/${commentId}`, {
@@ -372,12 +396,12 @@ const TimeHistory = () => {
                                             <span className="text-[11px] text-slate-500">{comment.author}</span>
                                             <div className="flex items-center gap-2">
                                               <span className="text-[10px] text-slate-300">{format(new Date(comment.createdAt), 'MMM dd, h:mm a')}</span>
-                                              {((userName === comment.author) || (userRole === 'admin')) && (
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                                              {((userName === comment.author) || (userRole === 'admin') || (userRole === 'subadmin')) && (
+                                                <div className="flex items-center gap-1">
                                                   <button onClick={() => { setEditingCommentId(comment._id); setEditValue(comment.text); }} className="p-1 text-slate-400 hover:text-slate-600">
                                                     <Pencil className="w-3 h-3" />
                                                   </button>
-                                                  <button onClick={() => handleDeleteComment(log._id, comment._id)} className="p-1 text-slate-400 hover:text-red-500">
+                                                  <button onClick={() => { setCommentToDelete({logId: log._id, commentId: comment._id}); setIsDeleteDialogOpen(true); }} className="p-1 text-slate-400 hover:text-red-500">
                                                     <Trash2 className="w-3 h-3" />
                                                   </button>
                                                 </div>
@@ -385,42 +409,96 @@ const TimeHistory = () => {
                                             </div>
                                           </div>
                                           {editingCommentId === comment._id ? (
-                                            <div className="flex gap-2 pt-2">
-                                              <Input
+                                            <div className="flex flex-col gap-2 pt-2">
+                                              <Textarea
                                                 value={editValue}
                                                 onChange={(e) => setEditValue(e.target.value)}
-                                                className="h-8 text-xs border-slate-200"
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter' && !e.shiftKey && editValue.trim()) {
+                                                    e.preventDefault();
+                                                    handleUpdateComment(log._id, comment._id, editValue);
+                                                    setEditingCommentId(null);
+                                                  }
+                                                }}
+                                                className="min-h-[80px] text-xs border-slate-200 resize-none py-2"
                                                 autoFocus
                                               />
-                                              <Button size="sm" className="h-8 px-2 bg-yellow-400 hover:bg-yellow-500 text-black shadow-none border-none" onClick={() => handleUpdateComment(log._id, comment._id, editValue)}>
-                                                <Check className="w-3 h-3" />
-                                              </Button>
-                                              <Button size="sm" variant="ghost" className="h-8 px-2 text-slate-400" onClick={() => setEditingCommentId(null)}>
-                                                <X className="w-3 h-3" />
-                                              </Button>
+                                              <div className="flex gap-2">
+                                                <Button size="sm" className="h-8 px-4 bg-yellow-400 hover:bg-yellow-500 text-black font-bold" onClick={() => { handleUpdateComment(log._id, comment._id, editValue); setEditingCommentId(null); }}>
+                                                  Save
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-8 px-4 text-slate-400 font-bold" onClick={() => setEditingCommentId(null)}>
+                                                  Cancel
+                                                </Button>
+                                              </div>
                                             </div>
                                           ) : (
-                                            <div className="text-sm text-slate-600 leading-relaxed font-normal"><MarkdownRenderer content={comment.text} /></div>
+                                            <div className="text-sm text-slate-600 leading-relaxed font-normal whitespace-pre-wrap"><MarkdownRenderer content={comment.text} /></div>
                                           )}
                                         </div>
                                       ))}
                                       
-                                      <div className="flex gap-2 mt-4 max-w-lg">
-                                        <Input
-                                          value={newComments[log._id] || ''}
-                                          onChange={(e) => setNewComments(prev => ({ ...prev, [log._id]: e.target.value }))}
-                                          placeholder="Add a new comment..."
-                                          className="h-10 text-xs border-slate-200 shadow-none focus:ring-yellow-400"
-                                          onKeyPress={(e) => e.key === 'Enter' && handleAddComment(log._id, newComments[log._id])}
-                                        />
-                                        <Button
-                                          onClick={() => handleAddComment(log._id, newComments[log._id])}
-                                          disabled={!newComments[log._id]?.trim()}
-                                          className="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white shadow-none border-none"
-                                        >
-                                          <Send className="w-4 h-4" />
-                                        </Button>
-                                      </div>
+                                        <div className="flex flex-col gap-2 mt-4 max-w-lg w-full">
+                                          <div className="relative">
+                                            <Textarea
+                                              value={newComments[log._id] || ''}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                setNewComments(prev => ({ ...prev, [log._id]: val }));
+                                                const pos = e.target.selectionStart;
+                                                setCursorPos(pos);
+                                                
+                                                const lastAt = val.lastIndexOf('@', pos - 1);
+                                                if (lastAt !== -1 && !val.slice(lastAt, pos).includes(' ')) {
+                                                    setShowMentions(log._id);
+                                                    setMentionSearch(val.slice(lastAt + 1, pos));
+                                                } else {
+                                                    setShowMentions(null);
+                                                }
+                                              }}
+                                              placeholder="Add a new comment..."
+                                              className="min-h-[64px] text-xs border-slate-200 shadow-none focus-visible:ring-yellow-400 w-full resize-none py-2"
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey && !showMentions && newComments[log._id]?.trim()) {
+                                                   e.preventDefault();
+                                                   handleAddComment(log._id, newComments[log._id]);
+                                                }
+                                              }}
+                                            />
+                                            {showMentions === log._id && allUsers.length > 0 && (
+                                              <div className="absolute bottom-full left-0 w-full mb-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-[150px] overflow-y-auto">
+                                                {allUsers
+                                                  .filter(u => u.name.toLowerCase().includes(mentionSearch.toLowerCase()) || u.email.toLowerCase().includes(mentionSearch.toLowerCase()))
+                                                  .map(u => (
+                                                    <div 
+                                                      key={u._id}
+                                                      className="p-2 hover:bg-slate-50 cursor-pointer flex flex-col"
+                                                      onClick={() => {
+                                                        const currentText = newComments[log._id] || '';
+                                                        const before = currentText.slice(0, currentText.lastIndexOf('@', cursorPos - 1));
+                                                        const after = currentText.slice(cursorPos);
+                                                        const mention = `@[${u.name}](${u.email}) `;
+                                                        setNewComments(prev => ({ ...prev, [log._id]: before + mention + after }));
+                                                        setShowMentions(null);
+                                                      }}
+                                                    >
+                                                      <span className="text-[11px] font-medium text-slate-900">{u.name}</span>
+                                                      <span className="text-[9px] text-slate-400">{u.email}</span>
+                                                    </div>
+                                                  ))
+                                                }
+                                              </div>
+                                            )}
+                                          </div>
+                                          <Button
+                                            onClick={() => handleAddComment(log._id, newComments[log._id])}
+                                            disabled={!newComments[log._id]?.trim()}
+                                            className="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white shadow-none border-none flex items-center justify-center gap-2"
+                                          >
+                                            <Send className="w-4 h-4" />
+                                            <span className="text-xs uppercase tracking-widest font-black">Post Update</span>
+                                          </Button>
+                                        </div>
                                     </div>
                                   </div>
                                 </div>
@@ -443,6 +521,19 @@ const TimeHistory = () => {
           </div>
         )}
       </div>
+
+      <ConfirmDialog 
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onConfirm={() => {
+              if(commentToDelete) {
+                  handleDeleteComment(commentToDelete.logId, commentToDelete.commentId);
+                  setCommentToDelete(null);
+              }
+          }}
+          title="Delete History Insight?"
+          description="This will remove the specific comment from the historical time log entry."
+      />
     </div>
   );
 };
