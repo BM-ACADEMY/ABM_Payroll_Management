@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -533,32 +533,34 @@ const KanbanBoard = () => {
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to create task" }); }
   };
 
-  const handleAddComment = async (taskId, text) => {
+  const handleAddComment = useCallback(async (taskId, text) => {
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/comments`, { taskId, text }, {
         headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskId);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to add comment" }); }
-  };
+  }, [fetchTaskDetails, toast]);
 
-  const handleUpdateComment = async (commentId, text) => {
+  const handleUpdateComment = useCallback(async (commentId, text) => {
     try {
+      if (!taskDetails?.task?._id) return;
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/comments/${commentId}`, { text }, {
         headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to update comment" }); }
-  };
+  }, [taskDetails?.task?._id, fetchTaskDetails, toast]);
 
-  const handleDeleteComment = async (commentId) => {
+  const handleDeleteComment = useCallback(async (commentId) => {
     try {
+      if (!taskDetails?.task?._id) return;
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/comments/${commentId}`, {
         headers: { 'x-auth-token': sessionStorage.getItem('token') }
       });
       fetchTaskDetails(taskDetails.task._id);
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to delete comment" }); }
-  };
+  }, [taskDetails?.task?._id, fetchTaskDetails, toast]);
 
   const handleDeleteTask = async (taskId) => {
     setConfirmDialog({ 
@@ -583,7 +585,7 @@ const KanbanBoard = () => {
   };
 
 
-  const handleUpdateChecklistItem = async (taskId, checklistId, itemId, updates) => {
+  const handleUpdateChecklistItem = useCallback(async (taskId, checklistId, itemId, updates) => {
     // Optimistic Update for UI responsiveness
     if (taskDetails?.task?._id === taskId) {
       setTaskDetails(prev => {
@@ -621,14 +623,12 @@ const KanbanBoard = () => {
           checklistId, itemId, ...updates
         }, { headers: { 'x-auth-token': sessionStorage.getItem('token') } });
       }
-      // Re-fetch only after a slight delay or if critical, 
-      // but with optimistic update, the UI is already correct.
       fetchTaskDetails(taskId);
     } catch (err) { 
       toast({ variant: "destructive", title: "Error", description: "Failed to update item" }); 
-      fetchTaskDetails(taskId); // Rollback on error
+      fetchTaskDetails(taskId);
     }
-  };
+  }, [taskDetails?.task?._id, allUsers, fetchTaskDetails, toast]);
 
   const toggleChecklistItemStatus = (taskId, checklistId, itemId, currentStatus) => {
     handleUpdateChecklistItem(taskId, checklistId, itemId, { isCompleted: !currentStatus });
@@ -666,7 +666,7 @@ const KanbanBoard = () => {
     } catch (err) { toast({ variant: "destructive", title: "Error", description: "Update failed" }); }
   };
 
-  const handleUpdateTask = async (taskId, payload) => {
+  const handleUpdateTask = useCallback(async (taskId, payload) => {
     // Comprehensive Optimistic Update
     if (taskDetails) {
       setTaskDetails(prev => {
@@ -709,7 +709,7 @@ const KanbanBoard = () => {
       fetchData();
       if (taskDetails?.task?._id === taskId) fetchTaskDetails(taskId);
     }
-  };
+  }, [taskDetails, allUsers, fetchTaskDetails, fetchData, toast]);
 
   const handleUpdateBoard = async (e) => {
     e.preventDefault();
@@ -1328,7 +1328,7 @@ const KanbanBoard = () => {
                          <Target className="w-6 h-6 text-indigo-500" /> Vector Distribution
                       </h3>
                       <div className="h-[300px] w-full relative z-10">
-                         <ResponsiveContainer width="100%" height="100%">
+                         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <BarChart data={analyticsData.listStats}>
                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#a1a1aa'}} />
@@ -1349,7 +1349,7 @@ const KanbanBoard = () => {
                         <Users className="w-5 h-5 text-emerald-500" /> Member Execution Flux
                      </h3>
                      <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                            <LineChart data={analyticsData.memberStats}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 900, fill: '#a1a1aa'}} />

@@ -212,7 +212,7 @@ const Analytics = () => {
               </div>
             </CardHeader>
             <CardContent className="p-6 md:p-10 h-[400px] md:h-[500px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={performanceData} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
@@ -410,7 +410,7 @@ const Analytics = () => {
                         </div>
 
                         <div className="h-[400px] md:h-[500px] pt-4">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <BarChart data={activeSourceData.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                               <XAxis 

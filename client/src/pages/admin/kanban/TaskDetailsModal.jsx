@@ -1,15 +1,29 @@
 import { 
   X, ChevronDown, ChevronRight, MoreHorizontal, Plus, Tag, CheckSquare, 
-  Paperclip, Layout, MessageSquare, 
+  Paperclip, Layout, MessageSquare, AlignLeft,
   Check, Trash2, Edit2, Send, Bell, Calendar, Clock, 
-  TrendingUp
+  TrendingUp, Timer
 } from 'lucide-react';
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isSameDay, 
+  addMonths, 
+  subMonths, 
+  setHours, 
+  setMinutes 
+} from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +32,125 @@ import SubTaskItem from './SubTaskItem';
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import Loader from '@/components/ui/Loader';
-import { cn } from "@/lib/utils";
+
+// --- Sub-components for Optimization ---
+
+const ChecklistHeader = memo(({ checklist, handleRenameChecklist, handleRemoveChecklist }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [val, setVal] = useState(checklist.name);
+  
+  useEffect(() => { setVal(checklist.name); }, [checklist.name]);
+
+  const save = () => {
+    const trimmed = val.trim();
+    if (trimmed && trimmed !== checklist.name) {
+      handleRenameChecklist(checklist._id, trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <CheckSquare className="w-5 h-5 text-zinc-900" />
+        {isEditing ? (
+          <Input 
+            autoFocus
+            className="font-normal text-[17px] tracking-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent w-auto min-w-[100px]"
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') save();
+              if (e.key === 'Escape') setIsEditing(false);
+            }}
+          />
+        ) : (
+          <h3 
+            onDoubleClick={() => setIsEditing(true)}
+            className="font-normal text-[17px] tracking-tight cursor-text"
+          >
+            {checklist.name}
+          </h3>
+        )}
+        <span className="text-[11px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-normal">
+          {checklist.items?.filter(i => i.isCompleted).length || 0}/{checklist.items?.length || 0}
+        </span>
+      </div>
+      <Button variant="ghost" size="sm" onClick={() => handleRemoveChecklist(checklist._id)} className="font-normal text-zinc-700">Delete</Button>
+    </div>
+  );
+});
+
+const ChecklistItemSection = memo(({ 
+  checklist, 
+  boardData, 
+  task, 
+  onChecklistItemUpdate, 
+  onChecklistItemToggle, 
+  handleAddSubTask, 
+  onRefresh,
+  handleAddChecklistItem 
+}) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const progress = checklist.items?.length ? Math.round((checklist.items.filter(i=>i.isCompleted).length / checklist.items.length) * 100) : 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <span className="text-[11px] font-normal text-zinc-500 w-6">{progress}%</span>
+        <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden">
+          <div className="h-full bg-zinc-300 transition-all duration-300" style={{ width: `${progress}%` }}></div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {checklist.items?.map(item => (
+          <SubTaskItem 
+            key={item._id} 
+            task={item} 
+            boardMembers={boardData?.members} 
+            teamId={boardData?.team?._id || boardData?.team}
+            onUpdate={(id, updates) => onChecklistItemUpdate(id, updates, checklist._id)}
+            onAddSubTask={handleAddSubTask}
+            onToggleCompletion={(id, completed) => onChecklistItemToggle(id, completed, checklist._id)}
+            isChecklist={true}
+            onRefresh={onRefresh}
+            currentBoardId={task?.board?._id || task?.board || boardData?._id}
+          />
+        ))}
+        {isAdding ? (
+          <div className="space-y-3 pt-2">
+            <Textarea 
+              placeholder="Add an item" 
+              autoFocus 
+              className="w-full border-zinc-900 border-2 rounded-xl p-3 text-[14px]" 
+              id={`new-item-text-${checklist._id}`} 
+            />
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => { 
+                  const el = document.getElementById(`new-item-text-${checklist._id}`); 
+                  if(el.value) { 
+                    handleAddChecklistItem(checklist._id, el.value); 
+                    el.value = ''; 
+                  } 
+                }} 
+                className="bg-black text-[#fffe01] font-normal rounded-lg px-4 h-9"
+              >
+                Add
+              </Button>
+              <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-normal text-zinc-600">Cancel</Button>
+            </div>
+          </div>
+        ) : (
+          <Button variant="outline" onClick={() => setIsAdding(true)} className="bg-zinc-50 border-zinc-100 font-normal text-[11px] uppercase tracking-widest gap-2 py-2 h-auto rounded-xl text-zinc-500 hover:text-black">Add an item</Button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// --- Modal Component ---
 
 const TaskDetailsModal = ({ 
   isOpen, 
@@ -45,7 +177,7 @@ const TaskDetailsModal = ({
   allUsers = []
 }) => {
   const { toast } = useToast();
-  const { task, comments = [], history = [], subTasks: initialSubTasks = [] } = taskDetails || {};
+  const { task, comments = [], history = [] } = taskDetails || {};
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -57,66 +189,21 @@ const TaskDetailsModal = ({
   // Mentions State
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionTriggerPos, setMentionTriggerPos] = useState(null);
-  const [activeInput, setActiveInput] = useState(null); // 'desc' or 'comment' or 'editComment'
+  const [activeInput, setActiveInput] = useState(null); 
 
   const [isMemberPickerOpen, setIsMemberPickerOpen] = useState(false);
   const [isLabelPickerOpen, setIsLabelPickerOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isChecklistPickerOpen, setIsChecklistPickerOpen] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('Checklist');
-  const [isDescExpanded, setIsDescExpanded] = useState(false);
-  const [activeChecklistForNewItem, setActiveChecklistForNewItem] = useState(null);
-  const [editingChecklistId, setEditingChecklistId] = useState(null);
-  const [editChecklistName, setEditChecklistName] = useState('');
-  const [newItemAssignee, setNewItemAssignee] = useState(null);
-  const [newItemDueDate, setNewItemDueDate] = useState(null);
-  const [isNewItemMemberPickerOpen, setIsNewItemMemberPickerOpen] = useState(false);
-  const [isNewItemDatePickerOpen, setIsNewItemDatePickerOpen] = useState(false);
   const [showActivityDetails, setShowActivityDetails] = useState(true);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
-  const [isAddingSubTask, setIsAddingSubTask] = useState(false);
   const moreMenuRef = useRef(null);
 
   // Date picker staging states
   const [stagingDeadline, setStagingDeadline] = useState(task?.deadline || '');
   const [manualDateText, setManualDateText] = useState('');
-
-  const parseManualDate = (text) => {
-    if (!text) return null;
-    const now = new Date();
-    
-    // DD/MM HH:mm (current year)
-    const dmt = text.match(/^(\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})$/);
-    if (dmt) return new Date(now.getFullYear(), dmt[2]-1, dmt[1], dmt[3], dmt[4]);
-
-    // DD/MM/YYYY HH:mm
-    const dmyt = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})$/);
-    if (dmyt) return new Date(dmyt[3], dmyt[2]-1, dmyt[1], dmyt[4], dmyt[5]);
-
-    // Just DD/MM
-    const dm = text.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
-    if (dm) return new Date(now.getFullYear(), dm[2]-1, dm[1], 12, 0);
-
-    // native parse
-    const native = new Date(text);
-    if (!isNaN(native.getTime())) return native;
-
-    return null;
-  };
-
-  useEffect(() => {
-    if (isDatePickerOpen) {
-      setStagingDeadline(task?.deadline || '');
-      setManualDateText(task?.deadline ? format(new Date(task.deadline), 'dd/MM HH:mm') : '');
-    }
-  }, [isDatePickerOpen, task?.deadline]);
-
-  const [tempStartDate, setTempStartDate] = useState('');
-  const [tempStartTime, setTempStartTime] = useState('');
-  const [tempDueDate, setTempDueDate] = useState('');
-  const [tempDueTime, setTempDueTime] = useState('');
-  const [isStartChecked, setIsStartChecked] = useState(false);
-  const [isDueChecked, setIsDueChecked] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date());
 
   const descRef = useRef(null);
   const commentRef = useRef(null);
@@ -127,26 +214,31 @@ const TaskDetailsModal = ({
   const checklistPickerRef = useRef(null);
 
   useEffect(() => {
+    if (isDatePickerOpen) {
+      const d = task?.deadline;
+      const initialDate = d ? new Date(d) : new Date();
+      setStagingDeadline(d || '');
+      setManualDateText(d ? format(initialDate, 'dd/MM HH:mm') : '');
+      setViewDate(initialDate);
+    }
+  }, [isDatePickerOpen, task?.deadline]);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (isMemberPickerOpen && memberPickerRef.current && !memberPickerRef.current.contains(event.target)) {
-        const isClickOnToggle = event.target.closest('[data-member-toggle]');
-        if (!isClickOnToggle) setIsMemberPickerOpen(false);
+        if (!event.target.closest('[data-member-toggle]')) setIsMemberPickerOpen(false);
       }
       if (isLabelPickerOpen && labelPickerRef.current && !labelPickerRef.current.contains(event.target)) {
-        const isClickOnToggle = event.target.closest('[data-label-toggle]');
-        if (!isClickOnToggle) setIsLabelPickerOpen(false);
+        if (!event.target.closest('[data-label-toggle]')) setIsLabelPickerOpen(false);
       }
       if (isDatePickerOpen && datePickerRef.current && !datePickerRef.current.contains(event.target)) {
-        const isClickOnToggle = event.target.closest('[data-date-toggle]');
-        if (!isClickOnToggle) setIsDatePickerOpen(false);
+        if (!event.target.closest('[data-date-toggle]')) setIsDatePickerOpen(false);
       }
       if (isChecklistPickerOpen && checklistPickerRef.current && !checklistPickerRef.current.contains(event.target)) {
-        const isClickOnToggle = event.target.closest('[data-checklist-toggle]');
-        if (!isClickOnToggle) setIsChecklistPickerOpen(false);
+        if (!event.target.closest('[data-checklist-toggle]')) setIsChecklistPickerOpen(false);
       }
       if (isMoreMenuOpen && moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
-        const isClickOnToggle = event.target.closest('[data-more-toggle]');
-        if (!isClickOnToggle) setIsMoreMenuOpen(false);
+        if (!event.target.closest('[data-more-toggle]')) setIsMoreMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -166,11 +258,27 @@ const TaskDetailsModal = ({
   }, [tempDesc, commentText, editCommentText, isEditingDesc, editingCommentId]);
 
   useEffect(() => {
-    if (taskDetails?.task) setTempDesc(taskDetails.task.description || '');
-  }, [taskDetails]);
+    if (task) setTempDesc(task.description || '');
+  }, [task?.description]);
+
+  const onChecklistItemUpdate = useCallback((itemId, updates, checklistId) => {
+    if (!task?._id) return;
+    handleUpdateChecklistItem(task._id, checklistId, itemId, updates);
+  }, [task?._id, handleUpdateChecklistItem]);
+
+  const onChecklistItemToggle = useCallback((itemId, completed, checklistId) => {
+    if (!task?._id) return;
+    handleUpdateChecklistItem(task._id, checklistId, itemId, { isCompleted: !completed });
+  }, [task?._id, handleUpdateChecklistItem]);
+
+  const handleTitleSave = useCallback((newTitle) => {
+    if (task && newTitle.trim() && newTitle !== task.title) {
+      handleUpdateTask(task._id, { title: newTitle });
+    }
+  }, [task, handleUpdateTask]);
 
   const isDueSoon = (deadline) => {
-    if (!deadline || taskDetails?.task?.isCompleted) return false;
+    if (!deadline || task?.isCompleted) return false;
     const now = new Date();
     const due = new Date(deadline);
     const diff = (due - now) / (1000 * 60 * 60);
@@ -178,7 +286,7 @@ const TaskDetailsModal = ({
   };
 
   const isOverdue = (deadline) => {
-    if (!deadline || taskDetails?.task?.isCompleted) return false;
+    if (!deadline || task?.isCompleted) return false;
     return new Date(deadline) < new Date();
   };
 
@@ -189,21 +297,9 @@ const TaskDetailsModal = ({
   };
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editTitleValue, setEditTitleValue] = useState(taskDetails?.task?.title || '');
+  const [editTitleValue, setEditTitleValue] = useState(task?.title || '');
+  useEffect(() => { setEditTitleValue(task?.title || ''); }, [task?.title]);
 
-  useEffect(() => {
-    setEditTitleValue(taskDetails?.task?.title || '');
-  }, [taskDetails?.task?.title]);
-
-  const handleTitleSave = () => {
-    const task = taskDetails?.task;
-    if (task && editTitleValue.trim() && editTitleValue !== task.title) {
-      handleUpdateTask(task._id, { title: editTitleValue });
-    }
-    setIsEditingTitle(false);
-  };
-
-  // Logic for Mentions
   const handleTextChange = (text, type) => {
     if (type === 'comment') setCommentText(text);
     else if (type === 'desc') setTempDesc(text);
@@ -226,9 +322,10 @@ const TaskDetailsModal = ({
   const insertMention = (user) => {
     const textToUpdate = activeInput === 'comment' ? commentText : activeInput === 'desc' ? tempDesc : editCommentText;
     const prefix = textToUpdate.substring(0, mentionTriggerPos);
-    const suffix = textToUpdate.substring(textToUpdate.indexOf(' ', mentionTriggerPos) === -1 ? textToUpdate.length : textToUpdate.indexOf(' ', mentionTriggerPos));
+    const wordsAfter = textToUpdate.substring(mentionTriggerPos).split(' ');
+    const rest = wordsAfter.slice(1).join(' ');
     const mention = `@[${user.name}](${user.email}) `;
-    const newText = prefix + mention + suffix;
+    const newText = prefix + mention + rest;
     
     if (activeInput === 'comment') setCommentText(newText);
     else if (activeInput === 'desc') setTempDesc(newText);
@@ -239,19 +336,17 @@ const TaskDetailsModal = ({
     setActiveInput(null);
   };
 
-  const Toolbar = ({ onSave, onCancel, showActions = true }) => {
-    return (
-      <div className={cn(
-        "flex items-center justify-end bg-zinc-50 border border-zinc-200 rounded-t-lg px-2 py-1.5 border-b-0 transition-opacity duration-200",
-        showActions ? "opacity-100" : "opacity-0 pointer-events-none"
-      )}>
-         <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 px-2 text-[11px] font-normal text-zinc-500 hover:text-red-600 transition-colors uppercase tracking-tight">Cancel</Button>
-            <Button onClick={onSave} className="h-7 px-3 text-[11px] font-normal bg-black text-[#fffe01] rounded uppercase tracking-tight shadow-sm hover:scale-105 transition-transform">Save</Button>
-         </div>
-      </div>
-    );
-  };
+  const Toolbar = ({ onSave, onCancel, showActions = true }) => (
+    <div className={cn(
+      "flex items-center justify-end bg-zinc-50 border border-zinc-200 rounded-t-lg px-2 py-1.5 border-b-0 transition-opacity duration-200",
+      showActions ? "opacity-100" : "opacity-0 pointer-events-none"
+    )}>
+       <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 px-2 text-[11px] font-normal text-zinc-500 hover:text-red-600 transition-colors uppercase tracking-tight">Cancel</Button>
+          <Button onClick={onSave} className="h-7 px-3 text-[11px] font-normal bg-black text-[#fffe01] rounded uppercase tracking-tight shadow-sm hover:scale-105 transition-transform">Save</Button>
+       </div>
+    </div>
+  );
 
   const MentionList = () => {
     if (mentionTriggerPos === null) return null;
@@ -267,12 +362,8 @@ const TaskDetailsModal = ({
          </div>
          <div className="max-h-48 overflow-y-auto custom-scrollbar">
             {filtered.map(m => (
-               <div
-                  key={m._id}
-                  onClick={() => insertMention(m)}
-                 className="flex items-center gap-3 p-2 hover:bg-zinc-100 rounded-lg cursor-pointer group/mention transition-all"
-               >
-                  <div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-normal shadow-sm group-hover/mention:scale-110 transition-transform">
+               <div key={m._id} onClick={() => insertMention(m)} className="flex items-center gap-3 p-2 hover:bg-zinc-100 rounded-lg cursor-pointer group/mention transition-all">
+                  <div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-normal group-hover/mention:scale-110 transition-transform">
                     {m.name.split(' ').map(n=>n[0]).join('')}
                   </div>
                   <div className="flex flex-col">
@@ -295,7 +386,6 @@ const TaskDetailsModal = ({
            <DialogTitle className="sr-only">Task Details</DialogTitle>
            <DialogDescription className="sr-only">Viewing detailed information for {task.title}</DialogDescription>
  
-           {/* Header Context Bar */}
            <div className="min-h-[3.5rem] md:h-12 px-4 md:px-8 py-2 flex items-center justify-between bg-zinc-50/80 border-b border-zinc-100/50 relative z-50 flex-wrap gap-2">
               <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
                 <div className="flex items-center gap-1.5 py-1 px-3 bg-white rounded-full border border-zinc-100 shadow-sm shrink-0">
@@ -311,31 +401,23 @@ const TaskDetailsModal = ({
                    </span>
                    <select 
                       value={boardData?.type === 'weekly' ? (task.board?._id || task.board) : (task.list?._id || task.list)}
-                      onChange={(e) => {
-                        const updates = boardData?.type === 'weekly' 
-                          ? { board: e.target.value } 
-                          : { list: e.target.value };
-                        handleUpdateTask(task._id, updates);
-                      }}
+                      onChange={(e) => handleUpdateTask(task._id, boardData?.type === 'weekly' ? { board: e.target.value } : { list: e.target.value })}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full"
                    >
-                      {lists.map(l => (
-                        <option key={l._id} value={l._id}>{l.title}</option>
-                      ))}
+                      {lists.map(l => <option key={l._id} value={l._id}>{l.title}</option>)}
                    </select>
                 </div>
               </div>
- 
-              <div className="flex items-center gap-3">
-                 {task?.mentionCount > 0 && (
-                  <div className="relative group/mention shrink-0">
-                    <Bell className="w-4 h-4 text-red-500 fill-current animate-pulse cursor-pointer" />
-                    <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white font-normal shadow-sm">
-                      {task.mentionCount}
-                    </span>
-                  </div>
-                )}
 
+              <div className="flex items-center gap-3">
+                 {task.mentionCount > 0 && (
+                   <div className="relative group/mention shrink-0">
+                     <Bell className="w-4 h-4 text-red-500 fill-current animate-pulse cursor-pointer" />
+                     <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 border-white font-normal shadow-sm">
+                       {task.mentionCount}
+                     </span>
+                   </div>
+                 )}
                  <div className="flex items-center bg-white border border-zinc-100 rounded-xl px-1 md:px-1.5 py-1 gap-1 shadow-sm shrink-0">
                   {task.checklists?.some(cl => cl.items?.length > 0) && (
                     <div className="flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-1">
@@ -346,26 +428,14 @@ const TaskDetailsModal = ({
                       </span>
                     </div>
                   )}
-                  
                   <div className="h-4 w-px bg-zinc-100 mx-0.5"></div>
-
                   <div className="relative flex items-center">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      data-more-toggle
-                      onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                      className="h-8 w-8 text-zinc-400 hover:text-black hover:bg-zinc-50 rounded-lg transition-colors"
-                    >
+                    <Button variant="ghost" size="icon" data-more-toggle onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} className="h-8 w-8 text-zinc-400 hover:text-black hover:bg-zinc-50 rounded-lg">
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
-
                     {isMoreMenuOpen && (
                       <div ref={moreMenuRef} className="absolute right-0 top-10 w-56 bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[100] py-1 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                            <button 
-                              onClick={() => handleDeleteTask(task._id)}
-                              className="w-full text-left px-4 py-3 text-[13px] font-normal text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
-                            >
+                            <button onClick={() => handleDeleteTask(task._id)} className="w-full text-left px-4 py-3 text-[13px] font-normal text-red-600 hover:bg-red-50 flex items-center gap-2">
                               <Trash2 className="w-4 h-4" /> Delete Card
                             </button>
                       </div>
@@ -374,24 +444,18 @@ const TaskDetailsModal = ({
                 </div>
               </div>
 
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={onClose}
-                className="h-10 w-10 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-              >
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                 <X className="w-5 h-5" />
               </Button>
            </div>
 
         <div className="flex-1 overflow-hidden bg-white">
           <div className="flex flex-col md:flex-row h-full">
-            {/* Left Column */}
             <div className="flex-1 p-6 md:p-10 space-y-8 md:space-y-12 overflow-y-auto custom-scrollbar">
-                <div className="flex items-start gap-3 md:gap-4">
+                <div className="flex items-start gap-4">
                   <button 
                     onClick={() => handleUpdateTask(task._id, { isCompleted: !task.isCompleted })}
-                    className={`w-7 h-7 rounded-full border-2 shrink-0 flex items-center justify-center transition-all mt-1 md:mt-2 ${task.isCompleted ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm' : 'border-zinc-300 hover:border-zinc-400 bg-white'}`}
+                    className={`w-7 h-7 rounded-full border-2 shrink-0 flex items-center justify-center mt-1 md:mt-2 transition-all ${task.isCompleted ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-zinc-300 hover:border-zinc-400 bg-white'}`}
                   >
                     {task.isCompleted && <Check className="w-4 h-4" />}
                   </button>
@@ -402,255 +466,112 @@ const TaskDetailsModal = ({
                         className="text-xl md:text-[28px] font-normal text-zinc-900 tracking-tight leading-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent"
                         value={editTitleValue}
                         onChange={(e) => setEditTitleValue(e.target.value)}
-                        onBlur={handleTitleSave}
-                        onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                        onBlur={() => { handleTitleSave(editTitleValue); setIsEditingTitle(false); }}
+                        onKeyDown={(e) => { if(e.key === 'Enter') { handleTitleSave(editTitleValue); setIsEditingTitle(false); } }}
                       />
                     ) : (
                       <div className="flex items-center flex-wrap gap-2 md:gap-3">
-                        <DialogTitle 
-                          onDoubleClick={() => setIsEditingTitle(true)}
-                          className={`text-xl md:text-[28px] font-normal text-zinc-900 tracking-tight leading-tight transition-all cursor-text ${task.isCompleted ? 'text-zinc-400 line-through decoration-zinc-300' : ''}`}
-                        >
+                        <DialogTitle onDoubleClick={() => setIsEditingTitle(true)} className={`text-xl md:text-[28px] font-normal text-zinc-900 tracking-tight leading-tight cursor-text ${task.isCompleted ? 'text-zinc-400 line-through' : ''}`}>
                           {task.title}
                         </DialogTitle>
-                        {task.timeLogLabel && (
-                          <Badge variant="outline" className="mt-1 md:mt-2 h-5 md:h-6 px-1.5 md:px-2 text-[8px] md:text-[10px] font-normal capitalize bg-slate-50 text-slate-600 border-slate-200 shrink-0">
-                            {task.timeLogLabel}
-                          </Badge>
-                        )}
+                        {task.timeLogLabel && <Badge variant="outline" className="mt-1 md:mt-2 h-5 md:h-6 px-2 text-[8px] md:text-[10px] font-normal bg-slate-50 text-slate-600">{task.timeLogLabel}</Badge>}
                       </div>
                     )}
-                    <DialogDescription className="sr-only">
-                      Task details and management for {task.title}
-                    </DialogDescription>
                   </DialogHeader>
                 </div>
-                
-                {task.originTaskId && (
-                  <div className="flex items-center gap-2 pl-10 md:pl-12">
-                     <Badge variant="outline" className="bg-zinc-50 text-zinc-500 border-zinc-200 text-[10px] font-normal py-0 h-5">
-                        COPIED FROM PROJECT
-                     </Badge>
-                     <span className="text-[11px] text-zinc-400 font-medium italic hidden sm:inline">Track progress across boards</span>
-                  </div>
-                )}
                
                <div className="flex flex-wrap items-center gap-2 pl-0 md:pl-10">
-                 <Button 
-                  variant="outline" 
-                  data-member-toggle
-                  onClick={() => { setIsMemberPickerOpen(!isMemberPickerOpen); setIsLabelPickerOpen(false); setIsChecklistPickerOpen(false); setIsDatePickerOpen(false); }}
-                  className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
-                >
+                 <Button variant="outline" data-member-toggle onClick={() => setIsMemberPickerOpen(!isMemberPickerOpen)} className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2">
                    <Plus className="w-4 h-4 text-zinc-500" /> Add
-                </Button>
-                <Button 
-                  variant="outline" 
-                  data-label-toggle
-                  onClick={() => { setIsLabelPickerOpen(!isLabelPickerOpen); setIsChecklistPickerOpen(false); setIsDatePickerOpen(false); setIsMemberPickerOpen(false); }} 
-                  className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
-                >
+                 </Button>
+                 <Button variant="outline" data-label-toggle onClick={() => setIsLabelPickerOpen(!isLabelPickerOpen)} className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2">
                    <Tag className="w-4 h-4 text-zinc-500" /> Labels
-                </Button>
-                
-                <div className="relative">
-                  <Button 
-                    variant="outline" 
-                    data-checklist-toggle
-                    onClick={() => { setIsChecklistPickerOpen(!isChecklistPickerOpen); setIsLabelPickerOpen(false); setIsDatePickerOpen(false); setIsMemberPickerOpen(false); }} 
-                    className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
-                  >
-                     <CheckSquare className="w-4 h-4 text-zinc-500" /> Checklist
-                  </Button>
-                  {isChecklistPickerOpen && (
-                     <div ref={checklistPickerRef} className="absolute top-10 left-0 w-64 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200 text-left">
-                        <h5 className="text-[14px] font-normal text-zinc-700 pb-2 border-b border-zinc-100">Add Checklist</h5>
-                        <div className="space-y-2">
-                           <Label className="text-xs font-normal text-zinc-500">Title</Label>
-                           <Input 
-                             autoFocus
-                             value={newChecklistTitle} 
-                             onChange={e=>setNewChecklistTitle(e.target.value)}
-                             className="h-9 rounded-md border-zinc-300" 
-                           />
-                        </div>
-                        <Button 
-                          onClick={() => { handleAddChecklist(task._id, newChecklistTitle); setIsChecklistPickerOpen(false); }}
-                          className="w-full bg-[#0052cc] hover:bg-[#0747a6] text-white font-normal h-9 rounded-md"
-                        >
-                           Add
-                        </Button>
-                     </div>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <Button 
-                    variant="outline" 
-                    data-date-toggle
-                    onClick={() => { setIsDatePickerOpen(!isDatePickerOpen); setIsLabelPickerOpen(false); setIsChecklistPickerOpen(false); setIsMemberPickerOpen(false); }} 
-                    className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2 transition-all"
-                  >
-                     <Clock className="w-4 h-4 text-zinc-500" /> Dates
-                  </Button>
-                  {isDatePickerOpen && (
-                     <div ref={datePickerRef} className="absolute top-10 left-0 w-80 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-5 space-y-5 animate-in fade-in zoom-in-95 duration-200 text-left">
-                        <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
-                           <h5 className="text-[14px] font-normal text-zinc-900 uppercase tracking-tight">Set Date & Time</h5>
-                           <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsDatePickerOpen(false)} />
-                        </div>
-                        
-                        <div className="space-y-4">
-                           <div className="space-y-1.5">
-                              <label className="text-[10px] font-normal text-zinc-400 uppercase tracking-widest block">Quick Select</label>
-                              <Input 
-                                type="datetime-local"
-                                value={stagingDeadline ? format(new Date(stagingDeadline), "yyyy-MM-dd'T'HH:mm") : ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setStagingDeadline(val);
-                                  if (val) setManualDateText(format(new Date(val), 'dd/MM HH:mm'));
-                                }}
-                                className="h-10 rounded-xl border-zinc-200 font-normal text-zinc-800 focus:border-black transition-colors"
-                              />
-                           </div>
-
-                           <div className="space-y-1.5">
-                              <label className="text-[10px] font-normal text-zinc-400 uppercase tracking-widest block">Manual Entry</label>
-                              <Input 
-                                placeholder="DD/MM HH:mm (e.g. 25/04 14:30)"
-                                value={manualDateText}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setManualDateText(val);
-                                  const parsed = parseManualDate(val);
-                                  if (parsed) setStagingDeadline(parsed.toISOString());
-                                }}
-                                className="h-10 rounded-xl border-zinc-200 text-[13px] font-normal text-zinc-800 placeholder:text-zinc-300 focus:border-black transition-colors"
-                              />
-                           </div>
-
-                            <div className="pt-4 flex gap-3">
-                               <Button 
-                                 className="flex-1 h-11 bg-black text-[#fffe01] font-normal text-[11px] uppercase tracking-widest rounded-xl shadow-xl hover:shadow-[#fffe01]/10 hover:-translate-y-0.5 active:translate-y-0 transition-all"
-                                 onClick={() => { 
-                                   handleUpdateTask(task._id, { deadline: stagingDeadline }); 
-                                   setIsDatePickerOpen(false); 
-                                 }}
-                               >
-                                 Commit Schedule
-                               </Button>
-                               <Button 
-                                 variant="outline" 
-                                 size="icon"
-                                 className="h-11 w-11 text-red-500 border-zinc-200 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm"
-                                 onClick={() => { 
-                                   handleUpdateTask(task._id, { deadline: null }); 
-                                   setIsDatePickerOpen(false); 
-                                 }}
-                                 title="Remove Date"
-                               >
-                                 <Trash2 className="w-4 h-4" />
-                               </Button>
+                 </Button>
+                 <div className="relative">
+                   <Button variant="outline" data-checklist-toggle onClick={() => setIsChecklistPickerOpen(!isChecklistPickerOpen)} className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2">
+                      <CheckSquare className="w-4 h-4 text-zinc-500" /> Checklist
+                   </Button>
+                   {isChecklistPickerOpen && (
+                      <div ref={checklistPickerRef} className="absolute top-10 left-0 w-64 bg-white border border-zinc-200 rounded-lg shadow-2xl z-[70] p-4 space-y-4 text-left">
+                         <h5 className="text-[14px]">Add Checklist</h5>
+                         <div className="space-y-2">
+                            <Label className="text-xs text-zinc-500">Title</Label>
+                            <Input autoFocus value={newChecklistTitle} onChange={e=>setNewChecklistTitle(e.target.value)} className="h-9" />
+                         </div>
+                         <Button onClick={() => { handleAddChecklist(task._id, newChecklistTitle); setIsChecklistPickerOpen(false); }} className="w-full bg-[#0052cc] text-white h-9">Add</Button>
+                      </div>
+                   )}
+                 </div>
+                 <div className="relative">
+                   <Button variant="outline" data-date-toggle onClick={() => setIsDatePickerOpen(!isDatePickerOpen)} className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2">
+                      <Clock className="w-4 h-4 text-zinc-500" /> Dates
+                   </Button>
+                   {isDatePickerOpen && (
+                      <div ref={datePickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-0 overflow-hidden text-left">
+                         <div className="p-4 bg-zinc-50/50 border-b flex items-center justify-between">
+                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Deployment Matrix</span>
+                            <div className="flex gap-2">
+                               <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="p-1 hover:bg-zinc-200 rounded-lg"><ChevronRight className="w-3 h-3 rotate-180" /></button>
+                               <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="p-1 hover:bg-zinc-200 rounded-lg"><ChevronRight className="w-3 h-3" /></button>
                             </div>
-                        </div>
-                     </div>
-                  )}
-                </div>
-
-                <div className="relative">
-                   <input 
-                     type="file" 
-                     id="attachment-upload" 
-                     className="hidden" 
-                     onChange={async (e) => { 
-                         const file = e.target.files?.[0];
-                         if(!file) return;
-                         
-                         try {
-                           const formData = new FormData();
-                           formData.append('file', file);
-                           
-                           const token = sessionStorage.getItem('token');
-                           const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/upload`, formData, {
-                             headers: { 
-                               'Content-Type': 'multipart/form-data',
-                               'x-auth-token': token 
-                             }
-                           });
-                           
-                           const newAttachment = { 
-                             name: res.data.name, 
-                             url: res.data.url, 
-                             fileType: res.data.fileType, 
-                             createdAt: new Date().toISOString() 
-                           };
-                           handleUpdateTask(task._id, { attachments: [...(task.attachments || []), newAttachment] });
-                           toast({ title: "Success", description: "File uploaded successfully" });
-                         } catch (err) {
-                           console.error('Upload Error:', err);
-                           toast({ variant: "destructive", title: "Error", description: "Failed to upload file" });
-                         }
-                      }} 
-                   />
-                </div>
+                         </div>
+                         <div className="p-4 bg-white">
+                            <div className="grid grid-cols-7 mb-2 border-b pb-1 text-[9px] font-black text-zinc-300 text-center uppercase">
+                               {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <span key={d}>{d}</span>)}
+                            </div>
+                            <div className="grid grid-cols-7 gap-1">
+                               {(() => {
+                                  const start = startOfWeek(startOfMonth(viewDate));
+                                  const end = endOfWeek(endOfMonth(viewDate));
+                                  const days = eachDayOfInterval({ start, end });
+                                  return days.map(day => {
+                                     const isSelected = stagingDeadline && isSameDay(day, new Date(stagingDeadline));
+                                     const inMonth = isSameMonth(day, viewDate);
+                                     return (
+                                        <button key={day.toString()} onClick={() => {
+                                              const current = stagingDeadline ? new Date(stagingDeadline) : new Date();
+                                              const next = setHours(setMinutes(day, current.getMinutes()), current.getHours());
+                                              setStagingDeadline(next.toISOString());
+                                           }}
+                                           className={cn("h-7 w-7 rounded-lg text-[10px] flex items-center justify-center", 
+                                             !inMonth ? "text-zinc-200" : "text-zinc-600 font-bold",
+                                             isSelected && "bg-black text-white")}>{format(day, 'd')}</button>
+                                     );
+                                  });
+                               })()}
+                            </div>
+                         </div>
+                         <div className="px-4 pb-4 pt-4 border-t">
+                            <div className="grid grid-cols-3 gap-2 mb-4">
+                               <select value={stagingDeadline ? new Date(stagingDeadline).getHours() : 12} onChange={e => setStagingDeadline(setHours(new Date(stagingDeadline || new Date()), parseInt(e.target.value)).toISOString())} className="text-[11px] font-bold bg-zinc-50 border rounded-lg h-9">{Array.from({length: 24}, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}</option>)}</select>
+                               <select value={stagingDeadline ? new Date(stagingDeadline).getMinutes() : 0} onChange={e => setStagingDeadline(setMinutes(new Date(stagingDeadline || new Date()), parseInt(e.target.value)).toISOString())} className="text-[11px] font-bold bg-zinc-50 border rounded-lg h-9">{Array.from({length: 12}, (_, i) => <option key={i*5} value={i*5}>{(i*5).toString().padStart(2, '0')}</option>)}</select>
+                               <Button variant="ghost" className="h-9 text-[9px] uppercase font-black" onClick={() => { const now = new Date(); setStagingDeadline(now.toISOString()); setViewDate(now); }}>Today</Button>
+                            </div>
+                            <div className="flex gap-3 pt-4 border-t">
+                               <Button className="flex-1 h-10 bg-black text-[#fffe01] font-bold text-[11px] rounded-xl" onClick={() => { if(stagingDeadline) handleUpdateTask(task._id, { deadline: stagingDeadline }); setIsDatePickerOpen(false); }}>Save Date</Button>
+                               <Button variant="ghost" className="h-10 px-4 text-[10px] text-red-500 font-bold" onClick={() => { handleUpdateTask(task._id, { deadline: null }); setIsDatePickerOpen(false); }}>Clear</Button>
+                            </div>
+                         </div>
+                      </div>
+                   )}
+                 </div>
                </div>
 
-
-                {/* Meta Properties Row */}
                 <div className="flex flex-col sm:flex-row flex-wrap items-start gap-8 md:gap-12 pl-2 md:pl-10 mb-2">
-                  {/* Members */}
                   <div className="space-y-3">
                      <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Members</h4>
                      <div className="flex flex-wrap gap-2 items-center">
                         {task.assignees?.map(a => (
-                          <div key={a._id} className="w-8 h-8 rounded-full bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-normal shadow-sm border-2 border-white ring-1 ring-zinc-100 transition-transform hover:scale-110 cursor-default" title={a.name}>
-                             {a.name.split(' ').map(n=>n[0]).join('')}
-                          </div>
+                          <div key={a._id} className="w-8 h-8 rounded-full bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-normal shadow-sm border-2 border-white ring-1 ring-zinc-100" title={a.name}>{a.name.split(' ').map(n=>n[0]).join('')}</div>
                         ))}
                         <div className="relative">
-                            <button 
-                              data-member-toggle 
-                              onClick={() => setIsMemberPickerOpen(!isMemberPickerOpen)} 
-                              className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-black hover:border-black transition-all shadow-sm"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
+                            <button data-member-toggle onClick={() => setIsMemberPickerOpen(!isMemberPickerOpen)} className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400"><Plus className="w-4 h-4" /></button>
                             {isMemberPickerOpen && (
-                               <div ref={memberPickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                                  <div className="flex items-center justify-between">
-                                     <span className="text-xs font-normal uppercase tracking-widest text-zinc-400">Manage Members</span>
-                                     <X className="w-4 h-4 text-zinc-400 cursor-pointer hover:text-black" onClick={()=>setIsMemberPickerOpen(false)} />
-                                  </div>
-                                  <Input placeholder="Find members..." className="h-10 text-sm rounded-xl border-zinc-200" />
+                               <div ref={memberPickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4">
+                                  <div className="flex items-center justify-between"><span className="text-xs text-zinc-400 uppercase">Manage Members</span><X className="w-4 h-4 text-zinc-400 cursor-pointer" onClick={()=>setIsMemberPickerOpen(false)} /></div>
                                   <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                     {task.assignees?.length > 0 && (
-                                        <div className="space-y-2">
-                                           <h5 className="text-[9px] font-normal text-zinc-400 uppercase tracking-widest">In this vector</h5>
-                                           {task.assignees.map(m => (
-                                              <div key={m._id} className="flex items-center justify-between p-1.5 hover:bg-zinc-50 rounded-xl transition-colors">
-                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[9px] font-normal">{m.name.split(' ').map(n=>n[0]).join('')}</div>
-                                                    <span className="text-[13px] font-normal text-zinc-800">{m.name}</span>
-                                                 </div>
-                                                 <X onClick={() => handleUpdateTask(task._id, { assignees: task.assignees.filter(a=>a._id !== m._id).map(a=>a._id) })} className="w-3.5 h-3.5 text-zinc-300 cursor-pointer hover:text-red-500 transition-colors" />
-                                              </div>
-                                           ))}
-                                        </div>
-                                     )}
-                                     <div className="space-y-2">
-                                        <h5 className="text-[9px] font-normal text-zinc-400 uppercase tracking-widest">Available Nodes</h5>
-                                        {(boardData?.members || []).filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => (
-                                           <div 
-                                             key={m._id} 
-                                             onClick={() => handleUpdateTask(task._id, { assignees: [...(task.assignees?.map(a=>a._id) || []), m._id] })}
-                                             className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors"
-                                           >
-                                              <div className="w-7 h-7 rounded-lg bg-zinc-100 text-zinc-400 flex items-center justify-center text-[9px] font-normal group-hover:bg-zinc-900 group-hover:text-[#fffe01]">{m.name.split(' ').map(n=>n[0]).join('')}</div>
-                                              <span className="text-[13px] font-normal text-zinc-800">{m.name}</span>
-                                           </div>
-                                        ))}
-                                     </div>
+                                     {task.assignees?.length > 0 && <div className="space-y-2"><h5 className="text-[9px] text-zinc-400 uppercase">In this vector</h5>{task.assignees.map(m => <div key={m._id} className="flex items-center justify-between p-1.5 hover:bg-zinc-50 rounded-xl"><div className="flex items-center gap-3"><div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[9px]">{m.name.split(' ').map(n=>n[0]).join('')}</div><span>{m.name}</span></div><X onClick={() => handleUpdateTask(task._id, { assignees: task.assignees.filter(a=>a._id !== m._id).map(a=>a._id) })} className="w-3.5 h-3.5 text-zinc-300 cursor-pointer" /></div>)}</div>}
+                                     <div className="space-y-2"><h5 className="text-[9px] text-zinc-400 uppercase">Available Nodes</h5>{(boardData?.members || []).filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => <div key={m._id} onClick={() => handleUpdateTask(task._id, { assignees: [...(task.assignees?.map(a=>a._id) || []), m._id] })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer"><div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-[9px]">{m.name.split(' ').map(n=>n[0]).join('')}</div><span>{m.name}</span></div>)}</div>
                                   </div>
                                </div>
                             )}
@@ -658,31 +579,22 @@ const TaskDetailsModal = ({
                      </div>
                   </div>
 
-                  {/* Labels */}
                   <div className="space-y-3">
                      <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Labels</h4>
                       <div className="flex flex-wrap gap-2 items-center">
-                         {task.labels?.map((l, i) => (
-                           <Badge key={i} style={{ backgroundColor: l.color }} className="text-white border-none rounded-lg h-8 px-4 text-[10px] font-normal uppercase tracking-widest shadow-sm transition-transform hover:scale-105 cursor-default">{l.text}</Badge>
-                         ))}
+                         {task.labels?.map((l, i) => <Badge key={i} style={{ backgroundColor: l.color }} className="text-white border-none rounded-lg h-8 px-4 text-[10px] font-normal uppercase shadow-sm">{l.text}</Badge>)}
                           <div className="relative">
-                             <button 
-                               data-label-toggle 
-                               onClick={() => setIsLabelPickerOpen(!isLabelPickerOpen)} 
-                               className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-black hover:border-black transition-all shadow-sm"
-                             >
-                               <Plus className="w-4 h-4" />
-                             </button>
+                             <button data-label-toggle onClick={() => setIsLabelPickerOpen(!isLabelPickerOpen)} className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400"><Plus className="w-4 h-4" /></button>
                              {isLabelPickerOpen && (
-                                <div ref={labelPickerRef} className="absolute top-10 left-0 w-[240px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                                   <span className="text-[10px] font-normal uppercase tracking-widest text-zinc-400 w-full text-center block">Classification</span>
+                                <div ref={labelPickerRef} className="absolute top-10 left-0 w-[240px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4">
                                    <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
                                       {[ {t:'Done', c:'#51cc9e'}, {t:'Under QC', c:'#f1d643'}, {t:'Waiting for requirement', c:'#ff9f1a'}, {t:'Not yet started', c:'#f87171'}, {t:'On hold', c:'#c084fc'}, {t:'In process', c:'#60a5fa'} ].map((opt, i) => {
                                          const isLabeled = task.labels?.some(l => l.text === opt.t);
                                          return (
-                                            <div key={i} onClick={() => handleUpdateLabels({ text: opt.t, color: opt.c })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer group transition-colors">
-                                               <div className={`w-5 h-8 rounded-md transition-all ${isLabeled ? 'w-2' : ''}`} style={{ backgroundColor: opt.c }}></div>
-                                               <span className={cn("text-[11px] font-normal uppercase tracking-tight transition-colors", isLabeled ? "text-zinc-900" : "text-zinc-500 group-hover:text-zinc-700")}>{opt.t}</span>
+                                            <div key={i} onClick={() => handleUpdateLabels({ text: opt.t, color: opt.c })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer group">
+                                               <div className={cn("w-4 h-4 rounded border flex items-center justify-center", isLabeled ? "bg-zinc-900 border-zinc-900" : "bg-white border-zinc-200")}>{isLabeled && <Check className="w-2.5 h-2.5 text-[#fffe01]" />}</div>
+                                               <div className="w-2.5 h-8 rounded-md" style={{ backgroundColor: opt.c }}></div>
+                                               <span className={cn("text-[11px] uppercase flex-1", isLabeled ? "text-zinc-900" : "text-zinc-500")}>{opt.t}</span>
                                             </div>
                                          );
                                       })}
@@ -693,451 +605,86 @@ const TaskDetailsModal = ({
                       </div>
                   </div>
 
-                  {/* Due Date Display */}
                   {task.deadline && (
                     <div className="space-y-3">
                        <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Projected Date</h4>
-                       <div 
-                         onClick={() => setIsDatePickerOpen(true)}
-                         className={cn(
-                           "flex items-center gap-3 px-4 py-1.5 rounded-xl border-2 cursor-pointer transition-all shadow-sm hover:scale-105",
-                           isOverdue(task.deadline) ? "bg-red-50 border-red-200 text-red-700 shadow-red-100" : 
-                           isDueSoon(task.deadline) ? "bg-amber-50 border-amber-200 text-amber-700 shadow-amber-100" :
-                           "bg-zinc-50 border-zinc-200 text-zinc-700 hover:border-black"
-                         )}
-                       >
-                          <Clock className={cn("w-4 h-4", isOverdue(task.deadline) ? "text-red-500" : isDueSoon(task.deadline) ? "text-amber-500" : "text-zinc-400")} />
-                          <span className="text-[13px] font-normal">
-                            {format(new Date(task.deadline), 'MMM d, HH:mm')}
-                            {isOverdue(task.deadline) && <span className="ml-2 text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded font-normal uppercase tracking-tighter">Overdue</span>}
-                          </span>
+                       <div onClick={() => setIsDatePickerOpen(true)} className={cn("flex items-center gap-3 px-4 py-1.5 rounded-xl border-2 cursor-pointer shadow-sm", isOverdue(task.deadline) ? "bg-red-50 border-red-200 text-red-700" : isDueSoon(task.deadline) ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-zinc-50 border-zinc-200 text-zinc-700")}>
+                          <Clock className="w-4 h-4" />
+                          <span className="text-[13px]">{format(new Date(task.deadline), 'MMM d, HH:mm')}</span>
                        </div>
                     </div>
                   )}
                 </div>
 
-                {/* Unified Intelligence Section */}
-                <div className="pl-0 md:pl-10 space-y-8">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-                     <div className="space-y-3">
-                        <Label className="text-[10px] uppercase font-normal tracking-widest text-zinc-400">Tactical Priority</Label>
-                        <select 
-                          value={task.priority || 'Normal'}
-                          onChange={(e) => handleUpdateTask(task._id, { priority: e.target.value })}
-                          className="w-full h-10 bg-transparent border-b-2 border-zinc-100 hover:border-black text-[11px] font-normal uppercase tracking-widest transition-all outline-none pb-1 appearance-none"
-                        >
-                          <option value="Low">Low Priority</option>
-                          <option value="Normal">Normal Node</option>
-                          <option value="High">High Vector</option>
-                          <option value="Urgent">Urgent Alert</option>
-                        </select>
-                     </div>
-
-                     <div className="space-y-3">
-                        <Label className="text-[10px] uppercase font-normal tracking-widest text-zinc-400">Est. Quantum (H)</Label>
-                        <div className="relative group">
-                           <Input 
-                             type="number"
-                             placeholder="0.0"
-                             value={task.estimatedTime || ''}
-                             onChange={(e) => handleUpdateTask(task._id, { estimatedTime: e.target.value })}
-                             className="h-10 bg-transparent border-0 border-b-2 border-zinc-100 rounded-none px-0 text-xs font-normal focus-visible:ring-0 focus:border-black transition-all"
-                           />
-                        </div>
-                     </div>
-
-                     <div className="space-y-3">
-                        <Label className="text-[10px] uppercase font-normal tracking-widest text-zinc-400">Execution Flux (%)</Label>
-                        <div className="flex items-center gap-4">
-                           <span className="text-xs font-normal text-zinc-900 w-8">{task.progress || 0}%</span>
-                           <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden relative">
-                              <div className="absolute inset-0 bg-black transition-all duration-700 ease-out shadow-[0_0_8px_rgba(0,0,0,0.1)]" style={{ width: `${task.progress || 0}%` }}></div>
-                           </div>
-                        </div>
-                     </div>
-
-                     <div className="space-y-3 text-left md:text-right">
-                        <Label className="text-[10px] uppercase font-normal tracking-widest text-zinc-400">Deployment Status</Label>
-                        <div className="flex justify-start md:justify-end">
-                           <button 
-                             onClick={() => handleUpdateTask(task._id, { isInSprint: !task.isInSprint })}
-                             className={cn(
-                               "h-9 px-4 rounded-xl flex items-center gap-3 transition-all font-normal text-[9px] uppercase tracking-widest border-2",
-                               task.isInSprint 
-                                 ? "bg-black text-[#fffe01] border-black shadow-lg shadow-black/10" 
-                                 : "bg-white text-zinc-400 border-zinc-100 hover:border-zinc-200"
-                             )}
-                           >
-                              {task.isInSprint ? 'Active Sprint' : 'In Backlog'}
-                              <Layout className={cn("w-3.5 h-3.5", task.isInSprint ? "text-[#fffe01]" : "text-zinc-200")} />
-                           </button>
-                        </div>
-                     </div>
-                   </div>
-
-                   <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                         <Label className="text-[10px] uppercase font-normal tracking-widest text-zinc-400 flex items-center gap-2">
-                            Execution Blockers
-                            {task.blocker && <span className="flex h-1.5 w-1.5 rounded-full bg-red-500 animate-ping" />}
-                         </Label>
-                         {task.blocker && (
-                            <button onClick={() => handleUpdateTask(task._id, { blocker: '' })} className="text-[9px] font-normal text-red-500 uppercase tracking-widest opacity-0 hover:opacity-100 transition-opacity">Clear Blocker</button>
-                         )}
-                      </div>
-                      <div className="relative group/blocker">
-                        <Textarea 
-                          placeholder="Document any critical path obstructions..."
-                          value={task.blocker || ''}
-                          onChange={(e) => handleUpdateTask(task._id, { blocker: e.target.value })}
-                          className="min-h-[40px] bg-zinc-50/50 border-0 border-l-4 border-zinc-100 focus:border-red-500 rounded-none p-4 text-[13px] font-medium focus-visible:ring-0 transition-all resize-none italic text-zinc-600"
-                        />
-                      </div>
-                   </div>
-                </div>
-
-              {/* Description */}
-              <div className="space-y-4 pl-0 md:pl-6 relative">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-zinc-900 font-normal gap-4">
-                   <div className="flex items-center gap-3"><Layout className="w-5 h-5 text-zinc-300" /><h3>Description</h3></div>
-                   <div className="flex items-center gap-2">
-                      {!isEditingDesc && <Button variant="outline" size="sm" onClick={() => setIsEditingDesc(true)} className="h-8 px-3 text-xs font-normal gap-2 flex-1 sm:flex-none">Edit</Button>}
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => document.getElementById('attachment-upload').click()}
-                        className="h-8 px-3 text-xs font-normal gap-2 flex-1 sm:flex-none"
-                      >
-                         <Paperclip className="w-4 h-4 text-zinc-500" /> Attachment
-                      </Button>
-                   </div>
-                </div>
-                
-                {isEditingDesc ? (
-                  <div className="space-y-0 relative border border-zinc-200 rounded-lg overflow-hidden shadow-sm">
-                     <Toolbar 
-                        onSave={() => { handleUpdateTask(task._id, { description: tempDesc }); setIsEditingDesc(false); }}
-                        onCancel={() => { setTempDesc(task.description || ''); setIsEditingDesc(false); }}
-                     />
-                     <Textarea 
-                        ref={descRef}
-                        value={tempDesc} 
-                        onChange={(e) => handleTextChange(e.target.value, 'desc')} 
-                        className="w-full bg-white border-0 rounded-none p-6 min-h-[140px] text-[15px] focus-visible:ring-0 resize-none font-medium leading-relaxed overflow-hidden" 
-                        autoFocus 
-                     />
-                     {activeInput === 'desc' && <MentionList />}
-                  </div>
-                ) : (
+                {/* Description and Checklists */}
+                <div className="space-y-10 pl-0 md:pl-10">
                    <div className="space-y-4">
-                      <div className={`w-full bg-white border border-transparent rounded-xl p-4 text-[15px] text-zinc-800 min-h-[100px] shadow-sm border-dashed border-2 border-zinc-100`}>
-                         <div className={`leading-relaxed ${(!isDescExpanded && task.description?.split('\n').length > 3) ? 'line-clamp-3' : ''}`}>
-                            <MarkdownRenderer content={task.description || 'Add a more detailed description...'} />
-                         </div>
-                         {task.description?.split('\n').length > 3 && (
-                           <Button variant="ghost" size="sm" onClick={() => setIsDescExpanded(!isDescExpanded)} className="mt-2 text-[#0052cc] font-normal hover:bg-transparent p-0 h-auto">
-                             {isDescExpanded ? 'Show less' : 'Show more'}
-                           </Button>
-                         )}
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-2.5 text-zinc-900 font-bold"><AlignLeft className="w-5 h-5 text-zinc-500" /><h3>Description</h3></div>
+                         <Button variant="ghost" size="sm" onClick={() => setIsEditingDesc(!isEditingDesc)} className="text-xs font-normal">{isEditingDesc ? 'Cancel' : 'Edit'}</Button>
                       </div>
-                      
-                      {/* Attachments Section */}
-                      {task.attachments?.length > 0 && (
-                        <div className="flex flex-wrap gap-3 mt-4">
-                           {task.attachments.map((file, idx) => (
-                             <div 
-                                key={idx} 
-                                onClick={() => {
-                                  const baseUrl = import.meta.env.VITE_API_URL || '';
-                                  const fullUrl = (file.url.startsWith('blob:') || file.url.startsWith('http')) 
-                                    ? file.url 
-                                    : `${baseUrl.replace(/\/$/, '')}/${file.url.replace(/^\//, '')}`;
-                                  window.open(fullUrl, '_blank');
-                                }}
-                                className="flex items-center gap-3 p-3 bg-zinc-50 border border-zinc-200 rounded-xl hover:bg-white transition-all cursor-pointer group/file"
-                             >
-                                <div className="w-10 h-10 rounded-lg bg-white border border-zinc-200 flex items-center justify-center text-zinc-500 group-hover/file:bg-black group-hover/file:text-[#fffe01] transition-colors">
-                                   <Paperclip className="w-5 h-5" />
-                                </div>
-                                <div className="flex flex-col">
-                                   <span className="text-[13px] font-normal text-zinc-900 line-clamp-1">{file.name}</span>
-                                   <span className="text-[10px] text-zinc-400 uppercase font-normal">{file.fileType.split('/')[1] || 'FILE'}</span>
-                                </div>
-                             </div>
-                           ))}
+                      {isEditingDesc ? (
+                        <div className="space-y-0 relative border-2 border-black rounded-2xl overflow-hidden shadow-xl animate-in fade-in zoom-in-95">
+                           <Toolbar onSave={() => { handleUpdateTask(task._id, { description: tempDesc }); setIsEditingDesc(false); }} onCancel={() => { setIsEditingDesc(false); setTempDesc(task.description || ''); }} />
+                           <Textarea ref={descRef} value={tempDesc} onChange={e=>handleTextChange(e.target.value, 'desc')} className="min-h-[200px] border-0 focus-visible:ring-0 text-[14px] p-6 leading-relaxed" />
+                           {activeInput === 'desc' && <MentionList />}
                         </div>
+                      ) : (
+                        <div className="bg-zinc-50/50 p-6 rounded-[2rem] text-[15px] text-zinc-700 leading-relaxed"><MarkdownRenderer content={task.description || '*No description provided node-wide.*'} /></div>
                       )}
                    </div>
-                )}
-              </div>
 
-               {/* Checklists */}
-               <div className="space-y-12 mb-12">
-                  {task.checklists?.map(checklist => {
-                     const progress = checklist.items?.length ? Math.round((checklist.items.filter(i=>i.isCompleted).length / checklist.items.length) * 100) : 0;
-                     return (
-                        <div key={checklist._id} className="space-y-6">
-                           <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                 <CheckSquare className="w-5 h-5 text-zinc-900" />
-                                 {editingChecklistId === checklist._id ? (
-                                   <Input 
-                                     autoFocus
-                                     className="font-normal text-[17px] tracking-tight h-auto p-0 border-none focus-visible:ring-0 bg-transparent"
-                                     value={editChecklistName}
-                                     onChange={(e) => setEditChecklistName(e.target.value)}
-                                     onBlur={() => {
-                                       const trimmed = editChecklistName.trim();
-                                       if (trimmed && trimmed !== checklist.name) {
-                                         handleRenameChecklist(checklist._id, trimmed);
-                                       }
-                                       setEditingChecklistId(null);
-                                     }}
-                                     onKeyDown={(e) => {
-                                       if (e.key === 'Enter') {
-                                         const trimmed = editChecklistName.trim();
-                                         if (trimmed && trimmed !== checklist.name) {
-                                           handleRenameChecklist(checklist._id, trimmed);
-                                         }
-                                         setEditingChecklistId(null);
-                                       }
-                                       if (e.key === 'Escape') {
-                                         setEditingChecklistId(null);
-                                       }
-                                     }}
-                                   />
-                                 ) : (
-                                   <h3 
-                                     onDoubleClick={() => { setEditingChecklistId(checklist._id); setEditChecklistName(checklist.name); }}
-                                     className="font-normal text-[17px] tracking-tight cursor-text"
-                                   >
-                                     {checklist.name}
-                                   </h3>
-                                 )}
-                                 <span className="text-[11px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-normal">
-                                    {checklist.items?.filter(i => i.isCompleted).length || 0}/{checklist.items?.length || 0}
-                                 </span>
-                              </div>
-                              <Button variant="ghost" size="sm" onClick={() => handleRemoveChecklist(checklist._id)} className="font-normal text-zinc-700">Delete</Button>
-                           </div>
-                           <div className="flex items-center gap-4">
-                              <span className="text-[11px] font-normal text-zinc-500 w-6">{progress}%</span>
-                              <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden"><div className="h-full bg-zinc-300 transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
-                           </div>
-                           <div className="space-y-3">
-                              {checklist.items?.map(item => (
-                                 <SubTaskItem 
-                                   key={item._id} 
-                                   task={{ ...item, checklistId: checklist._id }} 
-                                   boardMembers={boardData?.members} 
-                                   teamId={boardData?.team?._id || boardData?.team}
-                                   onUpdate={(id, updates) => handleUpdateChecklistItem(task._id, checklist._id, id, updates)}
-                                   onAddSubTask={handleAddSubTask}
-                                   onToggleCompletion={(id, completed) => handleUpdateChecklistItem(task._id, checklist._id, id, { isCompleted: !completed })}
-                                   isChecklist={true}
-                                   onRefresh={onRefresh}
-                                   currentBoardId={task.board?._id || task.board || boardData?._id}
-                                 />
-                              ))}
-                              {activeChecklistForNewItem === checklist._id ? (
-                                 <div className="space-y-3 pt-2">
-                                    <Textarea placeholder="Add an item" autoFocus className="w-full border-zinc-900 border-2 rounded-xl p-3 text-[14px]" id={`new-item-text-${checklist._id}`} />
-                                    <div className="flex items-center gap-2">
-                                       <Button onClick={() => { const el = document.getElementById(`new-item-text-${checklist._id}`); if(el.value) { handleAddChecklistItem(checklist._id, el.value); el.value = ''; } }} className="bg-black text-[#fffe01] font-normal rounded-lg px-4 h-9">Add</Button>
-                                       <Button variant="ghost" onClick={() => setActiveChecklistForNewItem(null)} className="font-normal text-zinc-600">Cancel</Button>
-                                    </div>
-                                 </div>
-                              ) : (
-                                 <Button variant="outline" onClick={() => setActiveChecklistForNewItem(checklist._id)} className="bg-zinc-50 border-zinc-100 font-normal text-[11px] uppercase tracking-widest gap-2 py-2 h-auto rounded-xl text-zinc-500 hover:text-black">Add an item</Button>
-                              )}
-                           </div>
-                        </div>
-                     );
-                  })}
-               </div>
-
-               {/* Sub-tasks Section */}
-               <div className="pt-8 border-t border-zinc-100 space-y-6">
-                  <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-zinc-900 rounded-lg shadow-sm">
-                           <Layout className="w-4 h-4 text-[#fffe01]" />
-                        </div>
-                        <h3 className="font-black text-[18px] tracking-tight text-zinc-900 uppercase">Sub-tasks <span className="text-zinc-300 ml-1">Nodes</span></h3>
-                        {initialSubTasks.length > 0 && (
-                          <span className="text-[11px] bg-zinc-100 text-zinc-500 px-2 py-0.5 rounded-full font-black">
-                             {initialSubTasks.length}
-                          </span>
-                        )}
-                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                     {initialSubTasks.map(st => (
-                        <SubTaskItem 
-                           key={st._id} 
-                           task={st} 
-                           boardMembers={boardData?.members} 
-                           teamId={boardData?.team?._id || boardData?.team}
-                           onUpdate={handleUpdateTask}
-                           onAddSubTask={handleAddSubTask}
-                           onRefresh={() => onRefresh && onRefresh()}
-                           currentBoardId={boardData?._id}
-                        />
-                     ))}
-
-                     {isAddingSubTask ? (
-                        <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                           <div className="bg-white border-2 border-zinc-900 rounded-2xl p-4 shadow-xl">
-                              <Textarea 
-                                 placeholder="What needs to be done?" 
-                                 autoFocus 
-                                 className="w-full border-0 focus-visible:ring-0 p-0 text-[15px] font-medium min-h-[60px] resize-none" 
-                                 id="new-subtask-title" 
-                              />
-                              <div className="flex items-center justify-between mt-4 border-t border-zinc-100 pt-4">
-                                 <div className="flex items-center gap-2">
-                                    <Button 
-                                       onClick={() => { 
-                                          const el = document.getElementById('new-subtask-title'); 
-                                          if(el.value.trim()) { 
-                                             handleAddSubTask(task._id, el.value.trim()); 
-                                             el.value = ''; 
-                                             setIsAddingSubTask(false);
-                                          } 
-                                       }} 
-                                       className="bg-black text-[#fffe01] font-black uppercase tracking-widest text-[10px] rounded-xl px-6 h-10 shadow-lg"
-                                    >
-                                       Create Node
-                                    </Button>
-                                    <Button variant="ghost" onClick={() => setIsAddingSubTask(false)} className="font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:text-black">Cancel</Button>
-                                 </div>
-                              </div>
-                           </div>
-                        </div>
-                     ) : (
-                        <Button 
-                           variant="outline" 
-                           onClick={() => setIsAddingSubTask(true)} 
-                           className="w-full bg-zinc-50 border-zinc-100/50 border-dashed border-2 py-6 rounded-2xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:text-black hover:bg-white hover:border-zinc-200 transition-all flex items-center justify-center gap-2"
-                        >
-                           <Plus className="w-4 h-4" /> Initialize Sub-Node
-                        </Button>
-                     )}
-                  </div>
-               </div>
+                   <div className="space-y-12 mb-12">
+                      {task.checklists?.map(checklist => (
+                         <div key={checklist._id} className="space-y-6">
+                            <ChecklistHeader 
+                               checklist={checklist} 
+                               handleRenameChecklist={handleRenameChecklist} 
+                               handleRemoveChecklist={handleRemoveChecklist} 
+                            />
+                            <ChecklistItemSection 
+                               checklist={checklist}
+                               boardData={boardData}
+                               task={task}
+                               onChecklistItemUpdate={onChecklistItemUpdate}
+                               onChecklistItemToggle={onChecklistItemToggle}
+                               handleAddSubTask={handleAddSubTask}
+                               onRefresh={onRefresh}
+                               handleAddChecklistItem={handleAddChecklistItem}
+                            />
+                         </div>
+                      ))}
+                   </div>
+                </div>
             </div>
 
-            {/* Right Column - Activity */}
-            <div className="w-full md:w-[400px] bg-slate-50/50 p-6 md:p-8 flex flex-col border-t md:border-t-0 md:border-l border-zinc-100 overflow-y-auto custom-scrollbar relative">
-               {/* Activity Vertical Line Guide */}
-               <div className="absolute left-[50px] top-[140px] bottom-10 w-[1px] bg-zinc-200/60 pointer-events-none"></div>
-               
-               <div className="flex items-center justify-between mb-8 relative z-10 text-zinc-900">
-                  <div className="flex items-center gap-2.5 text-zinc-900 font-bold">
-                     <MessageSquare className="w-5 h-5 text-zinc-500" />
-                     <h3>Activity</h3>
-                     {comments.length > 0 && (
-                       <span className="text-[11px] bg-zinc-200 text-zinc-600 px-1.5 py-0.5 rounded font-black">
-                          {comments.length}
-                       </span>
-                     )}
-                  </div>
-                  <Button variant="ghost" onClick={() => setShowActivityDetails(!showActivityDetails)} className="text-[13px] font-black uppercase tracking-tight text-zinc-400 hover:text-black">{showActivityDetails ? 'Hide details' : 'Show details'}</Button>
-               </div>
-               
-               <div className="relative mb-10 group/comment">
-                  <div className="bg-white border-2 border-zinc-100 focus-within:border-black rounded-xl overflow-hidden transition-all shadow-sm focus-within:shadow-md">
-                     <Toolbar 
-                        onSave={() => { if(commentText.trim()){ handleAddComment(task._id, commentText); setCommentText(''); } }}
-                        onCancel={() => setCommentText('')}
-                        showActions={commentText.length > 0}
-                     />
-                     <Textarea 
-                        ref={commentRef}
-                        placeholder="Write a comment..." 
-                        value={commentText} 
-                        onChange={e=>handleTextChange(e.target.value, 'comment')} 
-                        onKeyDown={(e) => { 
-                           if (e.key === 'Enter' && !e.shiftKey && commentText.trim() && !mentionTriggerPos) { 
-                              e.preventDefault(); 
-                              handleAddComment(task._id, commentText); 
-                              setCommentText(''); 
-                           } 
-                        }} 
-                        className="w-full border-0 rounded-none min-h-[60px] bg-white p-4 text-[14px] focus-visible:ring-0 resize-none font-medium text-zinc-800"
-                      />
+            <div className="w-full md:w-[400px] bg-slate-50/50 p-6 md:p-8 flex flex-col border-t md:border-t-0 md:border-l relative overflow-y-auto custom-scrollbar">
+               <div className="flex items-center justify-between mb-8"><div className="flex items-center gap-2.5 font-bold"><MessageSquare className="w-5 h-5 text-zinc-500" /><h3>Activity</h3>{comments.length > 0 && <span className="text-[11px] bg-zinc-200 px-1.5 py-0.5 rounded">{comments.length}</span>}</div><Button variant="ghost" onClick={() => setShowActivityDetails(!showActivityDetails)} className="text-[13px] font-black">{showActivityDetails ? 'Hide details' : 'Show details'}</Button></div>
+               <div className="relative mb-10">
+                  <div className="bg-white border-2 border-zinc-100 rounded-xl overflow-hidden transition-all shadow-sm">
+                     <Toolbar onSave={() => { if(commentText.trim()){ handleAddComment(task._id, commentText); setCommentText(''); } }} onCancel={() => setCommentText('')} showActions={commentText.length > 0} />
+                     <Textarea ref={commentRef} placeholder="Write a comment..." value={commentText} onChange={e=>handleTextChange(e.target.value, 'comment')} className="w-full border-0 rounded-none p-4 text-[14px] focus-visible:ring-0 min-h-[60px]" />
                      {activeInput === 'comment' && <MentionList />}
                   </div>
-                  {!commentText.length && (
-                    <div className="absolute right-4 bottom-3 opacity-0 group-hover/comment:opacity-100 transition-opacity">
-                       <Send className="w-4 h-4 text-zinc-300" />
-                    </div>
-                  )}
                </div>
-
-               <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pr-1">
-                  {[...comments.map(c=>({...c, type:'comment'})), ...(showActivityDetails ? history.map(h=>({...h, type:'history'})) : [])]
-                    .sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt))
-                    .map((item, i) => (
-                      <div key={item._id || i} className="flex gap-4 group/item relative z-10">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black shrink-0 bg-zinc-900 text-[#fffe01] shadow-lg border-2 border-white ring-1 ring-zinc-200/50 uppercase transition-transform group-hover/item:scale-110">
-                           {(item.user.name || 'A').charAt(0)}
-                        </div>
+               <div className="flex-1 space-y-6">
+                  {[...comments.map(c=>({...c, type:'comment'})), ...(showActivityDetails ? history.map(h=>({...h, type:'history'})) : [])].sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt)).map((item, i) => (
+                      <div key={item._id || i} className="flex gap-4">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-zinc-900 text-[#fffe01]">{(item.user.name || 'A').charAt(0)}</div>
                         <div className="flex-1 space-y-2 min-w-0">
-                           <div className="flex items-center justify-between">
-                               <div className="text-[14px] flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-zinc-900">{item.user.name}</span>
-                                  {item.type === 'history' ? (
-                                    <span className="text-zinc-500 font-medium whitespace-pre-wrap">
-                                       {(item.action.toLowerCase() === 'completed' && item.details?.toLowerCase().includes('completed')) || 
-                                        (item.action.toLowerCase() === 'updated' && item.details)
-                                         ? '' 
-                                         : item.action.toLowerCase().replace('_',' ') + ' '}
-                                       <span className="text-zinc-900 font-bold inline-block"><MarkdownRenderer content={item.details || ''} /></span>
-                                    </span>
-                                  ) : null}
-                                  <span className="text-[10px] font-bold text-zinc-300 ml-1 uppercase tracking-tighter">{getTimeAgo(item.createdAt)}</span>
-                               </div>
-                               {item.type === 'comment' && (item.user._id === currentUser?._id || currentUser?.role === 'admin' || currentUser?.role?.name === 'admin' || currentUser?.role === 'subadmin' || currentUser?.role?.name === 'subadmin') && !editingCommentId && (
-                                  <div className="flex items-center gap-1 transition-opacity">
-                                     <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-white text-zinc-400 hover:text-black" onClick={() => { setEditingCommentId(item._id); setEditCommentText(item.text); }}><Edit2 className="w-3 h-3" /></Button>
-                                     <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-red-50 text-zinc-400 hover:text-red-600" onClick={() => { setCommentToDelete(item._id); setIsDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3" /></Button>
-                                  </div>
+                           <div className="flex items-center justify-between text-[14px]">
+                               <div className="flex flex-wrap gap-1.5 items-center"><span className="font-bold">{item.user.name}</span>{item.type === 'history' && <span className="text-zinc-500">{item.action.toLowerCase().replace('_',' ')} <MarkdownRenderer content={item.details || ''} /></span>}<span className="text-[10px] text-zinc-300 uppercase">{getTimeAgo(item.createdAt)}</span></div>
+                               {item.type === 'comment' && (item.user._id === currentUser?._id || currentUser?.role === 'admin') && !editingCommentId && (
+                                  <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCommentId(item._id); setEditCommentText(item.text); }}><Edit2 className="w-3 h-3" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setCommentToDelete(item._id); setIsDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3" /></Button></div>
                                )}
                            </div>
-                           
-                           {item.type === 'comment' && (
-                             <>
-                               {editingCommentId === item._id ? (
-                                 <div className="space-y-0 relative border border-black rounded-lg overflow-hidden shadow-lg mt-2 scale-in-center animate-in fade-in duration-200">
-                                    <Toolbar 
-                                       onSave={() => { handleUpdateComment(item._id, editCommentText); setEditingCommentId(null); }}
-                                       onCancel={() => setEditingCommentId(null)}
-                                    />
-                                    <Textarea 
-                                       ref={editCommentRef}
-                                       autoFocus
-                                       value={editCommentText} 
-                                       onChange={(e) => handleTextChange(e.target.value, 'editComment')}
-                                       onKeyDown={(e) => { 
-                                          if (e.key === 'Enter' && !e.shiftKey && editCommentText.trim() && !mentionTriggerPos) { 
-                                             e.preventDefault(); 
-                                             handleUpdateComment(item._id, editCommentText); 
-                                             setEditingCommentId(null); 
-                                          } 
-                                       }} 
-                                       className="w-full border-0 rounded-none p-4 text-[14px] focus-visible:ring-0 min-h-[80px] resize-none"
-                                    />
-                                    {activeInput === 'editComment' && <MentionList />}
-                                 </div>
-                               ) : (
-                                 <div className="bg-white px-4 py-3 rounded-2xl text-[14px] text-zinc-900 shadow-sm border border-zinc-200/50 leading-relaxed font-bold whitespace-pre-wrap flex flex-col gap-1">
-                                    <MarkdownRenderer content={item.text} />
-                                 </div>
-                               )}
-                             </>
-                           )}
+                           {item.type === 'comment' && (editingCommentId === item._id ? (
+                             <div className="border border-black rounded-lg overflow-hidden mt-2 scale-in-center">
+                                <Toolbar onSave={() => { handleUpdateComment(item._id, editCommentText); setEditingCommentId(null); }} onCancel={() => setEditingCommentId(null)} />
+                                <Textarea ref={editCommentRef} autoFocus value={editCommentText} onChange={(e) => handleTextChange(e.target.value, 'editComment')} className="w-full border-0 p-4 text-[14px] focus-visible:ring-0 min-h-[80px]" />
+                                {activeInput === 'editComment' && <MentionList />}
+                             </div>
+                           ) : <div className="bg-white px-4 py-3 rounded-2xl text-[14px] shadow-sm border leading-relaxed"><MarkdownRenderer content={item.text} /></div>)}
                         </div>
                       </div>
                   ))}
@@ -1147,21 +694,9 @@ const TaskDetailsModal = ({
         </div>
       </DialogContent>
     </Dialog>
-
-    <ConfirmDialog 
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={() => {
-            if(commentToDelete) {
-                handleDeleteComment(commentToDelete);
-                setCommentToDelete(null);
-            }
-        }}
-        title="Delete Comment?"
-        description="This action will remove the comment permanently node-wide."
-    />
-  </>
+    <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} onConfirm={() => { if(commentToDelete) { handleDeleteComment(commentToDelete); setCommentToDelete(null); } }} title="Delete Comment?" description="This action will remove the comment permanently node-wide." />
+    </>
   );
 };
 
-export default memo(TaskDetailsModal);
+export default TaskDetailsModal;
