@@ -33,8 +33,8 @@ const SitePhotoHistory = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
-  const [userRole] = useState(sessionStorage.getItem('userRole'));
-  const [currentUserId] = useState(sessionStorage.getItem('userId'));
+  const [userRole] = useState(localStorage.getItem('userRole'));
+  const [currentUserId] = useState(localStorage.getItem('userId'));
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -44,7 +44,7 @@ const SitePhotoHistory = () => {
   const fetchPhotos = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const url = `${import.meta.env.VITE_API_URL}/api/site-photos?page=${page}&limit=12&startDate=${startDate}&endDate=${endDate}&userName=${searchTerm}`;
 
       const res = await axios.get(url, {
@@ -86,7 +86,7 @@ const SitePhotoHistory = () => {
     if (!deleteId) return;
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/site-photos/${deleteId}`, {
         headers: { 'x-auth-token': token }
       });

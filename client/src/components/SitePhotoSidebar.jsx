@@ -32,7 +32,7 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
   const fetchPhotos = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/site-photos`, {
         headers: { 'x-auth-token': token }
       });
@@ -78,7 +78,7 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
       formData.append('lng', longitude);
 
       try {
-        const token = sessionStorage.getItem('token');
+        const token = localStorage.getItem('token');
         const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/site-photos`, formData, {
           headers: { 
             'x-auth-token': token,
@@ -117,7 +117,7 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
     if (!deleteId) return;
     
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/site-photos/${deleteId}`, {
         headers: { 'x-auth-token': token }
       });

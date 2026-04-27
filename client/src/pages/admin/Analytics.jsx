@@ -43,7 +43,7 @@ const Analytics = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const [perfRes, sourcesRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/api/analytics/performance`, { headers: { 'x-auth-token': token } }),
         axios.get(`${import.meta.env.VITE_API_URL}/api/analytics/sources`, { headers: { 'x-auth-token': token } })
@@ -60,7 +60,7 @@ const Analytics = () => {
   const handleAddSource = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/analytics/sources`, newSource, {
         headers: { 'x-auth-token': token }
       });
@@ -75,7 +75,7 @@ const Analytics = () => {
 
   const handleDeleteSource = async (id) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/analytics/sources/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -94,7 +94,7 @@ const Analytics = () => {
     setSourceLoading(true);
     setActiveSourceId(id);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/analytics/data/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -212,7 +212,7 @@ const Analytics = () => {
               </div>
             </CardHeader>
             <CardContent className="p-6 md:p-10 h-[400px] md:h-[500px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={performanceData} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
@@ -410,7 +410,7 @@ const Analytics = () => {
                         </div>
 
                         <div className="h-[400px] md:h-[500px] pt-4">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <BarChart data={activeSourceData.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                               <XAxis 

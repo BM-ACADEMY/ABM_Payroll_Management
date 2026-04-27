@@ -9,7 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
-    const token = sessionStorage.getItem('token');
+    const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
@@ -25,10 +25,10 @@ export const AuthProvider = ({ children }) => {
         permissions: userData.permissions || []
       });
       
-      sessionStorage.setItem('userRole', userData.role.name);
-      sessionStorage.setItem('userName', userData.name);
-      sessionStorage.setItem('userId', userData.id);
-      sessionStorage.setItem('userPermissions', JSON.stringify(userData.permissions || []));
+      localStorage.setItem('userRole', userData.role.name);
+      localStorage.setItem('userName', userData.name);
+      localStorage.setItem('userId', userData.id);
+      localStorage.setItem('userPermissions', JSON.stringify(userData.permissions || []));
     } catch (err) {
       console.error('Error refreshing user context:', err);
       // Only logout on 401 Unauthorized to avoid session loss on transient network errors
@@ -37,11 +37,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const token = sessionStorage.getItem('token');
-    const savedRole = sessionStorage.getItem('userRole');
-    const savedName = sessionStorage.getItem('userName');
-    const savedId = sessionStorage.getItem('userId');
-    const savedPermissions = JSON.parse(sessionStorage.getItem('userPermissions') || '[]');
+    const token = localStorage.getItem('token');
+    const savedRole = localStorage.getItem('userRole');
+    const savedName = localStorage.getItem('userName');
+    const savedId = localStorage.getItem('userId');
+    const savedPermissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
 
     if (token && savedRole) {
       setUser({ 
@@ -69,16 +69,16 @@ export const AuthProvider = ({ children }) => {
 
   const login = (userData) => {
     setUser(userData);
-    sessionStorage.setItem('token', userData.token);
-    sessionStorage.setItem('userRole', userData.role.name);
-    sessionStorage.setItem('userName', userData.name);
-    sessionStorage.setItem('userId', userData.id);
-    sessionStorage.setItem('userPermissions', JSON.stringify(userData.permissions || []));
+    localStorage.setItem('token', userData.token);
+    localStorage.setItem('userRole', userData.role.name);
+    localStorage.setItem('userName', userData.name);
+    localStorage.setItem('userId', userData.id);
+    localStorage.setItem('userPermissions', JSON.stringify(userData.permissions || []));
   };
 
   const logout = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       if (token) {
         const locationData = await getCurrentLocation();
         await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/logout`, 
@@ -90,11 +90,11 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout logging failed:', err);
     } finally {
       setUser(null);
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('userRole');
-      sessionStorage.removeItem('userName');
-      sessionStorage.removeItem('userId');
-      sessionStorage.removeItem('userPermissions');
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userPermissions');
     }
   };
 

@@ -22,15 +22,17 @@ const KanbanBoards = () => {
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [formData, setFormData] = useState({ title: '', description: '' });
   const [boardToDelete, setBoardToDelete] = useState(null);
+  const [boardToEdit, setBoardToEdit] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  const userRole = sessionStorage.getItem('userRole');
+  const userRole = localStorage.getItem('userRole');
   const isAdmin = userRole === 'admin' || userRole === 'subadmin';
 
   const fetchData = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const teamsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/${isAdmin ? 'admin/teams' : 'auth/my-teams'}`, {
         headers: { 'x-auth-token': token }
       });
@@ -78,7 +80,7 @@ const KanbanBoards = () => {
       return;
     }
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards`, {
         ...formData,
         teamId: selectedTeamId
@@ -97,7 +99,7 @@ const KanbanBoards = () => {
   const confirmDeleteBoard = async () => {
     if (!boardToDelete) return;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${boardToDelete._id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -106,6 +108,35 @@ const KanbanBoards = () => {
       fetchData();
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to delete board" });
+    }
+  };
+
+  const handleEditBoard = (board) => {
+    setBoardToEdit(board);
+    setFormData({ title: board.title, description: board.description || '' });
+    setSelectedTeamId(board.team?._id || board.team);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateBoard = async (e) => {
+    e.preventDefault();
+    if (!boardToEdit) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/${boardToEdit._id}`, {
+        title: formData.title,
+        description: formData.description,
+        team: selectedTeamId
+      }, {
+        headers: { 'x-auth-token': token }
+      });
+      toast({ title: "Success", description: "Board updated successfully" });
+      setIsEditModalOpen(false);
+      setBoardToEdit(null);
+      setFormData({ title: '', description: '' });
+      fetchData();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to update board" });
     }
   };
 
@@ -294,7 +325,18 @@ const KanbanBoards = () => {
                       </Card>
                       
                       {isAdmin && (
-                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 rounded-lg bg-white/90 shadow-sm hover:bg-slate-50 hover:text-slate-900 border border-slate-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditBoard(board);
+                            }}
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -401,6 +443,57 @@ const KanbanBoards = () => {
         title="Delete Board"
         description={`Are you sure you want to delete "${boardToDelete?.title}"? All tasks and lists will be permanently removed.`}
       />
+
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[450px] border-none shadow-2xl rounded-3xl bg-white p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-normal text-slate-900">Edit Board</DialogTitle>
+            <DialogDescription className="font-normal text-slate-500">Update board configuration.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateBoard} className="space-y-6 pt-4">
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label className="text-slate-700 font-normal text-xs uppercase tracking-widest">Select Team</Label>
+                <select 
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 focus:border-slate-900 outline-none transition-all text-sm font-normal"
+                  value={selectedTeamId}
+                  onChange={(e) => setSelectedTeamId(e.target.value)}
+                  required
+                >
+                  <option value="">Select a team...</option>
+                  {teams.map(team => (
+                    <option key={team._id} value={team._id}>{team.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-normal text-xs uppercase tracking-widest">Board Title</Label>
+              <Input 
+                placeholder="e.g. Q1 Development Goals" 
+                value={formData.title} 
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                required
+                className="rounded-xl border-slate-200 h-12 font-normal"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-normal text-xs uppercase tracking-widest">Description</Label>
+              <Textarea 
+                placeholder="What is this board for?" 
+                value={formData.description} 
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="rounded-xl border-slate-200 min-h-[100px] font-normal"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" className="w-full bg-slate-900 text-[#fffe01] hover:bg-slate-800 rounded-xl h-12 text-sm tracking-widest uppercase font-normal transition-all active:scale-95 shadow-xl">
+                Update Board
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

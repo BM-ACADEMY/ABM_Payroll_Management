@@ -214,7 +214,7 @@ exports.login = async (req, res) => {
     await user.populate('role', 'name permissions');
 
     const payload = { user: { id: user.id, role: user.role } };
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 360000 }, async (err, token) => {
+    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '365d' }, async (err, token) => {
       if (err) throw err;
       
       // Log login event with location

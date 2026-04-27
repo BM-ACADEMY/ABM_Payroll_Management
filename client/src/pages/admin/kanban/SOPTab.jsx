@@ -58,7 +58,7 @@ const SOPTab = ({ boardData, onUpdate }) => {
     }
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/${boardData._id}`, {
         sop: sopData
       }, {
@@ -105,7 +105,7 @@ const SOPTab = ({ boardData, onUpdate }) => {
     formData.append('file', file);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/upload`, formData, {
         headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' }
       });
@@ -132,7 +132,7 @@ const SOPTab = ({ boardData, onUpdate }) => {
     const updatedSop = { ...sopData, attachments: sopData.attachments.filter((_, i) => i !== index) };
     setSopData(updatedSop);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/${boardData._id}`, { sop: updatedSop }, {
         headers: { 'x-auth-token': token }
       });

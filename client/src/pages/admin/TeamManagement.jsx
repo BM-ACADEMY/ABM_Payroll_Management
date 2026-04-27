@@ -44,7 +44,7 @@ const TeamManagement = () => {
   const fetchTeams = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
@@ -103,7 +103,7 @@ const TeamManagement = () => {
 
     setFormLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       if (isEditing) {
         await axios.patch(`${import.meta.env.VITE_API_URL}/api/admin/teams/${currentTeamId}`, formData, {
           headers: { 'x-auth-token': token }
@@ -134,7 +134,7 @@ const TeamManagement = () => {
     setIsMembersModalOpen(true);
     setMembersLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       // Fetch all employees (using a large limit for selection dropdown)
       const empRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?limit=1000`, {
         headers: { 'x-auth-token': token }
@@ -170,7 +170,7 @@ const TeamManagement = () => {
   const handleSaveMembers = async () => {
     setSaveMembersLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/teams/${currentTeamId}/members`, {
         userIds: currentMembers
       }, {
@@ -217,7 +217,7 @@ const TeamManagement = () => {
   const confirmDeleteTeam = async () => {
     if (!teamToDelete) return;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/teams/${teamToDelete}`, {
         headers: { 'x-auth-token': token }
       });

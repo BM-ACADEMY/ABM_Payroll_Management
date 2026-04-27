@@ -73,7 +73,7 @@ const Attendance = () => {
   const fetchLogs = async () => {
     setLogsLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const headers = { 'x-auth-token': token };
       const [attendRes, auditRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/logs`, { headers }),
@@ -90,7 +90,7 @@ const Attendance = () => {
 
   const fetchEstimatedEarnings = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/payroll/my-summary`, {
         headers: { 'x-auth-token': token }
       });
@@ -102,7 +102,7 @@ const Attendance = () => {
 
   const fetchUserTimings = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth`, {
         headers: { 'x-auth-token': token }
       });
@@ -114,7 +114,7 @@ const Attendance = () => {
 
   const fetchCurrentStatus = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/today`, {
         headers: { 'x-auth-token': token }
       });
@@ -145,7 +145,7 @@ const Attendance = () => {
     const location = await getCurrentLocation();
     
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const config = { headers: { 'x-auth-token': token } };
       let res;
 

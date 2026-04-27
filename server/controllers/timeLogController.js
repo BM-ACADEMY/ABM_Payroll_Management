@@ -33,6 +33,63 @@ exports.startTimeTracking = async (req, res) => {
   }
 };
 
+exports.createPausedLog = async (req, res) => {
+  const { taskName, originChecklistItemId } = req.body;
+  try {
+    const now = new Date();
+    const newTimeLog = new TimeLog({
+      user: req.user.id,
+      taskName,
+      startTime: now,
+      status: 'paused',
+      label: 'not yet started',
+      originChecklistItemId: originChecklistItemId || null,
+      pauses: [{
+        pauseStart: now,
+        label: 'not yet started'
+      }],
+      activityLog: [{
+        type: 'play',
+        startTime: now,
+        endTime: now,
+        duration: 0
+      }, {
+        type: 'pause',
+        startTime: now,
+        label: 'not yet started'
+      }]
+    });
+
+    const timeLog = await newTimeLog.save();
+    
+    // Sync back to Kanban if it's from a checklist item
+    if (originChecklistItemId) {
+      try {
+        const kanbanTask = await Task.findOne({ "checklists.items._id": originChecklistItemId });
+        if (kanbanTask) {
+          kanbanTask.checklists.forEach(cl => {
+            const item = cl.items.id(originChecklistItemId);
+            if (item) {
+              item.timeLogLabel = 'not yet started';
+            }
+          });
+          await kanbanTask.save();
+          if (req.io) req.io.emit('task_updated', kanbanTask);
+        }
+      } catch (syncErr) {
+        console.error('Sync Error in createPausedLog:', syncErr.message);
+      }
+    }
+
+    if (req.io) req.io.emit('time_log_updated', timeLog);
+    
+    res.json(timeLog);
+  } catch (err) {
+    console.error('Create Paused Log Error:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 exports.pauseTimeTracking = async (req, res) => {
   try {
     let timeLog = await TimeLog.findById(req.params.id);
@@ -473,6 +530,44 @@ exports.getSettings = async (req, res) => {
   try {
     const settings = await Settings.findOne();
     res.json(settings);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.deleteTimeLog = async (req, res) => {
+  try {
+    const timeLog = await TimeLog.findById(req.params.id);
+    if (!timeLog) return res.status(404).json({ msg: 'Time log not found' });
+    if (timeLog.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(401).json({ msg: 'Not authorized' });
+    }
+    if (timeLog.originChecklistItemId) {
+      try {
+        const kanbanTask = await Task.findOne({ "checklists.items._id": timeLog.originChecklistItemId });
+        if (kanbanTask) {
+          kanbanTask.checklists.forEach(cl => {
+            const item = cl.items.id(timeLog.originChecklistItemId);
+            if (item) item.timeLogLabel = '';
+          });
+          await kanbanTask.save();
+          if (req.io) req.io.emit('task_updated', kanbanTask);
+        }
+      } catch (syncErr) { console.error(syncErr); }
+    } else if (timeLog.originTaskId) {
+      try {
+        const task = await Task.findById(timeLog.originTaskId);
+        if (task) {
+          task.timeLogLabel = '';
+          await task.save();
+          if (req.io) req.io.emit('task_updated', task);
+        }
+      } catch (syncErr) { console.error(syncErr); }
+    }
+    await TimeLog.findByIdAndDelete(req.params.id);
+    if (req.io) req.io.emit('time_log_deleted', req.params.id);
+    res.json({ msg: 'Time log removed' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

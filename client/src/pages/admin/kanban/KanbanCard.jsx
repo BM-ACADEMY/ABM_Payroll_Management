@@ -106,7 +106,7 @@ const KanbanCard = ({ task, index, onClick }) => {
                 {task.deadline && !task.isCompleted && (
                    <div className={`flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-normal ${new Date(task.deadline) < new Date() ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
                      <Clock className="w-2.5 h-2.5" />
-                     {format(new Date(task.deadline), 'MMM d')}
+                     {format(new Date(task.deadline), 'MMM d, yyyy, h:mm a')}
                    </div>
                 )}
               </div>

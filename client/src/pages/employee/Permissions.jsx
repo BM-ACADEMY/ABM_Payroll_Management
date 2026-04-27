@@ -63,7 +63,7 @@ const Permissions = () => {
   const fetchMyRequests = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/my-requests?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
@@ -91,7 +91,7 @@ const Permissions = () => {
     setFormLoading(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/requests`, {
         type: 'permission',
         date: format(new Date(formData.fromDateTime), 'yyyy-MM-dd'),
@@ -126,7 +126,7 @@ const Permissions = () => {
   const confirmDeleteAction = async () => {
     const { id } = confirmDelete;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
         headers: { 'x-auth-token': token }
       });

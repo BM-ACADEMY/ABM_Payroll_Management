@@ -22,15 +22,17 @@ const TimeHistory = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [adminNameSearch, setAdminNameSearch] = useState('');
-  const [userRole, setUserRole] = useState(sessionStorage.getItem('userRole'));
-  const [userName, setUserName] = useState(sessionStorage.getItem('userName'));
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole'));
+  const [userName, setUserName] = useState(localStorage.getItem('userName'));
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
   const [newComments, setNewComments] = useState({});
   const [commentToDelete, setCommentToDelete] = useState(null);
+  const [logToDelete, setLogToDelete] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isLogDeleteDialogOpen, setIsLogDeleteDialogOpen] = useState(false);
   // Mention states
   const [allUsers, setAllUsers] = useState([]);
   const [showMentions, setShowMentions] = useState(null); // logId of current active mention
@@ -41,7 +43,7 @@ const TimeHistory = () => {
   const fetchLogs = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const url = userRole === 'admin'
         ? `${import.meta.env.VITE_API_URL}/api/time-logs/all?startDate=${startDate}&endDate=${endDate}&userName=${adminNameSearch}&taskName=${searchTerm}&page=${page}&limit=10`
         : `${import.meta.env.VITE_API_URL}/api/time-logs/user?startDate=${startDate}&endDate=${endDate}&taskName=${searchTerm}&page=${page}&limit=10`;
@@ -72,7 +74,7 @@ const TimeHistory = () => {
 
   const fetchAllUsers = async () => {
     try {
-        const token = sessionStorage.getItem('token');
+        const token = localStorage.getItem('token');
         const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/members/search`, {
           headers: { 'x-auth-token': token }
         });
@@ -131,7 +133,7 @@ const TimeHistory = () => {
 
   const handleUpdateComment = async (id, commentId, text) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}/${commentId}`, { text }, {
         headers: { 'x-auth-token': token }
       });
@@ -145,7 +147,7 @@ const TimeHistory = () => {
 
   const handleDeleteComment = async (id, commentId) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.delete(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}/${commentId}`, {
         headers: { 'x-auth-token': token }
       });
@@ -159,7 +161,7 @@ const TimeHistory = () => {
   const handleAddComment = async (id, text) => {
     if (!text?.trim()) return;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/comment/${id}`, { text }, {
         headers: { 'x-auth-token': token }
       });
@@ -168,6 +170,19 @@ const TimeHistory = () => {
       toast({ title: "Added", description: "Comment added successfully" });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to add comment" });
+    }
+  };
+
+  const handleDeleteLog = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/time-logs/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setLogs(prev => prev.filter(log => log._id !== id));
+      toast({ title: "Deleted", description: "Time log entry removed" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete time log" });
     }
   };
 
@@ -298,6 +313,7 @@ const TimeHistory = () => {
                         <TableHead className="text-xs text-slate-500 py-4">Timeline</TableHead>
                         <TableHead className="text-xs text-slate-500 py-4">Duration</TableHead>
                         <TableHead className="text-xs text-slate-500 py-4 text-center">Status</TableHead>
+                        <TableHead className="text-xs text-slate-500 py-4 text-right pr-6">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -346,11 +362,25 @@ const TimeHistory = () => {
                                 {log.label || log.status}
                               </Badge>
                             </TableCell>
+                            <TableCell className="p-4 text-right pr-6">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setLogToDelete(log._id); 
+                                  setIsLogDeleteDialogOpen(true); 
+                                }}
+                                className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
 
                           {expandedRows.has(log._id) && (
                             <TableRow className="bg-slate-50/30 border-none">
-                              <TableCell colSpan={userRole === 'admin' ? 6 : 5} className="p-0">
+                              <TableCell colSpan={userRole === 'admin' ? 7 : 6} className="p-0">
                                 <div className="px-12 py-6 space-y-8 animate-in slide-in-from-top-2 duration-300">
                                   {/* Sessions Section */}
                                   <div className="space-y-3">
@@ -533,6 +563,19 @@ const TimeHistory = () => {
           }}
           title="Delete History Insight?"
           description="This will remove the specific comment from the historical time log entry."
+      />
+
+      <ConfirmDialog 
+          isOpen={isLogDeleteDialogOpen}
+          onClose={() => setIsLogDeleteDialogOpen(false)}
+          onConfirm={() => {
+              if(logToDelete) {
+                  handleDeleteLog(logToDelete);
+                  setLogToDelete(null);
+              }
+          }}
+          title="Scrub Time Vector?"
+          description="This will permanently delete this time log. This action cannot be reversed."
       />
     </div>
   );

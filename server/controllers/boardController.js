@@ -502,11 +502,29 @@ exports.createTask = async (req, res) => {
       // --- Create Tracking Log if Converted ---
       if (originChecklistItemId) {
         try {
+          const now = new Date();
           const newTimeLog = new TimeLog({
             user: req.user.id,
             taskName: title || 'Converted Task',
-            status: 'pending',
-            label: 'not yet started'
+            startTime: now,
+            status: 'paused',
+            label: 'not yet started',
+            originTaskId: task._id,
+            originChecklistItemId: originChecklistItemId,
+            pauses: [{
+              pauseStart: now,
+              label: 'not yet started'
+            }],
+            activityLog: [{
+              type: 'play',
+              startTime: now,
+              endTime: now,
+              duration: 0
+            }, {
+              type: 'pause',
+              startTime: now,
+              label: 'not yet started'
+            }]
           });
           const savedLog = await newTimeLog.save();
           if (req.io) req.io.emit('time_log_updated', savedLog);
@@ -601,6 +619,15 @@ exports.updateTask = async (req, res) => {
         details: details || `Updated task properties`
       });
       await history.save();
+    }
+
+    // --- Time Tracker Synchronization ---
+    if (req.body.title !== undefined) {
+      try {
+        await TimeLog.updateMany({ originTaskId: task._id }, { taskName: req.body.title });
+      } catch (syncErr) {
+        console.error('Task Title Sync Error:', syncErr);
+      }
     }
 
     // --- Status Synchronization ---
@@ -861,9 +888,12 @@ exports.updateChecklistItem = async (req, res) => {
     if (estimatedDuration !== undefined) updateFields["checklists.$[].items.$[elem].estimatedDuration"] = estimatedDuration;
 
     const task = await Task.findOneAndUpdate(
-      { _id: req.params.taskId, "checklists.items._id": itemId },
+      { _id: req.params.taskId, "checklists._id": checklistId },
       { $set: updateFields },
-      { arrayFilters: [{ "elem._id": itemId }], new: true }
+      { 
+        arrayFilters: [{ "elem._id": itemId }], 
+        new: true 
+      }
     );
 
     // --- Status Synchronization ---
@@ -880,6 +910,15 @@ exports.updateChecklistItem = async (req, res) => {
 
     if (req.io) {
       req.io.to(task.board.toString()).emit('board_updated', { type: 'CHECKLIST_ITEM_UPDATED', boardId: task.board, taskId: req.params.taskId });
+    }
+
+    // --- Time Tracker Synchronization ---
+    if (text !== undefined) {
+      try {
+        await TimeLog.updateMany({ originChecklistItemId: itemId }, { taskName: text });
+      } catch (syncErr) {
+        console.error('Time Tracker Sync Error:', syncErr);
+      }
     }
 
     res.json(task);

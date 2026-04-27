@@ -55,7 +55,7 @@ const AdminComplaints = () => {
   const fetchComplaints = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/complaints?page=${page}&limit=5`, {
         headers: { 'x-auth-token': token }
       });
@@ -74,7 +74,7 @@ const AdminComplaints = () => {
 
   const updateStatus = async (id, status, response = '') => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.put(`${import.meta.env.VITE_API_URL}/api/complaints/${id}`, 
         { status, adminResponse: response },
         { headers: { 'x-auth-token': token } }
@@ -90,7 +90,7 @@ const AdminComplaints = () => {
 
   const handleDelete = async (id) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/complaints/${id}`, {
         headers: { 'x-auth-token': token }
       });

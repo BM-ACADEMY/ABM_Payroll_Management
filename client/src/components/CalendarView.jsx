@@ -26,7 +26,7 @@ const CalendarView = () => {
   const fetchCalendarData = async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const month = format(currentDate, 'M');
       const year = format(currentDate, 'yyyy');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/calendar?month=${month}&year=${year}`, {
