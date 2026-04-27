@@ -18,7 +18,9 @@ const SubTaskItem = ({
   onToggleCompletion, 
   isChecklist = false, 
   onRefresh, 
-  currentBoardId 
+  currentBoardId,
+  parentTaskId,
+  onAddToTracker
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState([]);
@@ -89,7 +91,7 @@ const SubTaskItem = ({
   const handleNameSave = () => {
     const trimmed = editNameValue.trim();
     if (trimmed && trimmed !== (task.title || task.text)) {
-      onUpdate(task._id, { title: trimmed });
+      onUpdate(task._id, isChecklist ? { text: trimmed } : { title: trimmed });
     }
     setIsEditingName(false);
   };
@@ -99,7 +101,7 @@ const SubTaskItem = ({
     setLoading(true);
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/boards/tasks/details/${task._id}`, {
-        headers: { 'x-auth-token': sessionStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       setChildren(res.data.subTasks || []);
     } catch (err) {
@@ -117,11 +119,17 @@ const SubTaskItem = ({
 
   const handleConvert = async () => {
     try {
-      await onAddSubTask(task._id, task.title || task.text);
-      onUpdate(task._id, { delete: true });
-      toast({ title: "Converted", description: "Item converted to card" });
+      if (onAddToTracker) {
+        await onAddToTracker(task.title || task.text, task._id);
+      } else {
+        // Fallback for subtasks (not checklist items) if needed, 
+        // though user specifically asked for this behavior on checklist items
+        await onAddSubTask(parentTaskId || task._id, task.title || task.text, isChecklist ? task._id : null);
+        onUpdate(task._id, { delete: true });
+      }
+      setIsActionsMenuOpen(false);
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to convert item" });
+      toast({ variant: "destructive", title: "Error", description: "Failed to process request" });
     }
   };
 
@@ -157,7 +165,7 @@ const SubTaskItem = ({
       <div className="group flex items-start gap-4 p-2.5 hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 rounded-lg">
         <div 
           onClick={() => onToggleCompletion(task._id, task.isCompleted)}
-          className={`mt-1.5 w-4.5 h-4.5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 ${task.isCompleted ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-200 bg-white'}`}
+          className={`mt-1.5 w-4.5 h-4.5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 \${task.isCompleted ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-200 bg-white'}`}
         >
           {task.isCompleted && <Check className="w-3 h-3" />}
         </div>
@@ -176,7 +184,7 @@ const SubTaskItem = ({
             ) : (
               <span 
                 onDoubleClick={() => setIsEditingName(true)}
-                className={`text-sm font-normal break-words cursor-text ${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+                className={`text-sm font-normal break-words cursor-text \${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}
               >
                 {task.title || task.text}
               </span>
@@ -195,10 +203,10 @@ const SubTaskItem = ({
                {dueDate && (
                   <div 
                     onClick={() => setIsItemDatePickerOpen(true)}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] cursor-pointer transition-colors ${new Date(dueDate) < new Date() && !task.isCompleted ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] cursor-pointer transition-colors \${new Date(dueDate) < new Date() && !task.isCompleted ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                   >
                      <Clock className="w-3 h-3" />
-                     {format(new Date(dueDate), 'MMM d, H:mm')}
+                     {format(new Date(dueDate), 'MMM d, yyyy, h:mm a')}
                   </div>
                )}
                {displayedAssignees.length > 0 && (
@@ -220,7 +228,7 @@ const SubTaskItem = ({
            <div className="relative">
               <Button 
                 variant="ghost" size="icon" data-date-toggle
-                className={`h-7 w-7 rounded ${dueDate ? 'text-blue-500 bg-blue-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                className={`h-7 w-7 rounded \${dueDate ? 'text-blue-500 bg-blue-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                 onClick={() => { setIsItemDatePickerOpen(!isItemDatePickerOpen); setIsAssignPickerOpen(false); setIsDurationPickerOpen(false); setIsActionsMenuOpen(false); }}
               >
                  <Clock className="w-3.5 h-3.5" />
@@ -228,7 +236,7 @@ const SubTaskItem = ({
               {isItemDatePickerOpen && (
                  <div ref={datePickerRef} className="absolute top-8 right-0 w-[240px] bg-white border border-slate-200 rounded-xl shadow-2xl z-50 p-0 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calendar Matrix</span>
+                       <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{format(viewDate, 'MMMM yyyy')}</span>
                        <div className="flex gap-1">
                           <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="p-1 hover:bg-slate-200 rounded transition-colors"><ChevronRight className="w-3 h-3 rotate-180" /></button>
                           <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="p-1 hover:bg-slate-200 rounded transition-colors"><ChevronRight className="w-3 h-3" /></button>
@@ -272,47 +280,68 @@ const SubTaskItem = ({
                     </div>
 
                     <div className="px-3 pb-3 bg-white border-t border-slate-50 mt-1 pt-3">
-                       <div className="grid grid-cols-3 gap-1 mb-3">
-                          <div className="flex flex-col gap-1">
-                             <label className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Hours</label>
-                             <select 
-                                value={stagingDate ? new Date(stagingDate).getHours() : 12}
-                                onChange={(e) => {
-                                   const next = setHours(new Date(stagingDate || new Date()), parseInt(e.target.value));
-                                   setStagingDate(next.toISOString());
-                                }}
-                                className="text-[10px] bg-slate-50 border-slate-100 rounded p-1 outline-none appearance-none text-center"
-                             >
-                                {Array.from({length: 24}, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}</option>)}
-                             </select>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                             <label className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Mins</label>
-                             <select 
-                                value={stagingDate ? new Date(stagingDate).getMinutes() : 0}
-                                onChange={(e) => {
-                                   const next = setMinutes(new Date(stagingDate || new Date()), parseInt(e.target.value));
-                                   setStagingDate(next.toISOString());
-                                }}
-                                className="text-[10px] bg-slate-50 border-slate-100 rounded p-1 outline-none appearance-none text-center"
-                             >
-                                {Array.from({length: 12}, (_, i) => <option key={i*5} value={i*5}>{(i*5).toString().padStart(2, '0')}</option>)}
-                             </select>
-                          </div>
-                          <div className="flex flex-col justify-end">
-                             <Button 
-                                variant="ghost" 
-                                className="h-6 text-[8px] text-blue-500 hover:bg-blue-50 uppercase font-black tracking-widest"
-                                onClick={() => {
-                                   const now = new Date();
-                                   setStagingDate(now.toISOString());
-                                   setViewDate(now);
-                                }}
-                             >
-                                Today
-                             </Button>
-                          </div>
-                       </div>
+                        <div className="grid grid-cols-4 gap-1 mb-3">
+                           <div className="flex flex-col gap-1">
+                              <label className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Hours</label>
+                              <select 
+                                 value={stagingDate ? (new Date(stagingDate).getHours() % 12 || 12) : 12}
+                                 onChange={(e) => {
+                                    const current = new Date(stagingDate || new Date());
+                                    const isPM = current.getHours() >= 12;
+                                    let h = parseInt(e.target.value);
+                                    if (isPM && h < 12) h += 12;
+                                    if (!isPM && h === 12) h = 0;
+                                    setStagingDate(setHours(current, h).toISOString());
+                                 }}
+                                 className="text-[10px] bg-slate-50 border-slate-100 rounded p-1 outline-none appearance-none text-center h-8"
+                              >
+                                 {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{(i+1).toString().padStart(2, '0')}</option>)}
+                              </select>
+                           </div>
+                           <div className="flex flex-col gap-1">
+                              <label className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Mins</label>
+                              <select 
+                                 value={stagingDate ? (new Date(stagingDate).getMinutes()) : 0}
+                                 onChange={(e) => {
+                                    const next = setMinutes(new Date(stagingDate || new Date()), parseInt(e.target.value));
+                                    setStagingDate(next.toISOString());
+                                 }}
+                                 className="text-[10px] bg-slate-50 border-slate-100 rounded p-1 outline-none appearance-none text-center h-8"
+                              >
+                                 {Array.from({length: 60}, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}</option>)}
+                              </select>
+                           </div>
+                           <div className="flex flex-col gap-1">
+                              <label className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">AM/PM</label>
+                              <select 
+                                 value={stagingDate ? (new Date(stagingDate).getHours() >= 12 ? "PM" : "AM") : "AM"}
+                                 onChange={(e) => {
+                                    const current = new Date(stagingDate || new Date());
+                                    let h = current.getHours();
+                                    if (e.target.value === "PM" && h < 12) h += 12;
+                                    if (e.target.value === "AM" && h >= 12) h -= 12;
+                                    setStagingDate(setHours(current, h).toISOString());
+                                 }}
+                                 className="text-[10px] bg-slate-50 border-slate-100 rounded p-1 outline-none appearance-none text-center font-bold h-8"
+                               >
+                                 <option value="AM">AM</option>
+                                 <option value="PM">PM</option>
+                               </select>
+                           </div>
+                           <div className="flex flex-col justify-end">
+                              <Button 
+                                 variant="ghost" 
+                                 className="h-8 text-[8px] text-blue-500 hover:bg-blue-50 uppercase font-black tracking-widest px-0"
+                                 onClick={() => {
+                                    const now = new Date();
+                                    setStagingDate(now.toISOString());
+                                    setViewDate(now);
+                                 }}
+                              >
+                                 Today
+                              </Button>
+                           </div>
+                        </div>
                        
                        <div className="flex gap-2 border-t border-slate-50 pt-3">
                           <Button 
@@ -345,7 +374,7 @@ const SubTaskItem = ({
            <div className="relative">
               <Button 
                 variant="ghost" size="icon" data-duration-toggle
-                className={`h-7 w-7 rounded ${estimatedDuration > 0 ? 'text-amber-500 bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                className={`h-7 w-7 rounded \${estimatedDuration > 0 ? 'text-amber-500 bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
                 onClick={() => { setIsDurationPickerOpen(!isDurationPickerOpen); setIsItemDatePickerOpen(false); setIsAssignPickerOpen(false); setIsActionsMenuOpen(false); }}
               >
                  <Timer className="w-3.5 h-3.5" />
@@ -427,7 +456,7 @@ const SubTaskItem = ({
            <div className="flex items-start gap-3 flex-1 min-w-0">
              <div 
                onClick={() => onToggleCompletion(task._id, task.isCompleted)}
-               className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 ${task.isCompleted ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-200 bg-white'}`}
+               className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 \${task.isCompleted ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-200 bg-white'}`}
              >
                {task.isCompleted && <Check className="w-3.5 h-3.5" />}
              </div>
@@ -445,7 +474,7 @@ const SubTaskItem = ({
                   ) : (
                     <span 
                       onDoubleClick={() => setIsEditingName(true)}
-                      className={`text-sm font-normal truncate cursor-text ${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-800'}`}
+                      className={`text-sm font-normal truncate cursor-text \${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-800'}`}
                     >
                       {task.title || task.text}
                     </span>
@@ -455,7 +484,7 @@ const SubTaskItem = ({
                 <div className="flex items-center gap-3">
                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-[10px] text-slate-500">
                       <Clock className="w-3 h-3" />
-                      {dueDate ? format(new Date(dueDate), 'MMM d, H:mm') : 'No due date'}
+                      {dueDate ? format(new Date(dueDate), 'MMM d, yyyy, h:mm a') : 'No due date'}
                    </div>
                    <div className="flex -space-x-1.5">
                       {displayedAssignees.slice(0, 3).map((m, i) => (

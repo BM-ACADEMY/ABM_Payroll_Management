@@ -62,7 +62,7 @@ const EmployeeDashboard = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const token = sessionStorage.getItem('token');
+        const token = localStorage.getItem('token');
         const headers = { 'x-auth-token': token };
 
         const [logsRes, summaryRes, requestsRes, settingsRes, scoresRes] = await Promise.all([
@@ -79,7 +79,7 @@ const EmployeeDashboard = () => {
         setSettings(settingsRes.data);
         setWeeklyScores(scoresRes.data);
 
-        const savedName = sessionStorage.getItem('userName');
+        const savedName = localStorage.getItem('userName');
         if (savedName) setUserName(savedName.split(' ')[0]);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);

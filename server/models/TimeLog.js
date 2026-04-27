@@ -51,6 +51,8 @@ const TimeLogSchema = new mongoose.Schema({
     duration: Number,
     label: String
   }],
+  originTaskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
+  originChecklistItemId: { type: mongoose.Schema.Types.ObjectId },
   createdAt: {
     type: Date,
     default: Date.now

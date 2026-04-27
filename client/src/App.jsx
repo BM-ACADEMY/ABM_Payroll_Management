@@ -66,16 +66,16 @@ function AppContent() {
   const handleSetUser = (u) => {
     setUser(u);
     if (u) {
-      sessionStorage.setItem('userRole', u.role.name);
-      sessionStorage.setItem('userName', u.name);
-      sessionStorage.setItem('userId', u.id);
-      sessionStorage.setItem('userPermissions', JSON.stringify(u.permissions || []));
+      localStorage.setItem('userRole', u.role.name);
+      localStorage.setItem('userName', u.name);
+      localStorage.setItem('userId', u.id);
+      localStorage.setItem('userPermissions', JSON.stringify(u.permissions || []));
     } else {
-      sessionStorage.removeItem('userRole');
-      sessionStorage.removeItem('userName');
-      sessionStorage.removeItem('userId');
-      sessionStorage.removeItem('userPermissions');
-      sessionStorage.removeItem('token');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userPermissions');
+      localStorage.removeItem('token');
     }
   };
 

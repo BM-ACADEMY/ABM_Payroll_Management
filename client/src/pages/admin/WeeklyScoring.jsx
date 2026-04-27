@@ -39,7 +39,7 @@ const WeeklyScoring = () => {
 
   const fetchEmployees = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?limit=1000`, {
         headers: { 'x-auth-token': token }
       });
@@ -54,7 +54,7 @@ const WeeklyScoring = () => {
 
   const fetchRecentScores = async (page = 1) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/scores/all?weekStartDate=${weekStart}&page=${page}&limit=10&name=${scoreSearchTerm}&team=${teamFilter}`, {
         headers: { 'x-auth-token': token }
       });
@@ -71,7 +71,7 @@ const WeeklyScoring = () => {
 
   const fetchTeams = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams`, {
         headers: { 'x-auth-token': token }
       });
@@ -131,7 +131,7 @@ const WeeklyScoring = () => {
 
     setIsSubmitting(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/scores`, {
         userId: selectedEmployee._id,
         teamId: selectedTeam._id,
@@ -195,7 +195,7 @@ const WeeklyScoring = () => {
     if (!idToDelete) return;
     
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/admin/scores/${idToDelete}`, {
         headers: { 'x-auth-token': token }
       });

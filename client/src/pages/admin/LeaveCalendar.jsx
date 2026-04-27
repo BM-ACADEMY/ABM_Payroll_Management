@@ -40,7 +40,7 @@ const LeaveCalendar = () => {
 
   const fetchLeaves = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/company-leaves`, {
         headers: { 'x-auth-token': token }
       });
@@ -61,7 +61,7 @@ const LeaveCalendar = () => {
     e.preventDefault();
     setAdding(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/company-leaves`, formData, {
         headers: { 'x-auth-token': token }
       });
@@ -85,7 +85,7 @@ const LeaveCalendar = () => {
   const confirmRemoveLeave = async () => {
     if (!selectedLeaveToDelete) return;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/company-leaves/${selectedLeaveToDelete}`, {
         headers: { 'x-auth-token': token }
       });

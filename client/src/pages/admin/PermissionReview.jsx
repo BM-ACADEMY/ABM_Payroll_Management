@@ -66,7 +66,7 @@ const PermissionReview = () => {
   const fetchRequests = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/admin-requests?page=${page}&limit=5&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
@@ -94,7 +94,7 @@ const PermissionReview = () => {
 
   const markAllAsRead = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/requests/mark-read`, {}, {
         headers: { 'x-auth-token': token }
       });
@@ -125,7 +125,7 @@ const PermissionReview = () => {
   const confirmDelete = async (id) => {
     setActionLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -159,7 +159,7 @@ const PermissionReview = () => {
   const confirmBulkDelete = async () => {
     setActionLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/requests/bulk-delete`, {
         ids: selectedIds
       }, {
@@ -199,7 +199,7 @@ const PermissionReview = () => {
   const handleStatusUpdate = async (id, status, reason = '') => {
     setActionLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
         status,
         rejectedReason: reason

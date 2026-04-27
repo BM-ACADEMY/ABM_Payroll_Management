@@ -35,7 +35,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const config = { headers: { 'x-auth-token': token } };
 
       const [statsRes, employeesRes] = await Promise.all([

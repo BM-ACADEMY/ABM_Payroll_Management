@@ -14,7 +14,7 @@
                   <h4 className="text-[10px] uppercase font-black tracking-widest text-zinc-400 ml-1">Current Access</h4>
                   <div className="space-y-3">
                     {boardData?.members?.map(m => {
-                      const currentUserId = sessionStorage.getItem('userId');
+                      const currentUserId = localStorage.getItem('userId');
                       const isBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(m._id));
                       const isCurrentUserBoardAdmin = boardData.admins.some(a => String(a._id || a) === String(currentUserId));
                       const canRemove = true; // All members can manage participants as requested

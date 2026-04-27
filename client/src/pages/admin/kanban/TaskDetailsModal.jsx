@@ -90,7 +90,8 @@ const ChecklistItemSection = memo(({
   onChecklistItemToggle, 
   handleAddSubTask, 
   onRefresh,
-  handleAddChecklistItem 
+  handleAddChecklistItem,
+  handleAddToTracker
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const progress = checklist.items?.length ? Math.round((checklist.items.filter(i=>i.isCompleted).length / checklist.items.length) * 100) : 0;
@@ -108,10 +109,12 @@ const ChecklistItemSection = memo(({
           <SubTaskItem 
             key={item._id} 
             task={item} 
+            parentTaskId={task?._id}
             boardMembers={boardData?.members} 
             teamId={boardData?.team?._id || boardData?.team}
             onUpdate={(id, updates) => onChecklistItemUpdate(id, updates, checklist._id)}
             onAddSubTask={handleAddSubTask}
+            onAddToTracker={handleAddToTracker}
             onToggleCompletion={(id, completed) => onChecklistItemToggle(id, completed, checklist._id)}
             isChecklist={true}
             onRefresh={onRefresh}
@@ -168,6 +171,7 @@ const TaskDetailsModal = ({
   handleRemoveChecklist,
   handleRenameChecklist,
   handleAddSubTask,
+  handleAddToTracker,
   getTimeAgo,
   handleUpdateComment,
   handleDeleteComment,
@@ -218,7 +222,7 @@ const TaskDetailsModal = ({
       const d = task?.deadline;
       const initialDate = d ? new Date(d) : new Date();
       setStagingDeadline(d || '');
-      setManualDateText(d ? format(initialDate, 'dd/MM HH:mm') : '');
+      setManualDateText(d ? format(initialDate, 'dd/MM/yyyy h:mm a') : '');
       setViewDate(initialDate);
     }
   }, [isDatePickerOpen, task?.deadline]);
@@ -291,9 +295,9 @@ const TaskDetailsModal = ({
   };
 
   const currentUser = { 
-    _id: sessionStorage.getItem('userId'), 
-    name: sessionStorage.getItem('userName'), 
-    role: sessionStorage.getItem('userRole') 
+    _id: localStorage.getItem('userId'), 
+    name: localStorage.getItem('userName'), 
+    role: localStorage.getItem('userRole') 
   };
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -455,7 +459,7 @@ const TaskDetailsModal = ({
                 <div className="flex items-start gap-4">
                   <button 
                     onClick={() => handleUpdateTask(task._id, { isCompleted: !task.isCompleted })}
-                    className={`w-7 h-7 rounded-full border-2 shrink-0 flex items-center justify-center mt-1 md:mt-2 transition-all ${task.isCompleted ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-zinc-300 hover:border-zinc-400 bg-white'}`}
+                    className={`w-7 h-7 rounded-full border-2 shrink-0 flex items-center justify-center mt-1 md:mt-2 transition-all \${task.isCompleted ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-zinc-300 hover:border-zinc-400 bg-white'}`}
                   >
                     {task.isCompleted && <Check className="w-4 h-4" />}
                   </button>
@@ -471,7 +475,7 @@ const TaskDetailsModal = ({
                       />
                     ) : (
                       <div className="flex items-center flex-wrap gap-2 md:gap-3">
-                        <DialogTitle onDoubleClick={() => setIsEditingTitle(true)} className={`text-xl md:text-[28px] font-normal text-zinc-900 tracking-tight leading-tight cursor-text ${task.isCompleted ? 'text-zinc-400 line-through' : ''}`}>
+                        <DialogTitle onDoubleClick={() => setIsEditingTitle(true)} className={`text-xl md:text-[28px] font-normal text-zinc-900 tracking-tight leading-tight cursor-text \${task.isCompleted ? 'text-zinc-400 line-through' : ''}`}>
                           {task.title}
                         </DialogTitle>
                         {task.timeLogLabel && <Badge variant="outline" className="mt-1 md:mt-2 h-5 md:h-6 px-2 text-[8px] md:text-[10px] font-normal bg-slate-50 text-slate-600">{task.timeLogLabel}</Badge>}
@@ -509,7 +513,7 @@ const TaskDetailsModal = ({
                    {isDatePickerOpen && (
                       <div ref={datePickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-0 overflow-hidden text-left">
                          <div className="p-4 bg-zinc-50/50 border-b flex items-center justify-between">
-                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Deployment Matrix</span>
+                            <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">{format(viewDate, 'MMMM yyyy')}</span>
                             <div className="flex gap-2">
                                <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="p-1 hover:bg-zinc-200 rounded-lg"><ChevronRight className="w-3 h-3 rotate-180" /></button>
                                <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="p-1 hover:bg-zinc-200 rounded-lg"><ChevronRight className="w-3 h-3" /></button>
@@ -538,165 +542,199 @@ const TaskDetailsModal = ({
                                              isSelected && "bg-black text-white")}>{format(day, 'd')}</button>
                                      );
                                   });
-                               })()}
+                                })()}
                             </div>
                          </div>
                          <div className="px-4 pb-4 pt-4 border-t">
-                            <div className="grid grid-cols-3 gap-2 mb-4">
-                               <select value={stagingDeadline ? new Date(stagingDeadline).getHours() : 12} onChange={e => setStagingDeadline(setHours(new Date(stagingDeadline || new Date()), parseInt(e.target.value)).toISOString())} className="text-[11px] font-bold bg-zinc-50 border rounded-lg h-9">{Array.from({length: 24}, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}</option>)}</select>
-                               <select value={stagingDeadline ? new Date(stagingDeadline).getMinutes() : 0} onChange={e => setStagingDeadline(setMinutes(new Date(stagingDeadline || new Date()), parseInt(e.target.value)).toISOString())} className="text-[11px] font-bold bg-zinc-50 border rounded-lg h-9">{Array.from({length: 12}, (_, i) => <option key={i*5} value={i*5}>{(i*5).toString().padStart(2, '0')}</option>)}</select>
-                               <Button variant="ghost" className="h-9 text-[9px] uppercase font-black" onClick={() => { const now = new Date(); setStagingDeadline(now.toISOString()); setViewDate(now); }}>Today</Button>
-                            </div>
-                            <div className="flex gap-3 pt-4 border-t">
-                               <Button className="flex-1 h-10 bg-black text-[#fffe01] font-bold text-[11px] rounded-xl" onClick={() => { if(stagingDeadline) handleUpdateTask(task._id, { deadline: stagingDeadline }); setIsDatePickerOpen(false); }}>Save Date</Button>
-                               <Button variant="ghost" className="h-10 px-4 text-[10px] text-red-500 font-bold" onClick={() => { handleUpdateTask(task._id, { deadline: null }); setIsDatePickerOpen(false); }}>Clear</Button>
-                            </div>
+                             <div className="grid grid-cols-4 gap-1.5 mb-4">
+                                <select 
+                                   value={stagingDeadline ? (new Date(stagingDeadline).getHours() % 12 || 12) : 12} 
+                                   onChange={e => {
+                                      const current = new Date(stagingDeadline || new Date());
+                                      const isPM = current.getHours() >= 12;
+                                      let h = parseInt(e.target.value);
+                                      if (isPM && h < 12) h += 12;
+                                      if (!isPM && h === 12) h = 0;
+                                      setStagingDeadline(setHours(current, h).toISOString());
+                                   }} 
+                                   className="text-[11px] font-bold bg-zinc-50 border rounded-lg h-9"
+                                >
+                                   {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{(i+1).toString().padStart(2, '0')}</option>)}
+                                </select>
+                                <select 
+                                   value={stagingDeadline ? new Date(stagingDeadline).getMinutes() : 0} 
+                                   onChange={e => setStagingDeadline(setMinutes(new Date(stagingDeadline || new Date()), parseInt(e.target.value)).toISOString())} 
+                                   className="text-[11px] font-bold bg-zinc-50 border rounded-lg h-9"
+                                >
+                                   {Array.from({length: 60}, (_, i) => <option key={i} value={i}>{i.toString().padStart(2, '0')}</option>)}
+                                </select>
+                                <select 
+                                   value={stagingDeadline ? (new Date(stagingDeadline).getHours() >= 12 ? 'PM' : 'AM') : 'AM'} 
+                                   onChange={e => {
+                                      const current = new Date(stagingDeadline || new Date());
+                                      let h = current.getHours();
+                                      if (e.target.value === 'PM' && h < 12) h += 12;
+                                      if (e.target.value === 'AM' && h >= 12) h -= 12;
+                                      setStagingDeadline(setHours(current, h).toISOString());
+                                   }} 
+                                   className="text-[11px] font-bold bg-zinc-50 border rounded-lg h-9"
+                                >
+                                   <option value="AM">AM</option>
+                                   <option value="PM">PM</option>
+                                </select>
+                                <Button variant="ghost" className="h-9 text-[9px] uppercase font-black px-0" onClick={() => { const now = new Date(); setStagingDeadline(now.toISOString()); setViewDate(now); }}>Now</Button>
+                             </div>
+                             <div className="flex gap-3 pt-4 border-t">
+                                <Button className="flex-1 h-10 bg-black text-[#fffe01] font-bold text-[11px] rounded-xl" onClick={() => { if(stagingDeadline) handleUpdateTask(task._id, { deadline: stagingDeadline }); setIsDatePickerOpen(false); }}>Save Date</Button>
+                                <Button variant="ghost" className="h-10 px-4 text-[10px] text-red-500 font-bold" onClick={() => { handleUpdateTask(task._id, { deadline: null }); setIsDatePickerOpen(false); }}>Clear</Button>
+                             </div>
                          </div>
                       </div>
                    )}
                  </div>
                </div>
-
+ 
                 <div className="flex flex-col sm:flex-row flex-wrap items-start gap-8 md:gap-12 pl-2 md:pl-10 mb-2">
-                  <div className="space-y-3">
-                     <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Members</h4>
-                     <div className="flex flex-wrap gap-2 items-center">
-                        {task.assignees?.map(a => (
-                          <div key={a._id} className="w-8 h-8 rounded-full bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-normal shadow-sm border-2 border-white ring-1 ring-zinc-100" title={a.name}>{a.name.split(' ').map(n=>n[0]).join('')}</div>
-                        ))}
-                        <div className="relative">
-                            <button data-member-toggle onClick={() => setIsMemberPickerOpen(!isMemberPickerOpen)} className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400"><Plus className="w-4 h-4" /></button>
-                            {isMemberPickerOpen && (
-                               <div ref={memberPickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4">
-                                  <div className="flex items-center justify-between"><span className="text-xs text-zinc-400 uppercase">Manage Members</span><X className="w-4 h-4 text-zinc-400 cursor-pointer" onClick={()=>setIsMemberPickerOpen(false)} /></div>
-                                  <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                     {task.assignees?.length > 0 && <div className="space-y-2"><h5 className="text-[9px] text-zinc-400 uppercase">In this vector</h5>{task.assignees.map(m => <div key={m._id} className="flex items-center justify-between p-1.5 hover:bg-zinc-50 rounded-xl"><div className="flex items-center gap-3"><div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[9px]">{m.name.split(' ').map(n=>n[0]).join('')}</div><span>{m.name}</span></div><X onClick={() => handleUpdateTask(task._id, { assignees: task.assignees.filter(a=>a._id !== m._id).map(a=>a._id) })} className="w-3.5 h-3.5 text-zinc-300 cursor-pointer" /></div>)}</div>}
-                                     <div className="space-y-2"><h5 className="text-[9px] text-zinc-400 uppercase">Available Nodes</h5>{(boardData?.members || []).filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => <div key={m._id} onClick={() => handleUpdateTask(task._id, { assignees: [...(task.assignees?.map(a=>a._id) || []), m._id] })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer"><div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-[9px]">{m.name.split(' ').map(n=>n[0]).join('')}</div><span>{m.name}</span></div>)}</div>
-                                  </div>
-                               </div>
-                            )}
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                     <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Labels</h4>
+                   <div className="space-y-3">
+                      <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Members</h4>
                       <div className="flex flex-wrap gap-2 items-center">
-                         {task.labels?.map((l, i) => <Badge key={i} style={{ backgroundColor: l.color }} className="text-white border-none rounded-lg h-8 px-4 text-[10px] font-normal uppercase shadow-sm">{l.text}</Badge>)}
-                          <div className="relative">
-                             <button data-label-toggle onClick={() => setIsLabelPickerOpen(!isLabelPickerOpen)} className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400"><Plus className="w-4 h-4" /></button>
-                             {isLabelPickerOpen && (
-                                <div ref={labelPickerRef} className="absolute top-10 left-0 w-[240px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4">
-                                   <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                      {[ {t:'Done', c:'#51cc9e'}, {t:'Under QC', c:'#f1d643'}, {t:'Waiting for requirement', c:'#ff9f1a'}, {t:'Not yet started', c:'#f87171'}, {t:'On hold', c:'#c084fc'}, {t:'In process', c:'#60a5fa'} ].map((opt, i) => {
-                                         const isLabeled = task.labels?.some(l => l.text === opt.t);
-                                         return (
-                                            <div key={i} onClick={() => handleUpdateLabels({ text: opt.t, color: opt.c })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer group">
-                                               <div className={cn("w-4 h-4 rounded border flex items-center justify-center", isLabeled ? "bg-zinc-900 border-zinc-900" : "bg-white border-zinc-200")}>{isLabeled && <Check className="w-2.5 h-2.5 text-[#fffe01]" />}</div>
-                                               <div className="w-2.5 h-8 rounded-md" style={{ backgroundColor: opt.c }}></div>
-                                               <span className={cn("text-[11px] uppercase flex-1", isLabeled ? "text-zinc-900" : "text-zinc-500")}>{opt.t}</span>
-                                            </div>
-                                         );
-                                      })}
+                         {task.assignees?.map(a => (
+                           <div key={a._id} className="w-8 h-8 rounded-full bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[10px] font-normal shadow-sm border-2 border-white ring-1 ring-zinc-100" title={a.name}>{a.name.split(' ').map(n=>n[0]).join('')}</div>
+                         ))}
+                         <div className="relative">
+                             <button data-member-toggle onClick={() => setIsMemberPickerOpen(!isMemberPickerOpen)} className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400"><Plus className="w-4 h-4" /></button>
+                             {isMemberPickerOpen && (
+                                <div ref={memberPickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4">
+                                   <div className="flex items-center justify-between"><span className="text-xs text-zinc-400 uppercase">Manage Members</span><X className="w-4 h-4 text-zinc-400 cursor-pointer" onClick={()=>setIsMemberPickerOpen(false)} /></div>
+                                   <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                      {task.assignees?.length > 0 && <div className="space-y-2"><h5 className="text-[9px] text-zinc-400 uppercase">In this vector</h5>{task.assignees.map(m => <div key={m._id} className="flex items-center justify-between p-1.5 hover:bg-zinc-50 rounded-xl"><div className="flex items-center gap-3"><div className="w-7 h-7 rounded-lg bg-zinc-900 text-[#fffe01] flex items-center justify-center text-[9px]">{m.name.split(' ').map(n=>n[0]).join('')}</div><span>{m.name}</span></div><X onClick={() => handleUpdateTask(task._id, { assignees: task.assignees.filter(a=>a._id !== m._id).map(a=>a._id) })} className="w-3.5 h-3.5 text-zinc-300 cursor-pointer" /></div>)}</div>}
+                                      <div className="space-y-2"><h5 className="text-[9px] text-zinc-400 uppercase">Available Nodes</h5>{(boardData?.members || []).filter(m => !task.assignees?.some(a=>a._id === m._id)).map(m => <div key={m._id} onClick={() => handleUpdateTask(task._id, { assignees: [...(task.assignees?.map(a=>a._id) || []), m._id] })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer"><div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-[9px]">{m.name.split(' ').map(n=>n[0]).join('')}</div><span>{m.name}</span></div>)}</div>
                                    </div>
                                 </div>
                              )}
-                          </div>
-                      </div>
-                  </div>
-
-                  {task.deadline && (
-                    <div className="space-y-3">
-                       <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Projected Date</h4>
-                       <div onClick={() => setIsDatePickerOpen(true)} className={cn("flex items-center gap-3 px-4 py-1.5 rounded-xl border-2 cursor-pointer shadow-sm", isOverdue(task.deadline) ? "bg-red-50 border-red-200 text-red-700" : isDueSoon(task.deadline) ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-zinc-50 border-zinc-200 text-zinc-700")}>
-                          <Clock className="w-4 h-4" />
-                          <span className="text-[13px]">{format(new Date(task.deadline), 'MMM d, HH:mm')}</span>
-                       </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Description and Checklists */}
-                <div className="space-y-10 pl-0 md:pl-10">
-                   <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-2.5 text-zinc-900 font-bold"><AlignLeft className="w-5 h-5 text-zinc-500" /><h3>Description</h3></div>
-                         <Button variant="ghost" size="sm" onClick={() => setIsEditingDesc(!isEditingDesc)} className="text-xs font-normal">{isEditingDesc ? 'Cancel' : 'Edit'}</Button>
-                      </div>
-                      {isEditingDesc ? (
-                        <div className="space-y-0 relative border-2 border-black rounded-2xl overflow-hidden shadow-xl animate-in fade-in zoom-in-95">
-                           <Toolbar onSave={() => { handleUpdateTask(task._id, { description: tempDesc }); setIsEditingDesc(false); }} onCancel={() => { setIsEditingDesc(false); setTempDesc(task.description || ''); }} />
-                           <Textarea ref={descRef} value={tempDesc} onChange={e=>handleTextChange(e.target.value, 'desc')} className="min-h-[200px] border-0 focus-visible:ring-0 text-[14px] p-6 leading-relaxed" />
-                           {activeInput === 'desc' && <MentionList />}
-                        </div>
-                      ) : (
-                        <div className="bg-zinc-50/50 p-6 rounded-[2rem] text-[15px] text-zinc-700 leading-relaxed"><MarkdownRenderer content={task.description || '*No description provided node-wide.*'} /></div>
-                      )}
-                   </div>
-
-                   <div className="space-y-12 mb-12">
-                      {task.checklists?.map(checklist => (
-                         <div key={checklist._id} className="space-y-6">
-                            <ChecklistHeader 
-                               checklist={checklist} 
-                               handleRenameChecklist={handleRenameChecklist} 
-                               handleRemoveChecklist={handleRemoveChecklist} 
-                            />
-                            <ChecklistItemSection 
-                               checklist={checklist}
-                               boardData={boardData}
-                               task={task}
-                               onChecklistItemUpdate={onChecklistItemUpdate}
-                               onChecklistItemToggle={onChecklistItemToggle}
-                               handleAddSubTask={handleAddSubTask}
-                               onRefresh={onRefresh}
-                               handleAddChecklistItem={handleAddChecklistItem}
-                            />
                          </div>
-                      ))}
+                      </div>
+                   </div>
+ 
+                   <div className="space-y-3">
+                      <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Labels</h4>
+                       <div className="flex flex-wrap gap-2 items-center">
+                          {task.labels?.map((l, i) => <Badge key={i} style={{ backgroundColor: l.color }} className="text-white border-none rounded-lg h-8 px-4 text-[10px] font-normal uppercase shadow-sm">{l.text}</Badge>)}
+                           <div className="relative">
+                              <button data-label-toggle onClick={() => setIsLabelPickerOpen(!isLabelPickerOpen)} className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400"><Plus className="w-4 h-4" /></button>
+                              {isLabelPickerOpen && (
+                                 <div ref={labelPickerRef} className="absolute top-10 left-0 w-[240px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 space-y-4">
+                                    <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                       {[ {t:'Done', c:'#51cc9e'}, {t:'Under QC', c:'#f1d643'}, {t:'Waiting for requirement', c:'#ff9f1a'}, {t:'Not yet started', c:'#f87171'}, {t:'On hold', c:'#c084fc'}, {t:'In process', c:'#60a5fa'} ].map((opt, i) => {
+                                          const isLabeled = task.labels?.some(l => l.text === opt.t);
+                                          return (
+                                             <div key={i} onClick={() => handleUpdateLabels({ text: opt.t, color: opt.c })} className="flex items-center gap-3 p-1.5 hover:bg-zinc-50 rounded-xl cursor-pointer group">
+                                                <div className={cn("w-4 h-4 rounded border flex items-center justify-center", isLabeled ? "bg-zinc-900 border-zinc-900" : "bg-white border-zinc-200")}>{isLabeled && <Check className="w-2.5 h-2.5 text-[#fffe01]" />}</div>
+                                                <div className="w-2.5 h-8 rounded-md" style={{ backgroundColor: opt.c }}></div>
+                                                <span className={cn("text-[11px] uppercase flex-1", isLabeled ? "text-zinc-900" : "text-zinc-500")}>{opt.t}</span>
+                                             </div>
+                                          );
+                                       })}
+                                    </div>
+                                 </div>
+                              )}
+                           </div>
+                       </div>
+                   </div>
+ 
+                   {task.deadline && (
+                     <div className="space-y-3">
+                        <h4 className="text-[10px] font-normal uppercase tracking-widest text-zinc-400">Projected Date</h4>
+                        <div onClick={() => setIsDatePickerOpen(true)} className={cn("flex items-center gap-3 px-4 py-1.5 rounded-xl border-2 cursor-pointer shadow-sm", isOverdue(task.deadline) ? "bg-red-50 border-red-200 text-red-700" : isDueSoon(task.deadline) ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-zinc-50 border-zinc-200 text-zinc-700")}>
+                           <Clock className="w-4 h-4" />
+                           <span className="text-[13px]">{format(new Date(task.deadline), 'MMM d, yyyy, h:mm a')}</span>
+                        </div>
+                     </div>
+                   )}
+                 </div>
+ 
+                 {/* Description and Checklists */}
+                 <div className="space-y-10 pl-0 md:pl-10">
+                    <div className="space-y-4">
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5 text-zinc-900 font-bold"><AlignLeft className="w-5 h-5 text-zinc-500" /><h3>Description</h3></div>
+                          <Button variant="ghost" size="sm" onClick={() => setIsEditingDesc(!isEditingDesc)} className="text-xs font-normal">{isEditingDesc ? 'Cancel' : 'Edit'}</Button>
+                       </div>
+                       {isEditingDesc ? (
+                         <div className="space-y-0 relative border-2 border-black rounded-2xl overflow-hidden shadow-xl animate-in fade-in zoom-in-95">
+                            <Toolbar onSave={() => { handleUpdateTask(task._id, { description: tempDesc }); setIsEditingDesc(false); }} onCancel={() => { setIsEditingDesc(false); setTempDesc(task.description || ''); }} />
+                            <Textarea ref={descRef} value={tempDesc} onChange={e=>handleTextChange(e.target.value, 'desc')} className="min-h-[200px] border-0 focus-visible:ring-0 text-[14px] p-6 leading-relaxed" />
+                            {activeInput === 'desc' && <MentionList />}
+                         </div>
+                       ) : (
+                         <div className="bg-zinc-50/50 p-6 rounded-[2rem] text-[15px] text-zinc-700 leading-relaxed"><MarkdownRenderer content={task.description || '*No description provided node-wide.*'} /></div>
+                       )}
+                    </div>
+ 
+                    <div className="space-y-12 mb-12">
+                       {task.checklists?.map(checklist => (
+                          <div key={checklist._id} className="space-y-6">
+                             <ChecklistHeader 
+                                checklist={checklist} 
+                                handleRenameChecklist={handleRenameChecklist} 
+                                handleRemoveChecklist={handleRemoveChecklist} 
+                             />
+                             <ChecklistItemSection 
+                                checklist={checklist}
+                                boardData={boardData}
+                                task={task}
+                                onChecklistItemUpdate={onChecklistItemUpdate}
+                                onChecklistItemToggle={onChecklistItemToggle}
+                                handleAddSubTask={handleAddSubTask}
+                                handleAddToTracker={handleAddToTracker}
+                                onRefresh={onRefresh}
+                                handleAddChecklistItem={handleAddChecklistItem}
+                             />
+                          </div>
+                       ))}
+                    </div>
+                 </div>
+             </div>
+ 
+             <div className="w-full md:w-[400px] bg-slate-50/50 p-6 md:p-8 flex flex-col border-t md:border-t-0 md:border-l relative overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between mb-8"><div className="flex items-center gap-2.5 font-bold"><MessageSquare className="w-5 h-5 text-zinc-500" /><h3>Activity</h3>{comments.length > 0 && <span className="text-[11px] bg-zinc-200 px-1.5 py-0.5 rounded">{comments.length}</span>}</div><Button variant="ghost" onClick={() => setShowActivityDetails(!showActivityDetails)} className="text-[13px] font-black">{showActivityDetails ? 'Hide details' : 'Show details'}</Button></div>
+                <div className="relative mb-10">
+                   <div className="bg-white border-2 border-zinc-100 rounded-xl overflow-hidden transition-all shadow-sm">
+                      <Toolbar onSave={() => { if(commentText.trim()){ handleAddComment(task._id, commentText); setCommentText(''); } }} onCancel={() => setCommentText('')} showActions={commentText.length > 0} />
+                      <Textarea ref={commentRef} placeholder="Write a comment..." value={commentText} onChange={e=>handleTextChange(e.target.value, 'comment')} className="w-full border-0 rounded-none p-4 text-[14px] focus-visible:ring-0 min-h-[60px]" />
+                      {activeInput === 'comment' && <MentionList />}
                    </div>
                 </div>
-            </div>
-
-            <div className="w-full md:w-[400px] bg-slate-50/50 p-6 md:p-8 flex flex-col border-t md:border-t-0 md:border-l relative overflow-y-auto custom-scrollbar">
-               <div className="flex items-center justify-between mb-8"><div className="flex items-center gap-2.5 font-bold"><MessageSquare className="w-5 h-5 text-zinc-500" /><h3>Activity</h3>{comments.length > 0 && <span className="text-[11px] bg-zinc-200 px-1.5 py-0.5 rounded">{comments.length}</span>}</div><Button variant="ghost" onClick={() => setShowActivityDetails(!showActivityDetails)} className="text-[13px] font-black">{showActivityDetails ? 'Hide details' : 'Show details'}</Button></div>
-               <div className="relative mb-10">
-                  <div className="bg-white border-2 border-zinc-100 rounded-xl overflow-hidden transition-all shadow-sm">
-                     <Toolbar onSave={() => { if(commentText.trim()){ handleAddComment(task._id, commentText); setCommentText(''); } }} onCancel={() => setCommentText('')} showActions={commentText.length > 0} />
-                     <Textarea ref={commentRef} placeholder="Write a comment..." value={commentText} onChange={e=>handleTextChange(e.target.value, 'comment')} className="w-full border-0 rounded-none p-4 text-[14px] focus-visible:ring-0 min-h-[60px]" />
-                     {activeInput === 'comment' && <MentionList />}
-                  </div>
-               </div>
-               <div className="flex-1 space-y-6">
-                  {[...comments.map(c=>({...c, type:'comment'})), ...(showActivityDetails ? history.map(h=>({...h, type:'history'})) : [])].sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt)).map((item, i) => (
-                      <div key={item._id || i} className="flex gap-4">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-zinc-900 text-[#fffe01]">{(item.user.name || 'A').charAt(0)}</div>
-                        <div className="flex-1 space-y-2 min-w-0">
-                           <div className="flex items-center justify-between text-[14px]">
-                               <div className="flex flex-wrap gap-1.5 items-center"><span className="font-bold">{item.user.name}</span>{item.type === 'history' && <span className="text-zinc-500">{item.action.toLowerCase().replace('_',' ')} <MarkdownRenderer content={item.details || ''} /></span>}<span className="text-[10px] text-zinc-300 uppercase">{getTimeAgo(item.createdAt)}</span></div>
-                               {item.type === 'comment' && (item.user._id === currentUser?._id || currentUser?.role === 'admin') && !editingCommentId && (
-                                  <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCommentId(item._id); setEditCommentText(item.text); }}><Edit2 className="w-3 h-3" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setCommentToDelete(item._id); setIsDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3" /></Button></div>
-                               )}
-                           </div>
-                           {item.type === 'comment' && (editingCommentId === item._id ? (
-                             <div className="border border-black rounded-lg overflow-hidden mt-2 scale-in-center">
-                                <Toolbar onSave={() => { handleUpdateComment(item._id, editCommentText); setEditingCommentId(null); }} onCancel={() => setEditingCommentId(null)} />
-                                <Textarea ref={editCommentRef} autoFocus value={editCommentText} onChange={(e) => handleTextChange(e.target.value, 'editComment')} className="w-full border-0 p-4 text-[14px] focus-visible:ring-0 min-h-[80px]" />
-                                {activeInput === 'editComment' && <MentionList />}
-                             </div>
-                           ) : <div className="bg-white px-4 py-3 rounded-2xl text-[14px] shadow-sm border leading-relaxed"><MarkdownRenderer content={item.text} /></div>)}
-                        </div>
-                      </div>
-                  ))}
-               </div>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-    <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} onConfirm={() => { if(commentToDelete) { handleDeleteComment(commentToDelete); setCommentToDelete(null); } }} title="Delete Comment?" description="This action will remove the comment permanently node-wide." />
-    </>
-  );
-};
-
-export default TaskDetailsModal;
+                <div className="flex-1 space-y-6">
+                   {[...comments.map(c=>({...c, type:'comment'})), ...(showActivityDetails ? history.map(h=>({...h, type:'history'})) : [])].sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt)).map((item, i) => (
+                       <div key={item._id || i} className="flex gap-4">
+                         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-zinc-900 text-[#fffe01]">{(item.user.name || 'A').charAt(0)}</div>
+                         <div className="flex-1 space-y-2 min-w-0">
+                            <div className="flex items-center justify-between text-[14px]">
+                                <div className="flex flex-wrap gap-1.5 items-center"><span className="font-bold">{item.user.name}</span>{item.type === 'history' && <span className="text-zinc-500">{item.action.toLowerCase().replace('_',' ')} <MarkdownRenderer content={item.details || ''} /></span>}<span className="text-[10px] text-zinc-300 uppercase">{getTimeAgo(item.createdAt)}</span></div>
+                                {item.type === 'comment' && (item.user._id === currentUser?._id || currentUser?.role === 'admin') && !editingCommentId && (
+                                   <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingCommentId(item._id); setEditCommentText(item.text); }}><Edit2 className="w-3 h-3" /></Button><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setCommentToDelete(item._id); setIsDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3" /></Button></div>
+                                )}
+                            </div>
+                            {item.type === 'comment' && (editingCommentId === item._id ? (
+                              <div className="border border-black rounded-lg overflow-hidden mt-2 scale-in-center">
+                                 <Toolbar onSave={() => { handleUpdateComment(item._id, editCommentText); setEditingCommentId(null); }} onCancel={() => setEditingCommentId(null)} />
+                                 <Textarea ref={editCommentRef} autoFocus value={editCommentText} onChange={(e) => handleTextChange(e.target.value, 'editComment')} className="w-full border-0 p-4 text-[14px] focus-visible:ring-0 min-h-[80px]" />
+                                 {activeInput === 'editComment' && <MentionList />}
+                              </div>
+                            ) : <div className="bg-white px-4 py-3 rounded-2xl text-[14px] shadow-sm border leading-relaxed"><MarkdownRenderer content={item.text} /></div>)}
+                         </div>
+                       </div>
+                   ))}
+                </div>
+             </div>
+           </div>
+         </div>
+       </DialogContent>
+     </Dialog>
+     <ConfirmDialog isOpen={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} onConfirm={() => { if(commentToDelete) { handleDeleteComment(commentToDelete); setCommentToDelete(null); } }} title="Delete Comment?" description="This action will remove the comment permanently node-wide." />
+     </>
+   );
+ };
+ 
+ export default TaskDetailsModal;

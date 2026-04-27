@@ -47,7 +47,7 @@ const PerformanceHistory = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const token = sessionStorage.getItem('token');
+        const token = localStorage.getItem('token');
         const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/scores/history`, {
           headers: { 'x-auth-token': token }
         });

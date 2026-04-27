@@ -34,7 +34,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
         fetchNotifUnread();
       }
       
-      const currentUserId = sessionStorage.getItem('userId') || (user?.id);
+      const currentUserId = localStorage.getItem('userId') || (user?.id);
       if (data.userId === currentUserId) {
         toast({
           title: "New Alert",
@@ -64,7 +64,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
 
   const fetchNotifUnread = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       if (!token) return;
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/unread-count`, {
         headers: { 'x-auth-token': token }
@@ -78,7 +78,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
   const fetchNotifications = async () => {
     setNotifLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications`, {
         headers: { 'x-auth-token': token }
       });
@@ -92,7 +92,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
 
   const handleMarkAsRead = async (id) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/${id}/read`, {}, {
         headers: { 'x-auth-token': token }
       });
@@ -110,7 +110,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
   const confirmDeleteAction = async () => {
     const { id, isUnread } = confirmDelete;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/notifications/${id}`, {
         headers: { 'x-auth-token': token }
       });
@@ -126,7 +126,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
 
   const handleMarkAllRead = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/read-all`, {}, {
         headers: { 'x-auth-token': token }
       });
@@ -144,7 +144,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
 
   const fetchUnreadCount = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/unread-count`, {
         headers: { 'x-auth-token': token }
       });
@@ -155,7 +155,7 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('token');
+    localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
   };

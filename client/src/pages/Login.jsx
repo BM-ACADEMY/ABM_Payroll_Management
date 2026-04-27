@@ -54,9 +54,9 @@ const Login = () => {
       
       login(authenticatedUser);
       
-      const redirectUrl = sessionStorage.getItem('redirectUrl');
+      const redirectUrl = localStorage.getItem('redirectUrl');
       if (redirectUrl) {
-         sessionStorage.removeItem('redirectUrl');
+         localStorage.removeItem('redirectUrl');
          navigate(redirectUrl);
       } else {
          // Subadmin also gets the admin overview as home if they are management

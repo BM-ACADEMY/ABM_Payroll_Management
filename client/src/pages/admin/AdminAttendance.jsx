@@ -50,7 +50,7 @@ const AdminAttendance = () => {
   const fetchAttendance = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/attendance/admin/all?date=${date}&page=${page}&limit=10`, {
         headers: { 'x-auth-token': token }
       });
@@ -89,7 +89,7 @@ const AdminAttendance = () => {
 
     setEmergencyLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/admin/emergency`, {
         ...emergencyData,
         date

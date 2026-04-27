@@ -70,7 +70,7 @@ const AdminPayrollReport = () => {
   const fetchEmployees = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?page=${page}&limit=5&name=${searchTerm}`, {
         headers: { 'x-auth-token': token }
       });
@@ -109,7 +109,7 @@ const AdminPayrollReport = () => {
     e.preventDefault();
     setGeneratingLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/payroll/generate/${selectedEmployee._id}?startDate=${startDate}&endDate=${endDate}`,
         { headers: { 'x-auth-token': token } }

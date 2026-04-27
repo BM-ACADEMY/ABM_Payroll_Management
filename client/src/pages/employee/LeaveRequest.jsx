@@ -56,7 +56,7 @@ const LeaveRequest = () => {
   const fetchMyRequests = async (page = 1) => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       // We explicitly pass type=leave to the backend to get correct pagination for leaves only
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/requests/my-requests?page=${page}&limit=5&type=leave`, {
         headers: { 'x-auth-token': token }
@@ -84,7 +84,7 @@ const LeaveRequest = () => {
 
     setFormLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.post(`${import.meta.env.VITE_API_URL}/api/requests`, {
         type: 'leave',
         date: leaveDate,
@@ -116,7 +116,7 @@ const LeaveRequest = () => {
   const confirmDeleteAction = async () => {
     const { id } = confirmDelete;
     try {
-      const token = sessionStorage.getItem('token');
+      const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/requests/${id}`, {
         headers: { 'x-auth-token': token }
       });
