@@ -38,6 +38,7 @@ const TimeHistory = () => {
   const [showMentions, setShowMentions] = useState(null); // logId of current active mention
   const [mentionSearch, setMentionSearch] = useState('');
   const [cursorPos, setCursorPos] = useState(0);
+  const [editingLabelId, setEditingLabelId] = useState(null);
   const { toast } = useToast();
 
   const fetchLogs = async (page = 1) => {
@@ -170,6 +171,19 @@ const TimeHistory = () => {
       toast({ title: "Added", description: "Comment added successfully" });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to add comment" });
+    }
+  };
+
+  const handleUpdateLabel = async (id, label) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/status/${id}`, { label }, {
+        headers: { 'x-auth-token': token }
+      });
+      setLogs(prev => prev.map(log => log._id === id ? res.data : log));
+      toast({ title: "Updated", description: "Status label updated successfully" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to update status label" });
     }
   };
 
@@ -352,15 +366,37 @@ const TimeHistory = () => {
                               </span>
                             </TableCell>
                             <TableCell className="p-4 text-center">
-                              <Badge variant="outline" className={`px-2 py-0.5 text-[10px] font-normal border-slate-200 ${
-                                  log.label === 'not yet started' ? 'bg-slate-100 text-slate-500' :
-                                  log.label === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
-                                  log.label === 'holded' ? 'bg-red-50 text-red-600 border-red-100' :
-                                  log.label === 'qc' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                  'bg-yellow-50 text-yellow-600 border-yellow-100'
-                                }`}>
-                                {log.label || log.status}
-                              </Badge>
+                              {editingLabelId === log._id ? (
+                                <select 
+                                  autoFocus
+                                  value={log.label || 'pending'}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    handleUpdateLabel(log._id, e.target.value);
+                                    setEditingLabelId(null);
+                                  }}
+                                  onBlur={() => setEditingLabelId(null)}
+                                  className="text-[10px] bg-white border border-slate-200 rounded px-1 h-6 outline-none animate-in fade-in zoom-in-95 duration-200"
+                                >
+                                  {['not yet started', 'pending', 'qc', 'requirement needed', 'in process', 'done', 'holded'].map(opt => (
+                                    <option key={opt} value={opt}>{opt.toUpperCase()}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <Badge 
+                                  variant="outline" 
+                                  onClick={(e) => { e.stopPropagation(); setEditingLabelId(log._id); }}
+                                  className={`px-2 py-0.5 text-[10px] font-normal border-slate-200 cursor-pointer hover:border-slate-400 transition-colors ${
+                                    log.label === 'not yet started' ? 'bg-slate-100 text-slate-500' :
+                                    log.label === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
+                                    log.label === 'holded' ? 'bg-red-50 text-red-600 border-red-100' :
+                                    log.label === 'qc' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                    'bg-yellow-50 text-yellow-600 border-yellow-100'
+                                  }`}
+                                >
+                                  {log.label || log.status}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="p-4 text-right pr-6">
                               <Button 
