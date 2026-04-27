@@ -270,6 +270,39 @@ exports.stopTimeTracking = async (req, res) => {
   }
 };
 
+exports.restartTimeTracking = async (req, res) => {
+  try {
+    let timeLog = await TimeLog.findById(req.params.id);
+    if (!timeLog) return res.status(404).json({ msg: 'Time log not found' });
+    if (timeLog.user.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
+
+    if (timeLog.status === 'completed') {
+        const now = new Date();
+        timeLog.status = 'paused';
+        timeLog.endTime = null;
+        
+        timeLog.pauses.push({
+            pauseStart: now,
+            label: timeLog.label || 'in process'
+        });
+
+        timeLog.activityLog.push({
+            type: 'pause',
+            startTime: now,
+            label: timeLog.label || 'in process'
+        });
+
+        await timeLog.save();
+    }
+
+    if (req.io) req.io.emit('time_log_updated', timeLog);
+    res.json(timeLog);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 exports.addComment = async (req, res) => {
   try {
     const { text } = req.body;

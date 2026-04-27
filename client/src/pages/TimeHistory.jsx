@@ -39,7 +39,25 @@ const TimeHistory = () => {
   const [mentionSearch, setMentionSearch] = useState('');
   const [cursorPos, setCursorPos] = useState(0);
   const [editingLabelId, setEditingLabelId] = useState(null);
+  const [userId, setUserId] = useState(localStorage.getItem('userId'));
   const { toast } = useToast();
+
+  const handleEditLog = async (log) => {
+    try {
+        if (log.status === 'completed') {
+            const token = localStorage.getItem('token');
+            await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/restart/${log._id}`, {}, {
+                headers: { 'x-auth-token': token }
+            });
+            toast({ title: "Task Resumed", description: "Log moved back to tracker in paused state." });
+        }
+        // In all cases (running, paused, or just restarted), open the tracker
+        window.dispatchEvent(new CustomEvent('open-task-tracker'));
+    } catch (err) {
+        console.error(err);
+        toast({ variant: "destructive", title: "Action Failed", description: "Could not resume the task." });
+    }
+  };
 
   const fetchLogs = async (page = 1) => {
     setLoading(true);
@@ -399,18 +417,33 @@ const TimeHistory = () => {
                               )}
                             </TableCell>
                             <TableCell className="p-4 text-right pr-6">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  setLogToDelete(log._id); 
-                                  setIsLogDeleteDialogOpen(true); 
-                                }}
-                                className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+                              <div className="flex justify-end gap-1">
+                                {((log.user?._id || log.user) === userId) && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      handleEditLog(log);
+                                    }}
+                                    className="h-8 w-8 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 transition-colors"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setLogToDelete(log._id); 
+                                    setIsLogDeleteDialogOpen(true); 
+                                  }}
+                                  className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
 

@@ -62,6 +62,11 @@ function AppContent() {
       subscribeToPush();
     }
   }, [user]);
+  useEffect(() => {
+    const handleOpenTracker = () => setIsTrackerOpen(true);
+    window.addEventListener('open-task-tracker', handleOpenTracker);
+    return () => window.removeEventListener('open-task-tracker', handleOpenTracker);
+  }, []);
 
   const handleSetUser = (u) => {
     setUser(u);
