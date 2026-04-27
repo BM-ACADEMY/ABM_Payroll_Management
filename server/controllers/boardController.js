@@ -240,7 +240,7 @@ exports.getBoardsByTeam = async (req, res) => {
     // Filter out special tactical boards from the general project list
     query.type = { $nin: ['daily', 'weekly'] };
     
-    const boards = await Board.find(query).populate('team', 'name').lean();
+    const boards = await Board.find(query).populate('team', 'name').sort('position').lean();
     
     // Aggregation for progress tracking
     const boardsWithStats = await Promise.all(boards.map(async (board) => {
@@ -1183,5 +1183,47 @@ exports.markMentionsAsRead = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error');
+  }
+};
+
+exports.reorderBoards = async (req, res) => {
+  const { boards } = req.body; // Array of { _id, position }
+  try {
+    const promises = boards.map(b => 
+      Board.findByIdAndUpdate(b._id, { position: b.position })
+    );
+    await Promise.all(promises);
+    res.json({ msg: 'Boards reordered successfully' });
+  } catch (err) {
+    console.error('Reorder Boards Error:', err);
+    res.status(500).json({ msg: 'Server Error' });
+  }
+};
+exports.reorderTasks = async (req, res) => {
+  const { tasks } = req.body; // Array of { _id, position, list, board }
+  try {
+    const promises = tasks.map(t => {
+      const updateData = { position: t.position };
+      if (t.list) updateData.list = t.list;
+      if (t.board) updateData.board = t.board;
+      return Task.findByIdAndUpdate(t._id, { $set: updateData });
+    });
+    await Promise.all(promises);
+    
+    // Emit board update for real-time sync across clients
+    if (req.io && tasks.length > 0) {
+      const sampleTask = await Task.findById(tasks[0]._id);
+      if (sampleTask) {
+        req.io.to(sampleTask.board.toString()).emit('board_updated', { 
+          type: 'TASKS_REORDERED', 
+          boardId: sampleTask.board 
+        });
+      }
+    }
+    
+    res.json({ msg: 'Tasks reordered successfully' });
+  } catch (err) {
+    console.error('Reorder Tasks Error:', err);
+    res.status(500).json({ msg: 'Server Error' });
   }
 };

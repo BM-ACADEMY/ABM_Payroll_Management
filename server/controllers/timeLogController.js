@@ -5,10 +5,44 @@ const Task = require('../models/Task');
 const { processMentions } = require('../utils/mentionHelper');
 const emailService = require('../services/emailService');
 
+// Helper to pause any active task for a user
+const autoPauseActiveTask = async (userId, io) => {
+  const activeLog = await TimeLog.findOne({ user: userId, status: 'running' });
+  if (activeLog) {
+    const now = new Date();
+    activeLog.status = 'paused';
+    activeLog.pauses.push({ 
+      pauseStart: now,
+      label: activeLog.label
+    });
+
+    // Handle activityLog: Close last 'play'
+    const lastActivity = activeLog.activityLog[activeLog.activityLog.length - 1];
+    if (lastActivity && lastActivity.type === 'play' && !lastActivity.endTime) {
+      lastActivity.endTime = now;
+      lastActivity.duration = Math.floor((now - new Date(lastActivity.startTime)) / 1000);
+    }
+
+    // Refresh duration
+    const startTime = new Date(activeLog.startTime);
+    let totalPauseDuration = 0;
+    activeLog.pauses.forEach(p => {
+      if (p.pauseEnd) {
+        totalPauseDuration += (new Date(p.pauseEnd) - new Date(p.pauseStart));
+      }
+    });
+    activeLog.duration = Math.floor((now - startTime - totalPauseDuration) / 1000);
+
+    await activeLog.save();
+    if (io) io.emit('time_log_updated', activeLog);
+  }
+};
+
 exports.startTimeTracking = async (req, res) => {
   const { taskName } = req.body;
   try {
-    // Multiple tasks are allowed simultaneously
+    // Only one task can run at a time - auto-pause previous
+    await autoPauseActiveTask(req.user.id, req.io);
 
     const newTimeLog = new TimeLog({
       user: req.user.id,
@@ -154,6 +188,9 @@ exports.resumeTimeTracking = async (req, res) => {
     if (!['paused', 'pending'].includes(timeLog.status)) {
        return res.status(400).json({ msg: 'Task cannot be started' });
     }
+
+    // Ensure only one task runs at a time
+    await autoPauseActiveTask(req.user.id, req.io);
 
     const wasPending = timeLog.status === 'pending';
     const now = new Date();

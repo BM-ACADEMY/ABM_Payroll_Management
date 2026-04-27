@@ -160,12 +160,37 @@ const SubTaskItem = ({
     );
   };
 
+  const getDueDateStyles = (d, completed) => {
+    if (!d) return 'bg-slate-200 text-slate-600';
+    if (completed) return 'bg-zinc-100 text-zinc-400 border-zinc-200';
+    
+    const now = new Date();
+    const due = new Date(d);
+    
+    if (isNaN(due.getTime())) return 'bg-zinc-100 text-zinc-500';
+
+    // Using a 1-minute grace period to avoid micro-second flickering
+    const isOverdue = due < new Date(now.getTime() - 1000); 
+    
+    if (isOverdue) {
+      return 'bg-red-600 text-white border-red-700 shadow-sm font-bold';
+    }
+    
+    const diffHours = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    if (diffHours <= 24) {
+      return 'bg-yellow-400 text-black border-yellow-500 shadow-sm font-bold';
+    }
+    
+    return 'bg-blue-600 text-white border-blue-700 shadow-sm font-bold';
+  };
+
   if (isChecklist) {
     return (
       <div className="group flex items-start gap-4 p-2.5 hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 rounded-lg">
         <div 
           onClick={() => onToggleCompletion(task._id, task.isCompleted)}
-          className={`mt-1.5 w-4.5 h-4.5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 \${task.isCompleted ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-200 bg-white'}`}
+          className={`mt-1.5 w-4.5 h-4.5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 ${task.isCompleted ? 'bg-slate-900 border-slate-900 text-white' : 'border-slate-200 bg-white'}`}
         >
           {task.isCompleted && <Check className="w-3 h-3" />}
         </div>
@@ -184,7 +209,7 @@ const SubTaskItem = ({
             ) : (
               <span 
                 onDoubleClick={() => setIsEditingName(true)}
-                className={`text-sm font-normal break-words cursor-text \${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+                className={`text-sm font-normal break-words cursor-text ${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}
               >
                 {task.title || task.text}
               </span>
@@ -200,11 +225,11 @@ const SubTaskItem = ({
           
           {(dueDate || displayedAssignees.length > 0) && (
             <div className="flex flex-wrap items-center gap-2 mb-1">
-               {dueDate && (
-                  <div 
-                    onClick={() => setIsItemDatePickerOpen(true)}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] cursor-pointer transition-colors \${new Date(dueDate) < new Date() && !task.isCompleted ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                  >
+                {dueDate && (
+                   <div 
+                     onClick={() => setIsItemDatePickerOpen(true)}
+                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] cursor-pointer transition-all border font-medium ${getDueDateStyles(dueDate, task.isCompleted)}`}
+                   >
                      <Clock className="w-3 h-3" />
                      {format(new Date(dueDate), 'MMM d, yyyy, h:mm a')}
                   </div>
@@ -482,7 +507,7 @@ const SubTaskItem = ({
                   {getStatusBadge(task.timeLogLabel)}
                 </div>
                 <div className="flex items-center gap-3">
-                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-[10px] text-slate-500">
+                   <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-medium transition-all ${getDueDateStyles(dueDate, task.isCompleted)}`}>
                       <Clock className="w-3 h-3" />
                       {dueDate ? format(new Date(dueDate), 'MMM d, yyyy, h:mm a') : 'No due date'}
                    </div>

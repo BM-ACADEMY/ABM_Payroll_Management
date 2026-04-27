@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Layout, Plus, Users, ArrowRight, Kanban, Clock, Calendar, MoreVertical, Trash2, Edit, Activity, TrendingUp, AlertTriangle, CheckCircle2, Layers } from "lucide-react"
+import { Layout, Plus, Users, ArrowRight, Kanban, Clock, Calendar, MoreVertical, Trash2, Edit, Activity, TrendingUp, AlertTriangle, CheckCircle2, Layers, GripVertical } from "lucide-react"
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useToast } from "@/hooks/use-toast"
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Loader from "@/components/ui/Loader";
@@ -140,6 +141,35 @@ const KanbanBoards = () => {
     }
   };
 
+  const onDragEnd = async (result) => {
+    const { destination, source } = result;
+    if (!destination) return;
+    if (destination.droppableId !== source.droppableId) return;
+    if (destination.index === source.index) return;
+
+    const teamId = source.droppableId;
+    const teamBoards = [...(boardsByTeam[teamId] || [])];
+    const [reorderedItem] = teamBoards.splice(source.index, 1);
+    teamBoards.splice(destination.index, 0, reorderedItem);
+
+    // Optimistically update UI
+    const updatedBoards = teamBoards.map((b, index) => ({ ...b, position: index }));
+    setBoardsByTeam(prev => ({ ...prev, [teamId]: updatedBoards }));
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/reorder`, {
+        boards: updatedBoards.map((b, i) => ({ _id: b._id, position: i }))
+      }, {
+        headers: { 'x-auth-token': token }
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Sync Error", description: "Failed to save order" });
+      fetchData();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-4">
@@ -234,139 +264,163 @@ const KanbanBoards = () => {
       </header>
 
       <div className="space-y-16 pb-20">
-        <section className="space-y-8">
-          <div className="flex items-center gap-3">
-            <div className="h-5 w-1 bg-slate-300 rounded-full"></div>
-            <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-slate-400">Team Workspaces</h2>
-          </div>
-
-          {teams.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-[32px] border border-slate-100 shadow-sm">
-              <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-200">
-                <Kanban className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-normal mb-1">No Teams Found</h3>
-              <p className="text-slate-400 italic text-sm font-normal">Create a team in Management to proceed.</p>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <section className="space-y-8">
+            <div className="flex items-center gap-3">
+              <div className="h-5 w-1 bg-slate-300 rounded-full"></div>
+              <h2 className="text-[10px] font-normal uppercase tracking-[0.2em] text-slate-400">Team Workspaces</h2>
             </div>
-          ) : (
-            teams.map(team => (
-              <div key={team._id} className="space-y-6">
-                <div className="flex items-center gap-4 pl-1">
-                  <div className="bg-slate-100 p-2.5 rounded-xl">
-                    <Users className="w-5 h-5 text-slate-500" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-normal text-slate-800">{team.name}</h2>
-                    <p className="text-slate-400 text-[10px] font-normal uppercase tracking-widest">{boardsByTeam[team._id]?.length || 0} ACTIVE SYSTEMS</p>
-                  </div>
+
+            {teams.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-[32px] border border-slate-100 shadow-sm">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-200">
+                  <Kanban className="w-8 h-8" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {boardsByTeam[team._id]?.map(board => (
-                    <div key={board._id} className="relative group">
-                      <Card 
-                        className="h-full border border-slate-200/60 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] transition-all cursor-pointer rounded-[2rem] bg-white overflow-hidden group/card flex flex-col hover:-translate-y-1 duration-300"
-                        onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban/${board._id}`)}
-                      >
-                        <CardHeader className="pb-4 pt-6 px-6">
-                          <div className="flex items-center justify-between mb-4">
-                             <Badge variant="outline" className={`text-[8px] font-normal tracking-widest border-slate-100 uppercase py-0 ${board.status === 'Active' ? 'text-blue-500 bg-blue-50' : 'text-slate-400 bg-slate-50'}`}>
-                               {board.status || 'Active'}
-                             </Badge>
-                             {board.stats?.blocked > 0 && (
-                               <Badge className="bg-red-50 text-red-500 hover:bg-red-100 border-none text-[8px] font-normal flex items-center gap-1 py-0">
-                                 <AlertTriangle className="w-3 h-3" /> {board.stats.blocked} BLOCKED
-                               </Badge>
-                             )}
-                          </div>
-                          <CardTitle className="text-xl font-normal text-slate-800 group-hover/card:text-slate-950 transition-colors tracking-tight line-clamp-1">{board.title}</CardTitle>
-                          <CardDescription className="line-clamp-2 min-h-[36px] font-normal text-slate-400 text-xs mt-1.5 leading-relaxed">{board.description || 'No description provided for this operational workspace.'}</CardDescription>
-                        </CardHeader>
-                        
-                        <CardContent className="px-6 pb-6 space-y-5 flex-1 flex flex-col justify-end">
-                          <div className="space-y-2.5">
-                            <div className="flex items-center justify-between text-[9px] font-normal uppercase tracking-widest text-slate-400">
-                                <span>Throughput</span>
-                                <span className="text-slate-900">{board.progress || 0}%</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
-                               <div 
-                                 className={`h-full rounded-full transition-all duration-700 ${board.progress === 100 ? "bg-emerald-500" : "bg-slate-900"}`} 
-                                 style={{ width: `${board.progress || 0}%` }} 
-                               />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-2">
-                             <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100/50">
-                               <div className="text-[8px] font-normal text-slate-400 uppercase tracking-tight mb-0.5">Total</div>
-                               <div className="text-xs font-normal text-slate-700">{board.stats?.total || 0}</div>
-                             </div>
-                             <div className="bg-emerald-50/50 p-2.5 rounded-xl text-center border border-emerald-100/50">
-                               <div className="text-[8px] font-normal text-emerald-600/60 uppercase tracking-tight mb-0.5">Done</div>
-                               <div className="text-xs font-normal text-emerald-600">{board.stats?.completed || 0}</div>
-                             </div>
-                             <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100/50">
-                               <div className="text-[8px] font-normal text-slate-400 uppercase tracking-tight mb-0.5">API</div>
-                               <div className="text-xs font-normal text-slate-700"><Layers className="w-2.5 h-2.5 mx-auto opacity-30" /></div>
-                             </div>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                            <div className="flex items-center gap-1.5 text-slate-400 text-[9px] font-normal uppercase tracking-tight">
-                              <Calendar className="w-3 h-3" />
-                              <span>{new Date(board.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                            </div>
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover/card:bg-slate-900 group-hover/card:text-[#fffe01] text-slate-300 transition-all border border-slate-100 group-hover/card:border-slate-900 group-hover/card:scale-110 active:scale-95">
-                              <ArrowRight className="w-4 h-4" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      {isAdmin && (
-                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 rounded-lg bg-white/90 shadow-sm hover:bg-slate-50 hover:text-slate-900 border border-slate-100"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditBoard(board);
-                            }}
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 rounded-lg bg-white/90 shadow-sm hover:bg-red-50 hover:text-red-500 border border-slate-100"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setBoardToDelete(board);
-                            }}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  <button 
-                    onClick={() => { setSelectedTeamId(team._id); setIsModalOpen(true); }}
-                    className="flex flex-col items-center justify-center gap-3 border border-dashed border-slate-200 rounded-[2rem] p-8 hover:border-slate-900 hover:bg-white transition-all group min-h-[220px] shadow-sm bg-slate-50/20"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-300 group-hover:bg-slate-900 group-hover:text-[#fffe01] transition-all shadow-sm">
-                      <Plus className="w-5 h-5" />
-                    </div>
-                    <span className="text-[10px] uppercase tracking-widest font-normal text-slate-400 group-hover:text-slate-900 transition-colors">Initialize Local Board</span>
-                  </button>
-                </div>
+                <h3 className="text-lg font-normal mb-1">No Teams Found</h3>
+                <p className="text-slate-400 italic text-sm font-normal">Create a team in Management to proceed.</p>
               </div>
-            ))
-          )}
-        </section>
+            ) : (
+              teams.map(team => (
+                <div key={team._id} className="space-y-6">
+                  <div className="flex items-center gap-4 pl-1">
+                    <div className="bg-slate-100 p-2.5 rounded-xl">
+                      <Users className="w-5 h-5 text-slate-500" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-normal text-slate-800">{team.name}</h2>
+                      <p className="text-slate-400 text-[10px] font-normal uppercase tracking-widest">{boardsByTeam[team._id]?.length || 0} ACTIVE SYSTEMS</p>
+                    </div>
+                  </div>
+
+                  <Droppable droppableId={team._id} direction="horizontal">
+                    {(provided) => (
+                      <div 
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                      >
+                        {boardsByTeam[team._id]?.map((board, index) => (
+                          <Draggable key={board._id} draggableId={board._id} index={index}>
+                            {(draggableProvided, snapshot) => (
+                              <div
+                                ref={draggableProvided.innerRef}
+                                {...draggableProvided.draggableProps}
+                                className={`relative group ${snapshot.isDragging ? 'z-[100]' : ''}`}
+                              >
+                                <Card 
+                                  className={`h-full border border-slate-200/60 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] transition-all cursor-pointer rounded-[2rem] bg-white overflow-hidden group/card flex flex-col hover:-translate-y-1 duration-300 ${snapshot.isDragging ? 'shadow-2xl border-slate-900 bg-slate-50' : ''}`}
+                                  onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban/${board._id}`)}
+                                >
+                                  <CardHeader className="pb-4 pt-6 px-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                       <div className="flex items-center gap-2">
+                                          <div {...draggableProvided.dragHandleProps} className="p-1 text-slate-300 hover:text-slate-900 cursor-grab active:cursor-grabbing transition-colors">
+                                            <GripVertical className="w-4 h-4" />
+                                          </div>
+                                          <Badge variant="outline" className={`text-[8px] font-normal tracking-widest border-slate-100 uppercase py-0 ${board.status === 'Active' ? 'text-blue-500 bg-blue-50' : 'text-slate-400 bg-slate-50'}`}>
+                                            {board.status || 'Active'}
+                                          </Badge>
+                                       </div>
+                                       {board.stats?.blocked > 0 && (
+                                         <Badge className="bg-red-50 text-red-500 hover:bg-red-100 border-none text-[8px] font-normal flex items-center gap-1 py-0">
+                                           <AlertTriangle className="w-3 h-3" /> {board.stats.blocked} BLOCKED
+                                         </Badge>
+                                       )}
+                                    </div>
+                                    <CardTitle className="text-xl font-normal text-slate-800 group-hover/card:text-slate-950 transition-colors tracking-tight line-clamp-1">{board.title}</CardTitle>
+                                    <CardDescription className="line-clamp-2 min-h-[36px] font-normal text-slate-400 text-xs mt-1.5 leading-relaxed">{board.description || 'No description provided for this operational workspace.'}</CardDescription>
+                                  </CardHeader>
+                                  
+                                  <CardContent className="px-6 pb-6 space-y-5 flex-1 flex flex-col justify-end">
+                                    <div className="space-y-2.5">
+                                      <div className="flex items-center justify-between text-[9px] font-normal uppercase tracking-widest text-slate-400">
+                                          <span>Throughput</span>
+                                          <span className="text-slate-900">{board.progress || 0}%</span>
+                                      </div>
+                                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
+                                         <div 
+                                           className={`h-full rounded-full transition-all duration-700 ${board.progress === 100 ? "bg-emerald-500" : "bg-slate-900"}`} 
+                                           style={{ width: `${board.progress || 0}%` }} 
+                                         />
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                       <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100/50">
+                                         <div className="text-[8px] font-normal text-slate-400 uppercase tracking-tight mb-0.5">Total</div>
+                                         <div className="text-xs font-normal text-slate-700">{board.stats?.total || 0}</div>
+                                       </div>
+                                       <div className="bg-emerald-50/50 p-2.5 rounded-xl text-center border border-emerald-100/50">
+                                         <div className="text-[8px] font-normal text-emerald-600/60 uppercase tracking-tight mb-0.5">Done</div>
+                                         <div className="text-xs font-normal text-emerald-600">{board.stats?.completed || 0}</div>
+                                       </div>
+                                       <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100/50">
+                                         <div className="text-[8px] font-normal text-slate-400 uppercase tracking-tight mb-0.5">API</div>
+                                         <div className="text-xs font-normal text-slate-700"><Layers className="w-2.5 h-2.5 mx-auto opacity-30" /></div>
+                                       </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                                      <div className="flex items-center gap-1.5 text-slate-400 text-[9px] font-normal uppercase tracking-tight">
+                                        <Calendar className="w-3 h-3" />
+                                        <span>{new Date(board.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                      </div>
+                                      <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover/card:bg-slate-900 group-hover/card:text-[#fffe01] text-slate-300 transition-all border border-slate-100 group-hover/card:border-slate-900 group-hover/card:scale-110 active:scale-95">
+                                        <ArrowRight className="w-4 h-4" />
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                                
+                                {isAdmin && (
+                                  <div className={`absolute top-3 right-3 transition-opacity flex gap-2 ${snapshot.isDragging ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`}>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7 rounded-lg bg-white/90 shadow-sm hover:bg-slate-50 hover:text-slate-900 border border-slate-100"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditBoard(board);
+                                      }}
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="h-7 w-7 rounded-lg bg-white/90 shadow-sm hover:bg-red-50 hover:text-red-500 border border-slate-100"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setBoardToDelete(board);
+                                      }}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        
+                        <button 
+                          onClick={() => { setSelectedTeamId(team._id); setIsModalOpen(true); }}
+                          className="flex flex-col items-center justify-center gap-3 border border-dashed border-slate-200 rounded-[2rem] p-8 hover:border-slate-900 hover:bg-white transition-all group min-h-[220px] shadow-sm bg-slate-50/20"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-300 group-hover:bg-slate-900 group-hover:text-[#fffe01] transition-all shadow-sm">
+                            <Plus className="w-5 h-5" />
+                          </div>
+                          <span className="text-[10px] uppercase tracking-widest font-normal text-slate-400 group-hover:text-slate-900 transition-colors">Initialize Local Board</span>
+                        </button>
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              ))
+            )}
+          </section>
+        </DragDropContext>
         
         {/* Shared Workspaces - External cross-team boards (Hidden for Admins as they see all team boards natively) */}
         {!isAdmin && sharedBoards.length > 0 && (

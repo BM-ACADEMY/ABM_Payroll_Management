@@ -465,17 +465,59 @@ const KanbanBoard = () => {
       return;
     }
 
-    const newTasks = Array.from(tasks);
-    const updatedTasks = newTasks.map(t => t._id === draggableId ? { ...t, list: destination.droppableId, position: destination.index } : t);
-    setTasks(updatedTasks);
+    // Task Reordering
+    const isWeekly = boardData?.type === 'weekly';
+    const destListId = destination.droppableId;
+    const sourceListId = source.droppableId;
+
+    // 1. Get tasks in destination list (excluding the one being moved if it was already there)
+    const otherTasksInDest = tasks.filter(t => {
+      const matchId = isWeekly ? (t.board?._id || t.board) : (t.list?._id || t.list);
+      return String(matchId) === String(destListId) && t._id !== draggableId && !t.parentTask;
+    }).sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    // 2. Insert moved task at destination index
+    const movedTask = tasks.find(t => t._id === draggableId);
+    if (!movedTask) return;
+
+    const newDestTasks = [...otherTasksInDest];
+    newDestTasks.splice(destination.index, 0, { 
+      ...movedTask, 
+      [isWeekly ? 'board' : 'list']: destListId, 
+      position: destination.index 
+    });
+
+    // 3. Re-assign positions for all in dest list to ensure integrity
+    const batchUpdateTasks = newDestTasks.map((t, idx) => ({
+      ...t,
+      position: idx,
+      [isWeekly ? 'board' : 'list']: destListId
+    }));
+
+    // 4. Update global task state
+    setTasks(prev => {
+      const unchanged = prev.filter(t => {
+        const matchId = isWeekly ? (t.board?._id || t.board) : (t.list?._id || t.list);
+        // Exclude tasks that are in the destination list OR the moved task itself
+        return (String(matchId) !== String(destListId) && t._id !== draggableId) || t.parentTask;
+      });
+      return [...unchanged, ...batchUpdateTasks];
+    });
 
     try {
-      const payload = boardData?.type === 'weekly' 
-        ? { board: destination.droppableId, position: destination.index }
-        : { list: destination.droppableId, position: destination.index };
-        
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${draggableId}`, payload, { headers: { 'x-auth-token': localStorage.getItem('token') } });
-    } catch (err) { fetchData(); }
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/reorder`, {
+        tasks: batchUpdateTasks.map(t => ({
+          _id: t._id,
+          position: t.position,
+          [isWeekly ? 'board' : 'list']: destListId
+        }))
+      }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+    } catch (err) {
+      console.error(err);
+      fetchData(); // Reset on error
+    }
   };
 
   const handleCreateList = async (e) => {
