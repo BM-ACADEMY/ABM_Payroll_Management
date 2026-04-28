@@ -138,12 +138,7 @@ const EmployeeDashboard = () => {
     const attendancePermissionMinutes = attendanceLogs.filter(log => {
       const logDate = parseISO(log.date);
       return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
-    }).reduce((acc, log) => {
-      let mins = log.checkIn?.permissionMinutes || 0;
-      const lunchReq = myRequests.find(r => r.type === 'lunch_delay' && r.date === log.date && r.status === 'approved');
-      if (lunchReq) mins = Math.max(0, mins - (lunchReq.duration || 0));
-      return acc + mins;
-    }, 0);
+    }).reduce((acc, log) => acc + (log.checkIn?.permissionMinutes || 0), 0);
 
     const usedPermissionMinutes = generalPermissionMinutes + attendancePermissionMinutes;
     const usedPermissionHours = usedPermissionMinutes / 60;
