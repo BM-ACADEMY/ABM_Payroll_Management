@@ -39,7 +39,10 @@ exports.getSpecialBoard = async (req, res) => {
     }
     
     if (type === 'weekly') {
-      const boards = await Board.find({ team: teamId, type: 'regular' }).populate('team', 'name').lean();
+      const boards = await Board.find({ team: teamId, type: 'regular' })
+        .populate('team', 'name')
+        .sort('position')
+        .lean();
       const boardIds = boards.map(b => b._id);
       
       const tasks = await Task.find({ 
@@ -775,7 +778,9 @@ exports.addComment = async (req, res) => {
     comment.mentions = await processMentions(text, commenter, {
       title: task?.title,
       taskId: taskId,
-      boardName: task?.board?.title
+      boardName: task?.board?.title,
+      boardId: task?.board?._id,
+      commentId: comment._id
     }, req.io);
 
     await comment.save();
@@ -805,7 +810,9 @@ exports.updateComment = async (req, res) => {
     const mentions = await processMentions(text, commenter, {
       title: task?.title,
       taskId: comment.task,
-      boardName: task?.board?.title
+      boardName: task?.board?.title,
+      boardId: task?.board?._id,
+      commentId: comment._id
     }, req.io);
 
     comment = await Comment.findByIdAndUpdate(req.params.id, { text, mentions, updatedAt: Date.now() }, { new: true });

@@ -18,6 +18,7 @@ router.get('/active', auth, timeLogController.getActiveTimeLogs);
 router.get('/user', auth, timeLogController.getTimeLogs);
 router.get('/all', [auth, isAdmin], timeLogController.getAllTimeLogs);
 router.get('/settings', auth, timeLogController.getSettings);
+router.get('/:id', auth, timeLogController.getTimeLogById);
 router.post('/paused-log', auth, timeLogController.createPausedLog);
 router.delete('/:id', auth, timeLogController.deleteTimeLog);
 

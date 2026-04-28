@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -41,6 +42,8 @@ const TimeHistory = () => {
   const [editingLabelId, setEditingLabelId] = useState(null);
   const [userId, setUserId] = useState(localStorage.getItem('userId'));
   const { toast } = useToast();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const handleEditLog = async (log) => {
     try {
@@ -123,6 +126,63 @@ const TimeHistory = () => {
     socket.on('time_log_updated', handleUpdate);
     return () => socket.off('time_log_updated');
   }, []);
+
+  // Deep linking logic
+  useEffect(() => {
+    const logId = searchParams.get('log');
+    const commentId = searchParams.get('comment');
+
+    if (logId) {
+      const handleDeepLink = async () => {
+        // 1. Check if log is already in the list
+        let targetLog = logs.find(l => l._id === logId);
+        
+        if (!targetLog) {
+          // If not in list (multi-page/filtered), fetch it specifically
+          try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/time-logs/${logId}`, {
+              headers: { 'x-auth-token': token }
+            });
+            targetLog = res.data;
+            // Prepend it to logs so it's visible
+            setLogs(prev => [targetLog, ...prev]);
+          } catch (err) {
+            console.error('Failed to fetch deep-linked log:', err);
+          }
+        }
+
+        if (targetLog) {
+          // 2. Expand the row
+          setExpandedRows(prev => new Set([...prev, logId]));
+
+          // 3. Scroll to the row
+          setTimeout(() => {
+            const rowElement = document.getElementById(`log-row-${logId}`);
+            if (rowElement) {
+              rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              rowElement.classList.add('bg-yellow-50/50', 'transition-all');
+              setTimeout(() => rowElement.classList.remove('bg-yellow-50/50'), 4000);
+            }
+
+            // 4. If commentId, scroll to the comment
+            if (commentId) {
+              setTimeout(() => {
+                const commentElement = document.getElementById(`comment-${commentId}`);
+                if (commentElement) {
+                  commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  commentElement.classList.add('ring-2', 'ring-yellow-400', 'ring-offset-2');
+                  setTimeout(() => commentElement.classList.remove('ring-2', 'ring-yellow-400', 'ring-offset-2'), 4000);
+                }
+              }, 500);
+            }
+          }, 500);
+        }
+      };
+
+      handleDeepLink();
+    }
+  }, [logs.length > 0, searchParams]);
 
   const formatDuration = (totalSeconds) => {
     if (!totalSeconds) return '00:00:00';
@@ -352,7 +412,8 @@ const TimeHistory = () => {
                       {group.items.map((log) => (
                         <Fragment key={log._id}>
                           <TableRow
-                            className={`group cursor-pointer border-slate-100 ${expandedRows.has(log._id) ? 'bg-slate-50/50' : ''}`}
+                            id={`log-row-${log._id}`}
+                            className={`group cursor-pointer border-slate-100 transition-all ${expandedRows.has(log._id) ? 'bg-slate-50/50' : ''}`}
                             onClick={() => toggleRow(log._id)}
                           >
                             <TableCell className="p-4 text-center">
@@ -490,7 +551,11 @@ const TimeHistory = () => {
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       {log.comments?.map((comment, idx) => (
-                                        <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-2 relative group-hover:border-slate-300 transition-colors">
+                                        <div 
+                                          key={comment._id || idx} 
+                                          id={`comment-${comment._id}`}
+                                          className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-2 relative group-hover:border-slate-300 transition-all"
+                                        >
                                           <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                                             <span className="text-[11px] text-slate-500">{comment.author}</span>
                                             <div className="flex items-center gap-2">

@@ -62,7 +62,7 @@ exports.createRequest = async (req, res) => {
           { expiresIn: '72h' }
         );
 
-        const apiUrl = process.env.API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.API_URL;
         const approvalUrl = `${apiUrl}/api/requests/action/${request._id}?status=approved&token=${generateToken('approved')}`;
         const rejectionUrl = `${apiUrl}/api/requests/action/${request._id}?status=rejected&token=${generateToken('rejected')}`;
 
@@ -335,7 +335,7 @@ exports.handleEmailAction = async (req, res) => {
           </div>
           <h1 style="color: #0f172a; font-size: 24px; font-weight: 800; margin-bottom: 8px;">Action Sequence Finalized</h1>
           <p style="color: #64748b; font-size: 14px; margin-bottom: 32px;">The request for <strong>${request.user.name}</strong> has been <strong>${status.toUpperCase()}</strong>.</p>
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard" style="display: block; background: #000000; color: #fffe01; text-decoration: none; padding: 16px; border-radius: 12px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;">
+          <a href="${process.env.FRONTEND_URL}/dashboard" style="display: block; background: #000000; color: #fffe01; text-decoration: none; padding: 16px; border-radius: 12px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;">
             Return to Core Panel
           </a>
         </div>

@@ -530,7 +530,7 @@ const EmployeeDashboard = () => {
              <div className="space-y-1.5 relative z-10">
                 <h4 className="text-lg font-bold text-red-500 uppercase tracking-tight">Critical Bypass</h4>
                 <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                   Edge absences (Mon-Sat) initiate <strong className="text-red-500 font-bold">Sandwich Logic</strong> automated deductions.
+                   Edge absences (Mon-Sat) initiate <strong className="text-red-500 font-bold">Sandwich Logic (Double LOP)</strong> automated deductions.
                 </p>
              </div>
           </div>

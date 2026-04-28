@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 import { 
   format, 
   startOfMonth, 
@@ -197,6 +198,8 @@ const TaskDetailsModal = ({
 
   const [isMemberPickerOpen, setIsMemberPickerOpen] = useState(false);
   const [isLabelPickerOpen, setIsLabelPickerOpen] = useState(false);
+  const location = useLocation();
+  const labelPickerRef = useRef(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isChecklistPickerOpen, setIsChecklistPickerOpen] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('Checklist');
@@ -213,7 +216,6 @@ const TaskDetailsModal = ({
   const commentRef = useRef(null);
   const editCommentRef = useRef(null);
   const memberPickerRef = useRef(null);
-  const labelPickerRef = useRef(null);
   const datePickerRef = useRef(null);
   const checklistPickerRef = useRef(null);
 
@@ -303,6 +305,29 @@ const TaskDetailsModal = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState(task?.title || '');
   useEffect(() => { setEditTitleValue(task?.title || ''); }, [task?.title]);
+
+  // Handle scroll to comment on deep link
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const commentId = searchParams.get('comment');
+    if (commentId && comments.length > 0) {
+      setTimeout(() => {
+        const commentEl = document.getElementById(`comment-${commentId}`);
+        if (commentEl) {
+          commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          commentEl.style.transition = 'all 0.5s ease-in-out';
+          commentEl.style.backgroundColor = 'rgba(255, 254, 1, 0.2)';
+          commentEl.style.borderRadius = '1rem';
+          commentEl.style.paddingLeft = '1rem';
+          commentEl.style.borderLeft = '4px solid #fffe01';
+          setTimeout(() => {
+            commentEl.style.backgroundColor = 'transparent';
+            commentEl.style.borderLeft = 'none';
+          }, 4000);
+        }
+      }, 500);
+    }
+  }, [comments, location.search]);
 
   const handleTextChange = (text, type) => {
     if (type === 'comment') setCommentText(text);
@@ -707,7 +732,7 @@ const TaskDetailsModal = ({
                 </div>
                 <div className="flex-1 space-y-6">
                    {[...comments.map(c=>({...c, type:'comment'})), ...(showActivityDetails ? history.map(h=>({...h, type:'history'})) : [])].sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt)).map((item, i) => (
-                       <div key={item._id || i} className="flex gap-4">
+                       <div key={item._id || i} id={`comment-${item._id}`} className="flex gap-4">
                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-zinc-900 text-[#fffe01]">{(item.user.name || 'A').charAt(0)}</div>
                          <div className="flex-1 space-y-2 min-w-0">
                             <div className="flex items-center justify-between text-[14px]">

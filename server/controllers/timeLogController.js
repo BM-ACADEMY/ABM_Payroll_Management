@@ -356,20 +356,25 @@ exports.addComment = async (req, res) => {
 
     const currentUser = await User.findById(req.user.id);
     
-    // Parse mentions and notify
-    const mentions = await processMentions(text, currentUser, {
-      title: timeLog.taskName,
-      taskId: timeLog._id, // Context ID
-      boardName: 'Task Tracker'
-    }, req.io);
-
-    timeLog.comments.push({
+    // Create the comment first to get its ID
+    const newCommentData = {
       text,
       author: currentUser.name,
-      mentions,
       createdAt: new Date()
-    });
+    };
+    
+    timeLog.comments.push(newCommentData);
+    const savedComment = timeLog.comments[timeLog.comments.length - 1];
 
+    // Parse mentions and notify with the comment ID
+    const mentions = await processMentions(text, currentUser, {
+      title: timeLog.taskName,
+      taskId: timeLog._id,
+      boardName: 'Task Tracker',
+      commentId: savedComment._id
+    }, req.io);
+
+    savedComment.mentions = mentions;
     await timeLog.save();
     if (req.io) req.io.emit('time_log_updated', timeLog);
     res.json(timeLog);
@@ -446,7 +451,8 @@ exports.updateComment = async (req, res) => {
     const mentions = await processMentions(text, currentUser, {
       title: timeLog.taskName,
       taskId: timeLog._id,
-      boardName: 'Task Tracker'
+      boardName: 'Task Tracker',
+      commentId: req.params.commentId
     }, req.io);
 
     timeLog.comments[commentIndex].text = text;
@@ -590,6 +596,26 @@ exports.getAllTimeLogs = async (req, res) => {
         currentPage: parseInt(page)
       }
     });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.getTimeLogById = async (req, res) => {
+  try {
+    const log = await TimeLog.findById(req.params.id).populate('user', 'name employeeId');
+    if (!log) return res.status(404).json({ msg: 'Time log not found' });
+    
+    // Authorization check: same as addComment
+    const isOwner = log.user._id.toString() === req.user.id;
+    const isAdmin = ['admin', 'subadmin'].includes(req.user.role?.name || req.user.role);
+    
+    if (!isOwner && !isAdmin) {
+        return res.status(401).json({ msg: 'Not authorized to view this log' });
+    }
+    
+    res.json(log);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

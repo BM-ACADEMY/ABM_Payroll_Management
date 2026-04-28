@@ -8,6 +8,7 @@ const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const { initScheduler } = require('./services/schedulerService');
 
 const app = express();
 const server = http.createServer(app);
@@ -62,7 +63,10 @@ app.get('/', (req, res) => res.send('API Running'));
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+server.listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`);
+    initScheduler();
+});
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);

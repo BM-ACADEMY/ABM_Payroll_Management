@@ -1,5 +1,7 @@
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const emailService = require('../services/emailService');
+const pushService = require('../services/pushService');
 
 /**
  * Parses mentions from text and sends notifications.
@@ -54,7 +56,7 @@ const processMentions = async (text, currentUser, context, io) => {
   const emailList = Array.from(emails);
   if (emailList.length === 0) return [];
 
-  const mentionedUsers = await User.find({ email: { $in: emailList } });
+  const mentionedUsers = await User.find({ email: { $in: emailList } }).populate('role', 'name');
   const mentions = mentionedUsers
     .filter(u => u._id.toString() !== currentUser.id.toString())
     .map(u => ({ user: u._id, isRead: false }));
@@ -64,6 +66,20 @@ const processMentions = async (text, currentUser, context, io) => {
     mentionedUsers.forEach(async (mUser) => {
       if (mUser._id.toString() === currentUser.id.toString()) return;
 
+      const isAdmin = ['admin', 'subadmin'].includes(mUser.role?.name);
+      const linkPrefix = isAdmin ? '/admin' : '/dashboard';
+      
+      let taskLink;
+      if (context.boardId) {
+        taskLink = `${linkPrefix}/kanban/${context.boardId.toString()}?task=${context.taskId.toString()}`;
+        if (context.commentId) taskLink += `&comment=${context.commentId.toString()}`;
+      } else if (context.boardName === 'Task Tracker' || context.boardName === 'Time Tracker') {
+        taskLink = `${linkPrefix}/time-history?log=${context.taskId.toString()}`;
+        if (context.commentId) taskLink += `&comment=${context.commentId.toString()}`;
+      } else {
+        taskLink = linkPrefix;
+      }
+
       // Socket Notification
       if (io) {
         io.emit('notification', {
@@ -72,6 +88,33 @@ const processMentions = async (text, currentUser, context, io) => {
           message: `${currentUser.name} mentioned you in ${context.title || 'a comment'}`,
           taskId: context.taskId
         });
+      }
+
+      // Persistent Database Notification
+      try {
+        const newNotif = new Notification({
+          user: mUser._id,
+          title: 'New Mention',
+          message: `${currentUser.name} mentioned you in ${context.title || 'a comment'}`,
+          type: 'info',
+          link: taskLink
+        });
+        await newNotif.save();
+      } catch (notifErr) {
+        console.error('Failed to save notification record:', notifErr.message);
+      }
+      
+      // Push Notification (for closed tabs)
+      try {
+        await pushService.sendPushNotification(mUser._id, {
+          title: 'New Mention',
+          body: `${currentUser.name} mentioned you in ${context.title || 'a comment'}`,
+          data: {
+            url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}${taskLink}`
+          }
+        });
+      } catch (pushErr) {
+        console.error('Failed to send mention push notification:', pushErr.message);
       }
 
       // Email Notification
