@@ -244,6 +244,7 @@ const AdminAttendance = () => {
                     <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Mode</TableHead>
                     <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Login / Logout</TableHead>
                     <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Break Interval</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Permission</TableHead>
                     <TableHead className="text-[10px] uppercase font-bold text-gray-400 tracking-widest text-center">Status</TableHead>
                     <TableHead className="pr-8 h-14 text-right"></TableHead>
                   </TableRow>
@@ -294,6 +295,11 @@ const AdminAttendance = () => {
                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                            {item.lunch?.out ? `${item.lunch.out} - ${item.lunch.in || 'PND'}` : '--:--'}
                          </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <Badge variant="outline" className={`font-bold text-[10px] border-none ${item.checkIn?.permissionMinutes > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}`}>
+                           {item.checkIn?.permissionMinutes || 0} min
+                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
                          {item.isHoliday ? (

@@ -51,34 +51,7 @@ exports.checkIn = async (req, res) => {
     if (currentTime > graceTimeLimit) {
       status = 'late';
       // Calculate from the exact expected login time to now
-      permissionMinutes = (currentTime - expectedLoginDate) / (1000 * 60);
-
-      // Create a permission request automatically
-      const fromDateTime = expectedLoginDate;
-      const toDateTime = currentTime;
-      
-      const totalMinutes = Math.floor(permissionMinutes);
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      const totalPermissionTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} hrs`;
-
-      const newRequest = new Request({
-        user: req.user.id,
-        type: 'late_login',
-        date: today,
-        fromDateTime,
-        toDateTime,
-        duration: totalMinutes,
-        totalPermissionTime,
-        reason: lateReason || 'Late Login',
-        status: 'pending'
-      });
-      await newRequest.save();
-
-      // Emit real-time notification
-      if (req.io) {
-        req.io.emit('new_request', { user: req.user.id });
-      }
+      permissionMinutes = Math.floor((currentTime - expectedLoginDate) / (1000 * 60));
     }
 
     attendance = new Attendance({
@@ -163,63 +136,12 @@ exports.lunchIn = async (req, res) => {
     const lunchInTime = parse(now, 'HH:mm', getISTFullDate());
     const duration = (lunchInTime - lunchOutTime) / (1000 * 60);
 
-    // Get schedule snapshot or fall back to user settings
-    const schedule = await Schedule.findOne({ user: req.user.id, date: today });
-    const lunchStartStr = schedule?.lunchStart || user.timingSettings.lunchStart || '13:30';
-    const lunchEndStr = user.timingSettings.lunchEnd || user.timingSettings.lunchEnd || '14:30';
-
-    // Calculate maxDuration from the window (lunchEnd - lunchStart)
-    const startTime = parse(lunchStartStr, 'HH:mm', getISTFullDate());
-    const endTime = parse(lunchEndStr, 'HH:mm', getISTFullDate());
-    let maxDuration = (endTime - startTime) / (1000 * 60);
-    
-    // Fallback if window is invalid or 0
-    if (isNaN(maxDuration) || maxDuration <= 0) {
-        maxDuration = schedule ? schedule.lunchDuration : (user.timingSettings.lunchDuration || 45);
-    }
-
-    const scheduleLunchStart = startTime;
-    const scheduleLunchEnd = endTime;
-
-    // Logic: Delay if (Out before Start) OR (In after End) OR (Duration over limit)
-    const isEarlyOut = lunchOutTime < scheduleLunchStart;
-    const isLateIn = lunchInTime > scheduleLunchEnd;
-    const isOverDuration = duration > maxDuration;
-
-    const isDelayOccurred = isEarlyOut || isLateIn || isOverDuration;
-
-    if (isDelayOccurred && !delayReason) {
-      let msg = 'Reason is required for lunch delay: ';
-      if (isEarlyOut) msg += `Started early (before ${lunchStartStr}). `;
-      if (isLateIn) msg += `Finished late (after ${lunchEndStr}). `;
-      if (isOverDuration) msg += `Duration exceeded (${Math.ceil(duration)}m > ${maxDuration}m). `;
-      return res.status(400).json({ msg });
-    }
-
     attendance.lunch.in = now;
-
-    if (isDelayOccurred) {
-      const extraMinutes = Math.max(0, Math.ceil(duration - maxDuration));
-      
-      // Create request for lunch delay
-      const newRequest = new Request({
-        user: req.user.id,
-        type: 'lunch_delay',
-        date: today,
-        fromDateTime: lunchOutTime,
-        toDateTime: lunchInTime,
-        duration: isOverDuration ? extraMinutes : duration, // If over duration, track extra. If just window break, track whole duration or 0? 
-        // User says "permission", usually permission is for the time taken.
-        totalPermissionTime: `${Math.floor(duration/60).toString().padStart(2, '0')}:${(Math.floor(duration)%60).toString().padStart(2, '0')} hrs`,
-        reason: delayReason || 'Lunch Delay (Boundary/Duration Violation)',
-        status: 'pending'
-      });
-      await newRequest.save();
-      
-      // If it's a duration violation but NOT a window break, we might want to deduct immediately.
-      // However, the user wants "Reason" for any delay. So we treat all as pending requests for Admin audit.
-      // But we can deduct the extraMinutes from permission balance if we want to be strict.
-      // For now, following the "Request" pattern for all delays to keep it in Audit Stream.
+    
+    // Add excess lunch time to permission minutes
+    if (duration > 60) {
+      const excessMinutes = Math.ceil(duration - 60);
+      attendance.checkIn.permissionMinutes = (attendance.checkIn.permissionMinutes || 0) + excessMinutes;
     }
 
     await attendance.save();
@@ -258,47 +180,6 @@ exports.checkOut = async (req, res) => {
       attendance.checkOut.location = req.body.location;
     }
 
-    // Early Logout Logic using Schedule Snapshot
-    const schedule = await Schedule.findOne({ user: req.user.id, date: today });
-    const lunchStartTimeStr = schedule ? schedule.lunchStart : (user.timingSettings.lunchStart || '13:30');
-    const lunchStartParts = lunchStartTimeStr.split(':');
-    const scheduledLunchStart = startOfDay(getISTFullDate());
-    scheduledLunchStart.setHours(parseInt(lunchStartParts[0]), parseInt(lunchStartParts[1]), 0);
-
-    const currentTime = getISTFullDate();
-
-    if (currentTime < scheduledLunchStart) {
-      // Logout before lunch: Permission (now to lunchStart) + Half-day leave
-      const diffInMs = scheduledLunchStart - currentTime;
-      const permissionMins = Math.ceil(diffInMs / (1000 * 60));
-
-      // 1. Permission for interval to lunch
-      const permRequest = new Request({
-        user: req.user.id,
-        type: 'early_logout_permission',
-        date: today,
-        fromDateTime: currentTime,
-        toDateTime: scheduledLunchStart,
-        duration: permissionMins,
-        totalPermissionTime: `${Math.floor(permissionMins/60).toString().padStart(2, '0')}:${(permissionMins%60).toString().padStart(2, '0')} hrs`,
-        reason: reason || 'Early Logout',
-        status: 'pending'
-      });
-      await permRequest.save();
-
-      // 2. Half-day leave for second half
-      const leaveRequest = new Request({
-        user: req.user.id,
-        type: 'leave',
-        date: today,
-        duration: 0.5,
-        reason: reason || 'Early Logout (Second Half)',
-        status: 'approved'
-      });
-      await leaveRequest.save();
-
-      attendance.checkIn.permissionMinutes = (attendance.checkIn.permissionMinutes || 0) + permissionMins;
-    }
 
     // Calculate working minutes
     const checkInTime = parse(attendance.checkIn.time, 'HH:mm', getISTFullDate());

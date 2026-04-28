@@ -50,10 +50,6 @@ const Attendance = () => {
     checkOut: null
   });
   const [userTimings, setUserTimings] = useState(null);
-  const [lateReason, setLateReason] = useState('');
-  const [showLateDialog, setShowLateDialog] = useState(false);
-  const [lunchDelayReason, setLunchDelayReason] = useState('');
-  const [showLunchDelayDialog, setShowLunchDelayDialog] = useState(false);
   const [estimatedEarnings, setEstimatedEarnings] = useState(null);
   const [activeTab, setActiveTab] = useState('terminal'); 
   const [viewMode, setViewMode] = useState('list'); 
@@ -151,22 +147,12 @@ const Attendance = () => {
 
       switch (action) {
         case 'check-in':
-          const now = new Date();
-          const checkInLimit = parse('14:30', 'HH:mm', new Date());
-          if (now > checkInLimit && !lateReason) {
-            setShowLateDialog(true);
-            setLoading(false);
-            return;
-          }
           res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/checkin`, { 
             mode: workingMode,
-            lateReason: lateReason,
             location
           }, config);
           setAttendanceState('working');
           setSessionTimes(prev => ({ ...prev, checkIn: res.data.checkIn.time }));
-          setLateReason('');
-          setShowLateDialog(false);
           fetchEstimatedEarnings();
           break;
         case 'lunch-out':
@@ -175,42 +161,9 @@ const Attendance = () => {
           setSessionTimes(prev => ({ ...prev, lunchOut: res.data.lunch.out }));
           break;
         case 'lunch-in':
-          const lunchInNow = new Date();
-          let isLunchSpecialCase = false;
-
-          if (userTimings) {
-            const lStartStr = userTimings.lunchStart || '13:30';
-            const lEndStr = userTimings.lunchEnd || '14:30';
-            const lStart = parse(lStartStr, 'HH:mm', new Date());
-            const lEnd = parse(lEndStr, 'HH:mm', new Date());
-            const lMaxDuration = (lEnd - lStart) / (1000 * 60);
-
-            let lOutTime;
-            if (sessionTimes.lunchOut) {
-               lOutTime = parse(sessionTimes.lunchOut, 'HH:mm', new Date());
-            } else {
-               // Fallback if lunchOut session time is missing (though it shouldn't be)
-               lOutTime = lStart; 
-            }
-
-            const lDuration = (lunchInNow - lOutTime) / (1000 * 60);
-
-            // Logic: started early OR finished late OR duration exceeded
-            isLunchSpecialCase = (lOutTime < lStart) || (lunchInNow > lEnd) || (lDuration > lMaxDuration);
-          }
-
-          if (isLunchSpecialCase && !lunchDelayReason) {
-            setShowLunchDelayDialog(true);
-            setLoading(false);
-            return;
-          }
-          res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/lunchin`, { 
-            delayReason: lunchDelayReason 
-          }, config);
+          res = await axios.post(`${import.meta.env.VITE_API_URL}/api/attendance/lunchin`, {}, config);
           setAttendanceState('working');
           setSessionTimes(prev => ({ ...prev, lunchIn: res.data.lunch.in }));
-          setShowLunchDelayDialog(false);
-          setLunchDelayReason('');
           fetchEstimatedEarnings();
           break;
         case 'check-out':
@@ -698,75 +651,6 @@ const Attendance = () => {
         </Card>
       )}
 
-      {/* Re-entry Dialog */}
-      <Dialog open={showLunchDelayDialog} onOpenChange={setShowLunchDelayDialog}>
-        <DialogContent className="w-[95vw] sm:max-w-md rounded-3xl p-8 bg-white border-none shadow-2xl">
-          <DialogHeader className="space-y-4">
-            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto">
-              <Coffee className="w-8 h-8 text-amber-500" />
-            </div>
-            <div className="text-center space-y-2">
-              <DialogTitle className="text-2xl font-bold">Lunch Re-entry Validation</DialogTitle>
-              <DialogDescription className="text-xs font-medium text-gray-400">
-                An extended lunch break was detected. Please provide a brief reason for the delay to resume your session.
-              </DialogDescription>
-            </div>
-          </DialogHeader>
-          <div className="space-y-6 pt-4">
-            <Textarea 
-              placeholder="Provide reason for delay..."
-              value={lunchDelayReason}
-              onChange={(e) => setLunchDelayReason(e.target.value)}
-              className="resize-none rounded-xl border-gray-100 focus:ring-[#d30614] h-32"
-            />
-            <div className="grid grid-cols-2 gap-4">
-               <Button variant="ghost" onClick={() => setShowLunchDelayDialog(false)} className="rounded-xl font-bold uppercase text-xs">Cancel</Button>
-               <Button 
-                 disabled={!lunchDelayReason.trim() || loading}
-                 onClick={() => handleAction('lunch-in')}
-                 className="rounded-xl bg-[#d30614] hover:bg-gray-900 text-white font-bold uppercase text-xs"
-               >
-                 Resume Duty
-               </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Late Entry Dialog */}
-      <Dialog open={showLateDialog} onOpenChange={setShowLateDialog}>
-        <DialogContent className="w-[95vw] sm:max-w-md rounded-3xl p-8 bg-white border-none shadow-2xl">
-          <DialogHeader className="space-y-4">
-            <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto">
-              <Clock className="w-8 h-8 text-[#d30614]" />
-            </div>
-            <div className="text-center space-y-2">
-              <DialogTitle className="text-2xl font-bold">Check-in Validation</DialogTitle>
-              <DialogDescription className="text-xs font-medium text-gray-400">
-                You are checking in after the standard commencement time. A justification is required to initialize your session.
-              </DialogDescription>
-            </div>
-          </DialogHeader>
-          <div className="space-y-6 pt-4">
-            <Textarea 
-              placeholder="Reason for late check-in..."
-              value={lateReason}
-              onChange={(e) => setLateReason(e.target.value)}
-              className="resize-none rounded-xl border-gray-100 focus:ring-[#d30614] h-32"
-            />
-            <div className="grid grid-cols-2 gap-4">
-               <Button variant="ghost" onClick={() => setShowLateDialog(false)} className="rounded-xl font-bold uppercase text-xs">Cancel</Button>
-               <Button 
-                 disabled={!lateReason.trim() || loading}
-                 onClick={() => handleAction('check-in')}
-                 className="rounded-xl bg-[#d30614] hover:bg-gray-900 text-white font-bold uppercase text-xs"
-               >
-                 Confirm Check-in
-               </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
