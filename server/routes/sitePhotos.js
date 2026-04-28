@@ -10,7 +10,7 @@ const User = require('../models/User');
 // Storage Configuration
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const dir = 'uploads/site/';
+    const dir = path.join(__dirname, '..', 'uploads', 'site');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -182,7 +182,7 @@ router.delete('/:id', auth, async (req, res) => {
     
     // Line 13: const dir = 'uploads/site/';
     // This is relative to the server root.
-    const serverFilePath = path.join(__dirname, '..', '..', photo.imageUrl);
+    const serverFilePath = path.join(__dirname, '..', photo.imageUrl);
     
     if (fs.existsSync(serverFilePath)) {
       fs.unlinkSync(serverFilePath);
