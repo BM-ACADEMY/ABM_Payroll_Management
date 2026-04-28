@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
   Camera, 
@@ -27,6 +27,10 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [showWebcam, setShowWebcam] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
   const { toast } = useToast();
 
   const fetchPhotos = async () => {
@@ -51,7 +55,7 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
   }, [user, isOpen]);
 
   const handleUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e?.target?.files?.[0] || e; // Support both event and direct file passing
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
@@ -61,51 +65,121 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
 
     setUploading(true);
     
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      
-      const now = new Date();
-      const date = now.toISOString().split('T')[0];
-      const day = now.toLocaleDateString('en-US', { weekday: 'long' });
-      const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    // Attempt to get location, but don't block upload entirely if it fails or takes too long
+    const getLocation = () => {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          resolve(null);
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos.coords),
+          () => resolve(null),
+          { timeout: 5000 }
+        );
+      });
+    };
 
-      const formData = new FormData();
-      formData.append('photo', file);
-      formData.append('date', date);
-      formData.append('day', day);
-      formData.append('time', time);
-      formData.append('lat', latitude);
-      formData.append('lng', longitude);
+    const coords = await getLocation();
+    
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/site-photos`, formData, {
-          headers: { 
-            'x-auth-token': token,
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        setPhotos(prev => [res.data, ...prev]);
-        toast({ title: "Success", description: "Photo uploaded." });
-      } catch (err) {
-        toast({ variant: "destructive", title: "Error", description: "Failed to upload photo." });
-      } finally {
-        setUploading(false);
-      }
-    }, (error) => {
-      setUploading(false);
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('date', date);
+    formData.append('day', day);
+    formData.append('time', time);
+    
+    if (coords) {
+      formData.append('lat', coords.latitude);
+      formData.append('lng', coords.longitude);
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/site-photos`, formData, {
+        headers: { 
+          'x-auth-token': token,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      setPhotos(prev => [res.data, ...prev]);
+      toast({ title: "Success", description: "Photo uploaded." });
+    } catch (err) {
+      console.error('Upload error:', err);
       toast({ 
         variant: "destructive", 
-        title: "Location Error", 
-        description: "Please enable location services to upload photos." 
+        title: "Error", 
+        description: err.response?.data?.msg || "Failed to upload photo." 
       });
-    });
+    } finally {
+      setUploading(false);
+      // Clear the input
+      const input = document.getElementById('site-photo-upload');
+      if (input) input.value = '';
+    }
   };
 
   const handlePhotoClick = (photo) => {
     setSelectedPhoto(photo);
     setIsModalOpen(true);
   };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setShowWebcam(true);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      toast({ 
+        variant: "destructive", 
+        title: "Camera Error", 
+        description: "Unable to access camera. Please check permissions." 
+      });
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowWebcam(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        const file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        handleUpload(file);
+        stopCamera();
+      }, 'image/jpeg', 0.9);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const handleDeleteClick = (e, photoId) => {
     e.stopPropagation();
@@ -160,33 +234,76 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
 
       <div className="flex flex-col flex-1 min-h-0 p-6">
         {/* Upload Section */}
-        <div className="mb-8 space-y-2">
-            <label className="text-[10px] text-slate-400 pl-1 uppercase tracking-wider">New Site Capture</label>
+        <div className="mb-8 space-y-3">
+            <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] text-slate-400 uppercase tracking-wider">New Site Capture</label>
+            </div>
+
             <div className="relative">
-                <input 
-                    type="file" 
-                    accept="image/*" 
-                    capture="environment" 
-                    onChange={handleUpload}
-                    className="hidden" 
-                    id="site-photo-upload"
-                    disabled={uploading}
-                />
-                <label 
-                    htmlFor="site-photo-upload"
-                    className={`flex flex-col items-center justify-center p-8 border border-dashed rounded-xl cursor-pointer transition-all ${uploading ? 'border-slate-200 bg-slate-50' : 'border-slate-200 hover:border-yellow-400 hover:bg-yellow-50/30'}`}
-                >
-                    {uploading ? (
-                        <Loader2 className="w-6 h-6 text-yellow-500 animate-spin" />
-                    ) : (
-                        <>
-                            <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                                <Upload className="w-5 h-5 text-slate-400" />
+                {showWebcam ? (
+                    <div className="relative rounded-2xl overflow-hidden bg-black aspect-video border-2 border-slate-200 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <video 
+                            ref={videoRef} 
+                            autoPlay 
+                            playsInline 
+                            className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3 px-4 pointer-events-auto">
+                            <button 
+                                onClick={stopCamera}
+                                className="w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full text-white transition-all flex items-center justify-center border border-white/20"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                            <button 
+                                onClick={capturePhoto}
+                                className="px-8 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-black text-xs font-black uppercase rounded-full shadow-[0_0_20px_rgba(250,204,21,0.4)] transition-all flex items-center gap-2 active:scale-95"
+                            >
+                                <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                                Capture Frame
+                            </button>
+                        </div>
+                        <canvas ref={canvasRef} className="hidden" />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        <button 
+                            onClick={startCamera}
+                            disabled={!navigator.mediaDevices}
+                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:border-yellow-400 hover:bg-yellow-50/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <Camera className="w-5 h-5 text-yellow-600" />
                             </div>
-                            <span className="text-xs font-normal text-slate-500">Tap to capture site photo</span>
-                        </>
-                    )}
-                </label>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Camera</span>
+                        </button>
+                        
+                        <label 
+                            htmlFor="site-photo-upload"
+                            className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${uploading ? 'border-slate-200 bg-slate-50' : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/30'} group`}
+                        >
+                            <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleUpload}
+                                className="hidden" 
+                                id="site-photo-upload"
+                                disabled={uploading}
+                            />
+                            {uploading ? (
+                                <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                            ) : (
+                                <>
+                                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                        <Upload className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pick Files</span>
+                                </>
+                            )}
+                        </label>
+                    </div>
+                )}
             </div>
         </div>
 
@@ -194,7 +311,7 @@ const SitePhotoSidebar = ({ isOpen, onClose, user }) => {
         <div className="flex-1 overflow-y-auto pr-1 -mr-2 space-y-4 custom-scrollbar">
           <div className="flex items-center justify-between mb-2 px-1">
             <span className="text-[10px] text-slate-400 uppercase tracking-wider">Recent Captures</span>
-            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{photos.length} photos</span>
+            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{photos.length} Total</span>
           </div>
           
           {loading ? (
