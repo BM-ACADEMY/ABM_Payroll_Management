@@ -30,6 +30,7 @@ const KanbanCard = ({ task, index, onClick }) => {
           {...provided.draggableProps} 
           {...provided.dragHandleProps} 
           ref={provided.innerRef} 
+          id={`task-card-${task._id}`}
           className="bg-white rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-1 cursor-pointer group border border-slate-200 hover:border-yellow-400 active:scale-[0.98] duration-300"
         >
           <div onClick={(e) => { e.stopPropagation(); onClick(); }} className="p-4 flex flex-col gap-3">

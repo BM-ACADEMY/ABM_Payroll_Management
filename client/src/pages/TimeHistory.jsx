@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -38,7 +39,28 @@ const TimeHistory = () => {
   const [showMentions, setShowMentions] = useState(null); // logId of current active mention
   const [mentionSearch, setMentionSearch] = useState('');
   const [cursorPos, setCursorPos] = useState(0);
+  const [editingLabelId, setEditingLabelId] = useState(null);
+  const [userId, setUserId] = useState(localStorage.getItem('userId'));
   const { toast } = useToast();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const handleEditLog = async (log) => {
+    try {
+        if (log.status === 'completed') {
+            const token = localStorage.getItem('token');
+            await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/restart/${log._id}`, {}, {
+                headers: { 'x-auth-token': token }
+            });
+            toast({ title: "Task Resumed", description: "Log moved back to tracker in paused state." });
+        }
+        // In all cases (running, paused, or just restarted), open the tracker
+        window.dispatchEvent(new CustomEvent('open-task-tracker'));
+    } catch (err) {
+        console.error(err);
+        toast({ variant: "destructive", title: "Action Failed", description: "Could not resume the task." });
+    }
+  };
 
   const fetchLogs = async (page = 1) => {
     setLoading(true);
@@ -105,6 +127,63 @@ const TimeHistory = () => {
     return () => socket.off('time_log_updated');
   }, []);
 
+  // Deep linking logic
+  useEffect(() => {
+    const logId = searchParams.get('log');
+    const commentId = searchParams.get('comment');
+
+    if (logId) {
+      const handleDeepLink = async () => {
+        // 1. Check if log is already in the list
+        let targetLog = logs.find(l => l._id === logId);
+        
+        if (!targetLog) {
+          // If not in list (multi-page/filtered), fetch it specifically
+          try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/time-logs/${logId}`, {
+              headers: { 'x-auth-token': token }
+            });
+            targetLog = res.data;
+            // Prepend it to logs so it's visible
+            setLogs(prev => [targetLog, ...prev]);
+          } catch (err) {
+            console.error('Failed to fetch deep-linked log:', err);
+          }
+        }
+
+        if (targetLog) {
+          // 2. Expand the row
+          setExpandedRows(prev => new Set([...prev, logId]));
+
+          // 3. Scroll to the row
+          setTimeout(() => {
+            const rowElement = document.getElementById(`log-row-${logId}`);
+            if (rowElement) {
+              rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              rowElement.classList.add('bg-yellow-50/50', 'transition-all');
+              setTimeout(() => rowElement.classList.remove('bg-yellow-50/50'), 4000);
+            }
+
+            // 4. If commentId, scroll to the comment
+            if (commentId) {
+              setTimeout(() => {
+                const commentElement = document.getElementById(`comment-${commentId}`);
+                if (commentElement) {
+                  commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  commentElement.classList.add('ring-2', 'ring-yellow-400', 'ring-offset-2');
+                  setTimeout(() => commentElement.classList.remove('ring-2', 'ring-yellow-400', 'ring-offset-2'), 4000);
+                }
+              }, 500);
+            }
+          }, 500);
+        }
+      };
+
+      handleDeepLink();
+    }
+  }, [logs.length > 0, searchParams]);
+
   const formatDuration = (totalSeconds) => {
     if (!totalSeconds) return '00:00:00';
     const hrs = Math.floor(totalSeconds / 3600);
@@ -170,6 +249,19 @@ const TimeHistory = () => {
       toast({ title: "Added", description: "Comment added successfully" });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to add comment" });
+    }
+  };
+
+  const handleUpdateLabel = async (id, label) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/status/${id}`, { label }, {
+        headers: { 'x-auth-token': token }
+      });
+      setLogs(prev => prev.map(log => log._id === id ? res.data : log));
+      toast({ title: "Updated", description: "Status label updated successfully" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to update status label" });
     }
   };
 
@@ -320,7 +412,8 @@ const TimeHistory = () => {
                       {group.items.map((log) => (
                         <Fragment key={log._id}>
                           <TableRow
-                            className={`group cursor-pointer border-slate-100 ${expandedRows.has(log._id) ? 'bg-slate-50/50' : ''}`}
+                            id={`log-row-${log._id}`}
+                            className={`group cursor-pointer border-slate-100 transition-all ${expandedRows.has(log._id) ? 'bg-slate-50/50' : ''}`}
                             onClick={() => toggleRow(log._id)}
                           >
                             <TableCell className="p-4 text-center">
@@ -352,29 +445,66 @@ const TimeHistory = () => {
                               </span>
                             </TableCell>
                             <TableCell className="p-4 text-center">
-                              <Badge variant="outline" className={`px-2 py-0.5 text-[10px] font-normal border-slate-200 ${
-                                  log.label === 'not yet started' ? 'bg-slate-100 text-slate-500' :
-                                  log.label === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
-                                  log.label === 'holded' ? 'bg-red-50 text-red-600 border-red-100' :
-                                  log.label === 'qc' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                  'bg-yellow-50 text-yellow-600 border-yellow-100'
-                                }`}>
-                                {log.label || log.status}
-                              </Badge>
+                              {editingLabelId === log._id ? (
+                                <select 
+                                  autoFocus
+                                  value={log.label || 'pending'}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    handleUpdateLabel(log._id, e.target.value);
+                                    setEditingLabelId(null);
+                                  }}
+                                  onBlur={() => setEditingLabelId(null)}
+                                  className="text-[10px] bg-white border border-slate-200 rounded px-1 h-6 outline-none animate-in fade-in zoom-in-95 duration-200"
+                                >
+                                  {['not yet started', 'pending', 'qc', 'requirement needed', 'in process', 'done', 'holded'].map(opt => (
+                                    <option key={opt} value={opt}>{opt.toUpperCase()}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <Badge 
+                                  variant="outline" 
+                                  onClick={(e) => { e.stopPropagation(); setEditingLabelId(log._id); }}
+                                  className={`px-2 py-0.5 text-[10px] font-normal border-slate-200 cursor-pointer hover:border-slate-400 transition-colors ${
+                                    log.label === 'not yet started' ? 'bg-slate-100 text-slate-500' :
+                                    log.label === 'done' ? 'bg-green-50 text-green-600 border-green-100' :
+                                    log.label === 'holded' ? 'bg-red-50 text-red-600 border-red-100' :
+                                    log.label === 'qc' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                    'bg-yellow-50 text-yellow-600 border-yellow-100'
+                                  }`}
+                                >
+                                  {log.label || log.status}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="p-4 text-right pr-6">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  setLogToDelete(log._id); 
-                                  setIsLogDeleteDialogOpen(true); 
-                                }}
-                                className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+                              <div className="flex justify-end gap-1">
+                                {((log.user?._id || log.user) === userId) && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      handleEditLog(log);
+                                    }}
+                                    className="h-8 w-8 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 transition-colors"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setLogToDelete(log._id); 
+                                    setIsLogDeleteDialogOpen(true); 
+                                  }}
+                                  className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
 
@@ -421,7 +551,11 @@ const TimeHistory = () => {
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       {log.comments?.map((comment, idx) => (
-                                        <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-2 relative group-hover:border-slate-300 transition-colors">
+                                        <div 
+                                          key={comment._id || idx} 
+                                          id={`comment-${comment._id}`}
+                                          className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-2 relative group-hover:border-slate-300 transition-all"
+                                        >
                                           <div className="flex items-center justify-between border-b border-slate-50 pb-2">
                                             <span className="text-[11px] text-slate-500">{comment.author}</span>
                                             <div className="flex items-center gap-2">

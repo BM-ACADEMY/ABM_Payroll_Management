@@ -85,7 +85,7 @@ const KanbanBoard = () => {
     if (!Array.isArray(lists)) return map;
     lists.forEach(l => { map[l._id] = []; });
     
-    const tasksToUse = boardData?.type === 'weekly' ? tasks : sprintTasks;
+    const tasksToUse = sprintTasks;
 
     if (!Array.isArray(tasksToUse)) return map;
 
@@ -434,6 +434,21 @@ const KanbanBoard = () => {
      const deepLinkTaskId = searchParams.get('task');
      if (deepLinkTaskId && !isDetailsOpen && !loading && !authError) {
         fetchTaskDetails(deepLinkTaskId);
+
+        // Scroll to card and highlight
+        setTimeout(() => {
+          const card = document.getElementById(`task-card-${deepLinkTaskId}`);
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            card.style.transition = 'all 0.5s ease-in-out';
+            card.style.ring = '4px solid #fffe01';
+            card.style.boxShadow = '0 0 20px 5px rgba(255, 254, 1, 0.4)';
+            setTimeout(() => {
+              card.style.ring = 'none';
+              card.style.boxShadow = 'none';
+            }, 3000);
+          }
+        }, 1000); // Give it a bit more time for full render
      }
   }, [location.search, loading, authError, isDetailsOpen, fetchTaskDetails]);
 
@@ -453,29 +468,86 @@ const KanbanBoard = () => {
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
     if (type === 'list') {
+      const isWeekly = boardData?.type === 'weekly';
       const newLists = Array.from(lists);
       const [removed] = newLists.splice(source.index, 1);
       newLists.splice(destination.index, 0, removed);
       setLists(newLists);
+
       try {
-        await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/lists/${draggableId}`, { position: destination.index }, {
-          headers: { 'x-auth-token': localStorage.getItem('token') }
-        });
-      } catch (err) { toast({ variant: "destructive", title: "Error", description: "Failed to move list" }); }
+        const token = localStorage.getItem('token');
+        if (isWeekly) {
+          // In weekly mode, lists are actually boards. Update board positions.
+          const updatedBoards = newLists.map((l, index) => ({ _id: l._id, position: index }));
+          await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/reorder`, {
+            boards: updatedBoards
+          }, { headers: { 'x-auth-token': token } });
+        } else {
+          // Regular list reordering
+          await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/lists/${draggableId}`, { position: destination.index }, {
+            headers: { 'x-auth-token': token }
+          });
+        }
+      } catch (err) { 
+        toast({ variant: "destructive", title: "Error", description: `Failed to move ${isWeekly ? 'board' : 'list'}` }); 
+        fetchData();
+      }
       return;
     }
 
-    const newTasks = Array.from(tasks);
-    const updatedTasks = newTasks.map(t => t._id === draggableId ? { ...t, list: destination.droppableId, position: destination.index } : t);
-    setTasks(updatedTasks);
+    // Task Reordering
+    const isWeekly = boardData?.type === 'weekly';
+    const destListId = destination.droppableId;
+    const sourceListId = source.droppableId;
+
+    // 1. Get tasks in destination list (excluding the one being moved if it was already there)
+    const otherTasksInDest = tasks.filter(t => {
+      const matchId = isWeekly ? (t.board?._id || t.board) : (t.list?._id || t.list);
+      return String(matchId) === String(destListId) && t._id !== draggableId && !t.parentTask;
+    }).sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    // 2. Insert moved task at destination index
+    const movedTask = tasks.find(t => t._id === draggableId);
+    if (!movedTask) return;
+
+    const newDestTasks = [...otherTasksInDest];
+    newDestTasks.splice(destination.index, 0, { 
+      ...movedTask, 
+      [isWeekly ? 'board' : 'list']: destListId, 
+      position: destination.index 
+    });
+
+    // 3. Re-assign positions for all in dest list to ensure integrity
+    const batchUpdateTasks = newDestTasks.map((t, idx) => ({
+      ...t,
+      position: idx,
+      [isWeekly ? 'board' : 'list']: destListId
+    }));
+
+    // 4. Update global task state
+    setTasks(prev => {
+      const unchanged = prev.filter(t => {
+        const matchId = isWeekly ? (t.board?._id || t.board) : (t.list?._id || t.list);
+        // Exclude tasks that are in the destination list OR the moved task itself
+        return (String(matchId) !== String(destListId) && t._id !== draggableId) || t.parentTask;
+      });
+      return [...unchanged, ...batchUpdateTasks];
+    });
 
     try {
-      const payload = boardData?.type === 'weekly' 
-        ? { board: destination.droppableId, position: destination.index }
-        : { list: destination.droppableId, position: destination.index };
-        
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${draggableId}`, payload, { headers: { 'x-auth-token': localStorage.getItem('token') } });
-    } catch (err) { fetchData(); }
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/reorder`, {
+        tasks: batchUpdateTasks.map(t => ({
+          _id: t._id,
+          position: t.position,
+          [isWeekly ? 'board' : 'list']: destListId
+        }))
+      }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+    } catch (err) {
+      console.error(err);
+      fetchData(); // Reset on error
+    }
   };
 
   const handleCreateList = async (e) => {
@@ -1109,9 +1181,7 @@ const KanbanBoard = () => {
             <TabsTrigger value="sprint" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">
               {boardData?.type === 'weekly' ? 'Streams' : 'Sprint'}
             </TabsTrigger>
-            {boardData?.type !== 'weekly' && (
-              <TabsTrigger value="done" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Done</TabsTrigger>
-            )}
+            <TabsTrigger value="done" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Done</TabsTrigger>
             <TabsTrigger value="timeline" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Timeline</TabsTrigger>
             <TabsTrigger value="analytics" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all">Analytics</TabsTrigger>
             <TabsTrigger value="team" className="rounded-lg px-3 md:px-5 py-2 h-8 md:h-9 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow-sm font-normal uppercase text-[8px] md:text-[9px] tracking-widest transition-all text-nowrap">Team</TabsTrigger>

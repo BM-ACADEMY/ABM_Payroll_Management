@@ -21,7 +21,8 @@ const BoardSchema = new mongoose.Schema({
       uploadedAt: { type: Date, default: Date.now }
     }]
   },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  position: { type: Number, default: 0 }
 });
 
 module.exports = mongoose.model('Board', BoardSchema);

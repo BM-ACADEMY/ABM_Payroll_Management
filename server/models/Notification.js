@@ -23,6 +23,14 @@ const NotificationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  link: {
+    type: String,
+    required: false
+  },
+  image: {
+    type: String, // URL to avatar or icon
+    required: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

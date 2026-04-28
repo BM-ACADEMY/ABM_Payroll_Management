@@ -309,7 +309,15 @@ const Navbar = ({ user, setUser, isSidebarCollapsed, isMobile, setIsSidebarColla
                     <div className="p-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Gathering stream...</div>
                   ) : notifications.length > 0 ? (
                     notifications.map((n, i) => (
-                      <div key={i} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors group/notif ${!n.isRead ? 'bg-[#fffe01]/10' : ''}`}>
+                      <div 
+                        key={i} 
+                        onClick={() => {
+                          if (n.link) navigate(n.link);
+                          if (!n.isRead) handleMarkAsRead(n._id);
+                          setShowNotifications(false);
+                        }}
+                        className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors group/notif cursor-pointer ${!n.isRead ? 'bg-[#fffe01]/10' : ''}`}
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1">
                             <div className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${!n.isRead ? 'bg-[#fffe01]' : 'bg-slate-200'}`}></div>

@@ -98,7 +98,7 @@ const sendTaskAssignmentEmail = async (toEmail, taskDetails) => {
               Please log in to the dashboard to update the progress and manage subtasks. Ensure all daily updates are recorded as per policy.
             </p>
 
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/kanban" style="display: inline-block; background-color: #000000; color: #fffe01; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.3s;">
+            <a href="${process.env.FRONTEND_URL}/dashboard/kanban" style="display: inline-block; background-color: #000000; color: #fffe01; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.3s;">
               View Task Workspace
             </a>
           </div>
@@ -222,7 +222,7 @@ const sendRequestResponseToUser = async (userEmail, responseData) => {
               Attendance records have been updated to reflect this verdict. Please refer to the mobile dashboard for further details.
             </p>
 
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard" style="display: inline-block; background-color: #000000; color: #fffe01; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">
+            <a href="${process.env.FRONTEND_URL}/dashboard" style="display: inline-block; background-color: #000000; color: #fffe01; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">
               Enter Dashboard
             </a>
           </div>
@@ -266,7 +266,7 @@ const sendMentionEmail = async (toEmail, mentionDetails) => {
                <p style="color: #1e293b; font-size: 14px; margin: 0; line-height: 1.6; font-weight: 500;">"${commentText}"</p>
             </div>
             
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/kanban?task=${taskId}" style="display: inline-block; background-color: #000000; color: #fffe01; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">
+            <a href="${process.env.FRONTEND_URL}/dashboard/kanban?task=${taskId}" style="display: inline-block; background-color: #000000; color: #fffe01; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">
               Reply in Workspace
             </a>
           </div>

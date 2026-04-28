@@ -5,10 +5,44 @@ const Task = require('../models/Task');
 const { processMentions } = require('../utils/mentionHelper');
 const emailService = require('../services/emailService');
 
+// Helper to pause any active task for a user
+const autoPauseActiveTask = async (userId, io) => {
+  const activeLog = await TimeLog.findOne({ user: userId, status: 'running' });
+  if (activeLog) {
+    const now = new Date();
+    activeLog.status = 'paused';
+    activeLog.pauses.push({ 
+      pauseStart: now,
+      label: activeLog.label
+    });
+
+    // Handle activityLog: Close last 'play'
+    const lastActivity = activeLog.activityLog[activeLog.activityLog.length - 1];
+    if (lastActivity && lastActivity.type === 'play' && !lastActivity.endTime) {
+      lastActivity.endTime = now;
+      lastActivity.duration = Math.floor((now - new Date(lastActivity.startTime)) / 1000);
+    }
+
+    // Refresh duration
+    const startTime = new Date(activeLog.startTime);
+    let totalPauseDuration = 0;
+    activeLog.pauses.forEach(p => {
+      if (p.pauseEnd) {
+        totalPauseDuration += (new Date(p.pauseEnd) - new Date(p.pauseStart));
+      }
+    });
+    activeLog.duration = Math.floor((now - startTime - totalPauseDuration) / 1000);
+
+    await activeLog.save();
+    if (io) io.emit('time_log_updated', activeLog);
+  }
+};
+
 exports.startTimeTracking = async (req, res) => {
   const { taskName } = req.body;
   try {
-    // Multiple tasks are allowed simultaneously
+    // Only one task can run at a time - auto-pause previous
+    await autoPauseActiveTask(req.user.id, req.io);
 
     const newTimeLog = new TimeLog({
       user: req.user.id,
@@ -155,6 +189,9 @@ exports.resumeTimeTracking = async (req, res) => {
        return res.status(400).json({ msg: 'Task cannot be started' });
     }
 
+    // Ensure only one task runs at a time
+    await autoPauseActiveTask(req.user.id, req.io);
+
     const wasPending = timeLog.status === 'pending';
     const now = new Date();
     timeLog.status = 'running';
@@ -270,6 +307,39 @@ exports.stopTimeTracking = async (req, res) => {
   }
 };
 
+exports.restartTimeTracking = async (req, res) => {
+  try {
+    let timeLog = await TimeLog.findById(req.params.id);
+    if (!timeLog) return res.status(404).json({ msg: 'Time log not found' });
+    if (timeLog.user.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
+
+    if (timeLog.status === 'completed') {
+        const now = new Date();
+        timeLog.status = 'paused';
+        timeLog.endTime = null;
+        
+        timeLog.pauses.push({
+            pauseStart: now,
+            label: timeLog.label || 'in process'
+        });
+
+        timeLog.activityLog.push({
+            type: 'pause',
+            startTime: now,
+            label: timeLog.label || 'in process'
+        });
+
+        await timeLog.save();
+    }
+
+    if (req.io) req.io.emit('time_log_updated', timeLog);
+    res.json(timeLog);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 exports.addComment = async (req, res) => {
   try {
     const { text } = req.body;
@@ -286,20 +356,25 @@ exports.addComment = async (req, res) => {
 
     const currentUser = await User.findById(req.user.id);
     
-    // Parse mentions and notify
-    const mentions = await processMentions(text, currentUser, {
-      title: timeLog.taskName,
-      taskId: timeLog._id, // Context ID
-      boardName: 'Task Tracker'
-    }, req.io);
-
-    timeLog.comments.push({
+    // Create the comment first to get its ID
+    const newCommentData = {
       text,
       author: currentUser.name,
-      mentions,
       createdAt: new Date()
-    });
+    };
+    
+    timeLog.comments.push(newCommentData);
+    const savedComment = timeLog.comments[timeLog.comments.length - 1];
 
+    // Parse mentions and notify with the comment ID
+    const mentions = await processMentions(text, currentUser, {
+      title: timeLog.taskName,
+      taskId: timeLog._id,
+      boardName: 'Task Tracker',
+      commentId: savedComment._id
+    }, req.io);
+
+    savedComment.mentions = mentions;
     await timeLog.save();
     if (req.io) req.io.emit('time_log_updated', timeLog);
     res.json(timeLog);
@@ -376,7 +451,8 @@ exports.updateComment = async (req, res) => {
     const mentions = await processMentions(text, currentUser, {
       title: timeLog.taskName,
       taskId: timeLog._id,
-      boardName: 'Task Tracker'
+      boardName: 'Task Tracker',
+      commentId: req.params.commentId
     }, req.io);
 
     timeLog.comments[commentIndex].text = text;
@@ -520,6 +596,26 @@ exports.getAllTimeLogs = async (req, res) => {
         currentPage: parseInt(page)
       }
     });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.getTimeLogById = async (req, res) => {
+  try {
+    const log = await TimeLog.findById(req.params.id).populate('user', 'name employeeId');
+    if (!log) return res.status(404).json({ msg: 'Time log not found' });
+    
+    // Authorization check: same as addComment
+    const isOwner = log.user._id.toString() === req.user.id;
+    const isAdmin = ['admin', 'subadmin'].includes(req.user.role?.name || req.user.role);
+    
+    if (!isOwner && !isAdmin) {
+        return res.status(401).json({ msg: 'Not authorized to view this log' });
+    }
+    
+    res.json(log);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

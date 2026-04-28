@@ -10,6 +10,7 @@ router.get('/members/search', auth, boardController.searchMembers);
 router.get('/special/:type', auth, boardController.getSpecialBoard);
 router.get('/team/:teamId/destinations', auth, boardController.getBoardDestinations);
 router.get('/team/:teamId', auth, boardController.getBoardsByTeam);
+router.patch('/reorder', auth, boardController.reorderBoards);
 router.get('/', auth, boardController.getBoardsByTeam);
 
 // 2. Generic Parameter-based Board Routes (MUST BE LAST)
@@ -30,6 +31,7 @@ router.post('/tasks', auth, boardController.createTask);
 router.patch('/tasks/:id', auth, boardController.updateTask);
 router.get('/tasks/:id', auth, boardController.getTaskDetails);
 router.patch('/tasks/:taskId/mark-mentions-read', auth, boardController.markMentionsAsRead);
+router.patch('/tasks/reorder', auth, boardController.reorderTasks);
 router.delete('/tasks/:id', auth, boardController.deleteTask);
 router.patch('/tasks/:taskId/labels', auth, boardController.updateLabels);
 router.post('/tasks/:taskId/checklists', auth, boardController.addChecklist);
