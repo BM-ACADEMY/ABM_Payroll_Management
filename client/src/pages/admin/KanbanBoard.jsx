@@ -203,6 +203,19 @@ const KanbanBoard = () => {
     }
   };
 
+  const handleMoveToBacklog = async (taskId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, {
+        isInSprint: false
+      }, { headers: { 'x-auth-token': token } });
+      toast({ title: "Task Recalled", description: "Operation returned to Backlog quarantine." });
+      fetchData();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to recall task" });
+    }
+  };
+
   const fetchData = React.useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -739,6 +752,40 @@ const KanbanBoard = () => {
       toast({ title: "Authorized", description: "Vectored to Time Tracker matrix" });
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to transmit tracking data" });
+    }
+  };
+
+  const handleMoveChecklistItemToSprint = async (taskId, checklistId, itemId, title) => {
+    try {
+      const activeBoardId = boardData?._id || id;
+      const activeListId = taskDetails?.task?.list?._id || taskDetails?.task?.list || lists[0]?._id;
+      
+      if (!activeListId || !activeBoardId) {
+        toast({ variant: "destructive", title: "Error", description: "Board context missing" });
+        return;
+      }
+
+      // Create a new task in the sprint
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { 
+        title: `${taskDetails.task.title} - ${title}`, 
+        listId: activeListId, 
+        boardId: activeBoardId, 
+        isInSprint: true,
+        originChecklistItemId: itemId
+      }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+
+      // Remove the checklist item from the original task
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}/checklists/${checklistId}/items/${itemId}`, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+
+      fetchTaskDetails(taskId);
+      fetchData();
+      toast({ title: "Moved to Sprint", description: "Checklist item converted to Sprint card." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to move item to sprint" });
     }
   };
 
@@ -1311,7 +1358,7 @@ const KanbanBoard = () => {
                           {(provided, snapshot) => (
                             <div {...provided.droppableProps} ref={provided.innerRef} className={`flex-1 overflow-y-auto px-2.5 pb-2.5 pt-4 min-h-[100px] space-y-4 transition-all duration-200 ${snapshot.isDraggingOver ? 'bg-slate-200/30' : ''}`}>
                               {tasksByList[list._id]?.map((task, idx) => (
-                                <KanbanCard key={task._id} task={task} index={idx} onClick={() => fetchTaskDetails(task._id)} />
+                                <KanbanCard key={task._id} task={task} index={idx} onClick={() => fetchTaskDetails(task._id)} handleMoveToBacklog={handleMoveToBacklog} />
                               ))}
                               {provided.placeholder}
                             </div>
@@ -1701,7 +1748,9 @@ const KanbanBoard = () => {
             handleRemoveChecklist={handleRemoveChecklist}
             handleRenameChecklist={handleRenameChecklist}
             handleAddSubTask={handleAddSubTask}
+            handleMoveChecklistItemToSprint={handleMoveChecklistItemToSprint}
             handleAddToTracker={handleAddToTracker}
+            handleMoveToBacklog={handleMoveToBacklog}
             getTimeAgo={getTimeAgo}
           />
         </Suspense>

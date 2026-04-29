@@ -449,7 +449,7 @@ exports.createTask = async (req, res) => {
     const { 
       title, description, listId, boardId, position, 
       parentTaskId, originChecklistItemId, 
-      assignees, deadline, labels, checklists 
+      assignees, deadline, labels, checklists, isInSprint 
     } = req.body;
     
     try {
@@ -485,7 +485,8 @@ exports.createTask = async (req, res) => {
         assignees: assignees || [],
         deadline: deadline || null,
         labels: labels || [],
-        checklists: checklists || []
+        checklists: checklists || [],
+        isInSprint: isInSprint || false
       });
       await task.save();
 

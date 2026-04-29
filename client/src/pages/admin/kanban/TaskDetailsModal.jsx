@@ -1,8 +1,8 @@
 import { 
-  X, ChevronDown, ChevronRight, MoreHorizontal, Plus, Tag, CheckSquare, 
-  Paperclip, Layout, MessageSquare, AlignLeft,
-  Check, Trash2, Edit2, Send, Bell, Calendar, Clock, 
-  TrendingUp, Timer
+  X, Plus, AlignLeft, Layout, Search, Trash2, 
+  ExternalLink, Timer, TrendingUp, MoreHorizontal, 
+  CheckSquare, MessageSquare, Bell, Clock, RotateCcw,
+  ChevronDown, ChevronRight, Tag, Paperclip, Check, Edit2, Send, Calendar
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
 import axios from 'axios';
@@ -92,6 +92,7 @@ const ChecklistItemSection = memo(({
   handleAddSubTask, 
   onRefresh,
   handleAddChecklistItem,
+  handleMoveChecklistItemToSprint,
   handleAddToTracker
 }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -116,6 +117,7 @@ const ChecklistItemSection = memo(({
             onUpdate={(id, updates) => onChecklistItemUpdate(id, updates, checklist._id)}
             onAddSubTask={handleAddSubTask}
             onAddToTracker={handleAddToTracker}
+            onMoveToSprint={(title, itemId) => handleMoveChecklistItemToSprint(task._id, checklist._id, itemId, title)}
             onToggleCompletion={(id, completed) => onChecklistItemToggle(id, completed, checklist._id)}
             isChecklist={true}
             onRefresh={onRefresh}
@@ -172,6 +174,8 @@ const TaskDetailsModal = ({
   handleRemoveChecklist,
   handleRenameChecklist,
   handleAddSubTask,
+  handleMoveChecklistItemToSprint,
+  handleMoveToBacklog,
   handleAddToTracker,
   getTimeAgo,
   handleUpdateComment,
@@ -459,6 +463,35 @@ const TaskDetailsModal = ({
                   )}
                   <div className="h-4 w-px bg-zinc-100 mx-0.5"></div>
                   <div className="relative flex items-center">
+                    <Button 
+                      variant="ghost" 
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/start`, { taskName: task.title }, {
+                            headers: { 'x-auth-token': token }
+                          });
+                          toast({ title: "Tracking Started", description: `Monitoring ${task.title}` });
+                        } catch (err) {
+                          toast({ variant: "destructive", title: "Error", description: "Failed to start tracking" });
+                        }
+                      }}
+                      className="h-8 px-3 text-[#fffe01] bg-black hover:bg-zinc-800 rounded-lg text-[10px] font-normal uppercase tracking-widest gap-2"
+                    >
+                      <Timer className="w-4 h-4" /> Start Tracking
+                    </Button>
+                    {task.isInSprint && handleMoveToBacklog && (
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => handleMoveToBacklog(task._id)}
+                        className="h-8 px-3 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-normal uppercase tracking-widest gap-2 ml-2"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> Recall to Backlog
+                      </Button>
+                    )}
+                  </div>
+                  <div className="h-4 w-px bg-zinc-100 mx-1"></div>
+                  <div className="relative flex items-center">
                     <Button variant="ghost" size="icon" data-more-toggle onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} className="h-8 w-8 text-zinc-400 hover:text-black hover:bg-zinc-50 rounded-lg">
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
@@ -714,6 +747,7 @@ const TaskDetailsModal = ({
                                 handleAddToTracker={handleAddToTracker}
                                 onRefresh={onRefresh}
                                 handleAddChecklistItem={handleAddChecklistItem}
+                                handleMoveChecklistItemToSprint={handleMoveChecklistItemToSprint}
                              />
                           </div>
                        ))}

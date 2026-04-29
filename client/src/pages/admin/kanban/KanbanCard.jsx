@@ -1,10 +1,11 @@
 import React, { memo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { CheckCircle2, Calendar, MessageSquare, Bell, CheckSquare, Clock } from 'lucide-react';
+import { CheckCircle2, Calendar, MessageSquare, Bell, CheckSquare, Clock, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
+import axios from 'axios';
 
-const KanbanCard = ({ task, index, onClick }) => {
+const KanbanCard = ({ task, index, onClick, handleMoveToBacklog }) => {
   const getStatusBadge = (label) => {
     if (!label) return null;
     const styles = {
@@ -111,6 +112,41 @@ const KanbanCard = ({ task, index, onClick }) => {
                    </div>
                 )}
               </div>
+
+              {/* Actions Area */}
+              {!task.isCompleted && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all ml-2 shrink-0">
+                  {task.isInSprint && handleMoveToBacklog && (
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        handleMoveToBacklog(task._id);
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all shadow-sm"
+                      title="Back to Backlog"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button 
+                    onClick={async (e) => { 
+                      e.stopPropagation(); 
+                      try {
+                        const token = localStorage.getItem('token');
+                        await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/start`, { taskName: task.title }, {
+                          headers: { 'x-auth-token': token }
+                        });
+                      } catch (err) {
+                        console.error('Failed to start tracking', err);
+                      }
+                    }}
+                    className="p-1.5 rounded-lg bg-yellow-400 text-black hover:bg-yellow-500  hover:text-white transition-all shadow-sm"
+                    title="Start Tracking"
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
