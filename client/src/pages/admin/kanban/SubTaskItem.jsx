@@ -20,7 +20,8 @@ const SubTaskItem = ({
   onRefresh, 
   currentBoardId,
   parentTaskId,
-  onAddToTracker
+  onAddToTracker,
+  onMoveToSprint
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState([]);
@@ -122,14 +123,23 @@ const SubTaskItem = ({
       if (onAddToTracker) {
         await onAddToTracker(task.title || task.text, task._id);
       } else {
-        // Fallback for subtasks (not checklist items) if needed, 
-        // though user specifically asked for this behavior on checklist items
         await onAddSubTask(parentTaskId || task._id, task.title || task.text, isChecklist ? task._id : null);
         onUpdate(task._id, { delete: true });
       }
       setIsActionsMenuOpen(false);
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to process request" });
+    }
+  };
+
+  const handleSprintMove = async () => {
+    try {
+      if (onMoveToSprint) {
+        await onMoveToSprint(task.title || task.text, task._id);
+      }
+      setIsActionsMenuOpen(false);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to move to sprint" });
     }
   };
 
@@ -464,7 +474,8 @@ const SubTaskItem = ({
               </Button>
               {isActionsMenuOpen && (
                  <div ref={actionsMenuRef} className="absolute top-8 right-0 w-[160px] bg-white border border-slate-200 rounded-lg shadow-xl z-50 p-1">
-                    <Button variant="ghost" className="w-full justify-start h-8 text-[12px] font-normal" onClick={handleConvert}>Convert to card</Button>
+                    <Button variant="ghost" className="w-full justify-start h-8 text-[12px] font-normal" onClick={handleConvert}>Convert to Tracker</Button>
+                    <Button variant="ghost" className="w-full justify-start h-8 text-[12px] font-normal text-blue-600" onClick={handleSprintMove}>Move to Sprint</Button>
                     <Button variant="ghost" className="w-full justify-start h-8 text-[12px] text-red-500 hover:bg-red-50 font-normal" onClick={() => onUpdate(task._id, { delete: true })}>Delete</Button>
                  </div>
               )}
