@@ -8,6 +8,14 @@ const { sendRequestNotificationToAdmins, sendRequestResponseToUser } = require('
 exports.createRequest = async (req, res) => {
   const { type, date, startTime, endTime, fromDateTime, toDateTime, duration, reason } = req.body;
   try {
+    // Only admin or sub-admin can create leave requests
+    const userRole = await Role.findById(req.user.role);
+    const isAdminOrSubAdmin = userRole && (userRole.name === 'admin' || userRole.name === 'subadmin');
+    
+    if (type === 'leave' && !isAdminOrSubAdmin) {
+      return res.status(403).json({ msg: 'Only administrators can add leave records.' });
+    }
+
     if (type === 'permission') {
       const pendingRequest = await Request.findOne({ 
         user: req.user.id, 
@@ -29,7 +37,7 @@ exports.createRequest = async (req, res) => {
     }
 
     const newRequest = new Request({
-      user: req.user.id,
+      user: (type === 'leave' && isAdminOrSubAdmin && req.body.userId) ? req.body.userId : req.user.id,
       type,
       date,
       startTime,
@@ -39,7 +47,9 @@ exports.createRequest = async (req, res) => {
       duration,
       totalPermissionTime,
       reason,
-      isReadByAdmin: false 
+      isReadByAdmin: type === 'leave' ? true : false, // Admin-created leaves are pre-read
+      status: type === 'leave' ? 'approved' : 'pending', // Admin-created leaves are pre-approved
+      isApproved: type === 'leave' ? true : false
     });
     const request = await newRequest.save();
     

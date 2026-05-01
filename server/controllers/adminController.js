@@ -118,10 +118,15 @@ exports.updateEmployee = async (req, res) => {
     if (baseSalary !== undefined) user.baseSalary = baseSalary;
     
     if (timingSettings) {
+      const existingSettings = user.timingSettings && typeof user.timingSettings.toObject === 'function' 
+        ? user.timingSettings.toObject() 
+        : user.timingSettings || {};
+        
       user.timingSettings = {
-        ...user.timingSettings,
+        ...existingSettings,
         ...timingSettings
       };
+      user.markModified('timingSettings');
     }
 
     if (teams) user.teams = teams;

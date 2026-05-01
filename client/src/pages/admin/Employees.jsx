@@ -139,9 +139,12 @@ const Employees = () => {
   };
 
   const handleTimingChange = (e) => {
+    const value = (e.target.name === 'graceTime' || e.target.name === 'lunchDuration') 
+      ? parseInt(e.target.value) || 0 
+      : e.target.value;
     setFormData({
       ...formData,
-      timingSettings: { ...formData.timingSettings, [e.target.name]: e.target.value }
+      timingSettings: { ...formData.timingSettings, [e.target.name]: value }
     });
   };
 
@@ -220,9 +223,9 @@ const Employees = () => {
       baseSalary: emp.baseSalary || '',
       password: '',
       timingSettings: {
-        loginTime: emp.timingSettings?.loginTime || '09:30',
-        logoutTime: emp.timingSettings?.logoutTime || '18:30',
-        graceTime: emp.timingSettings?.graceTime || 15,
+        loginTime: emp.timingSettings?.loginTime ?? '09:30',
+        logoutTime: emp.timingSettings?.logoutTime ?? '18:30',
+        graceTime: emp.timingSettings?.graceTime ?? 15,
         lunchStart: emp.timingSettings?.lunchStart || '13:30',
         lunchEnd: emp.timingSettings?.lunchEnd || '14:30',
         fromDate: emp.timingSettings?.fromDate ? new Date(emp.timingSettings.fromDate).toISOString().split('T')[0] : '',
@@ -250,9 +253,12 @@ const Employees = () => {
   };
 
   const handleEditTimingChange = (e) => {
+    const value = (e.target.name === 'graceTime' || e.target.name === 'lunchDuration') 
+      ? parseInt(e.target.value) || 0 
+      : e.target.value;
     setEditFormData({
       ...editFormData,
-      timingSettings: { ...editFormData.timingSettings, [e.target.name]: e.target.value }
+      timingSettings: { ...editFormData.timingSettings, [e.target.name]: value }
     });
   };
 

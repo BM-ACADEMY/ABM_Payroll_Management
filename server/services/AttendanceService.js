@@ -41,7 +41,7 @@ class AttendanceService {
       const scheduleSnapshot = {
         loginTime: snapshot?.loginTime || emp.timingSettings?.loginTime || '09:30',
         logoutTime: snapshot?.logoutTime || emp.timingSettings?.logoutTime || '18:30',
-        graceTime: snapshot?.graceTime || emp.timingSettings?.graceTime || 15,
+        graceTime: emp.timingSettings?.graceTime ?? 15, // Strictly from profile
         lunchDuration: snapshot?.lunchDuration || emp.timingSettings?.lunchDuration || 45
       };
 

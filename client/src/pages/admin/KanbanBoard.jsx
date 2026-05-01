@@ -65,9 +65,10 @@ const KanbanBoard = () => {
   const [editBoardData, setEditBoardData] = useState({ title: '', description: '' });
   const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
   const [editingList, setEditingList] = useState(null);
-  const [teamsForAdmin, setTeamsForAdmin] = useState([]);
+  const [availableTeams, setAvailableTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: '', data: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Refs for socket listener to avoid closure issues
   const isDetailsOpenRef = useRef(isDetailsOpen);
@@ -269,24 +270,29 @@ const KanbanBoard = () => {
     fetchData(); 
     fetchUsers(); // All authenticated users can now fetch directory info for boards
     
-    if (isAdmin) {
-      const fetchTeams = async () => {
-        try {
-          const token = localStorage.getItem('token');
-          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/teams?nopage=true`, {
-            headers: { 'x-auth-token': token }
-          });
-          const teamsArray = (res.data.teams || (Array.isArray(res.data) ? res.data : [])).map(t => ({
-            ...t,
-            _id: String(t._id).toLowerCase()
-          }));
-          setTeamsForAdmin(teamsArray);
-        } catch (err) {
-          console.error('Error fetching teams:', err);
-        }
-      };
-      fetchTeams();
-    }
+    const fetchTeams = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const url = isAdmin 
+          ? `${import.meta.env.VITE_API_URL}/api/admin/teams?nopage=true`
+          : `${import.meta.env.VITE_API_URL}/api/auth/my-teams`;
+          
+        const res = await axios.get(url, {
+          headers: { 'x-auth-token': token }
+        });
+        
+        const data = res.data.teams || (Array.isArray(res.data) ? res.data : []);
+        const teamsArray = data.map(t => ({
+          ...t,
+          _id: String(t._id).toLowerCase()
+        }));
+        setAvailableTeams(teamsArray);
+      } catch (err) {
+        console.error('Error fetching teams:', err);
+      }
+    };
+    
+    fetchTeams();
   }, [fetchData]);
 
   // Update selectedTeamId when boardData changes to ensure sync
@@ -871,7 +877,7 @@ const KanbanBoard = () => {
   };
 
   const confirmDeleteBoard = async (boardId) => {
-    
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem('token');
       const boardIdToDelete = boardData?._id || id;
@@ -879,8 +885,10 @@ const KanbanBoard = () => {
         headers: { 'x-auth-token': token }
       });
       toast({ title: "Board Deleted", description: "The board has been permanently removed." });
+      setConfirmDialog({ ...confirmDialog, isOpen: false });
       navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban`);
     } catch (err) {
+      setIsDeleting(false);
       toast({ variant: "destructive", title: "Error", description: "Failed to delete board" });
     }
   };
@@ -1018,15 +1026,15 @@ const KanbanBoard = () => {
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-3 mb-0.5 md:mb-1 overflow-hidden">
               <h1 className="text-lg md:text-xl font-normal text-zinc-900 tracking-tight truncate">{boardData?.title}</h1>
-              {isAdmin && type && teamsForAdmin.length > 0 ? (
+              {type && availableTeams.length > 1 ? (
                 <Select value={String(selectedTeamId || '').toLowerCase()} onValueChange={(val) => { setSelectedTeamId(String(val).toLowerCase()); setLoading(true); }}>
                   <SelectTrigger className="h-8 min-w-[180px] bg-zinc-50 border-zinc-200 text-[11px] font-normal tracking-widest rounded-xl hover:bg-zinc-100 transition-all shadow-sm px-4">
                     <SelectValue>
-                      {teamsForAdmin.find(t => String(t._id).toLowerCase() === String(selectedTeamId).toLowerCase())?.name || boardData?.team?.name || 'Select Team'}
+                      {availableTeams.find(t => String(t._id).toLowerCase() === String(selectedTeamId).toLowerCase())?.name || boardData?.team?.name || 'Select Team'}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-zinc-100 shadow-2xl">
-                    {teamsForAdmin.map(team => (
+                    {availableTeams.map(team => (
                       <SelectItem key={team._id} value={String(team._id).toLowerCase()} className="text-[10px] font-normal uppercase tracking-widest">{team.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1762,15 +1770,15 @@ const KanbanBoard = () => {
         onConfirm={() => {
           if (confirmDialog.type === 'REMOVE_MEMBER') confirmRemoveMember(confirmDialog.data);
           if (confirmDialog.type === 'DELETE_TASK') confirmDeleteTask(confirmDialog.data);
-          if (confirmDialog.type === 'DELETE_BOARD') confirmDeleteBoard(confirmDialog.data);
           if (confirmDialog.type === 'DELETE_LIST') confirmDeleteList(confirmDialog.data);
+          if (confirmDialog.type === 'DELETE_BOARD') confirmDeleteBoard(confirmDialog.data);
         }}
-        title={confirmDialog.title}
-        description={confirmDialog.description}
+        isLoading={isDeleting}
+        title={confirmDialog.title || "Are you sure?"}
+        description={confirmDialog.description || "This action cannot be undone."}
       />
     </div>
   );
 };
 
 export default KanbanBoard;
-

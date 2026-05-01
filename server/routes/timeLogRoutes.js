@@ -4,11 +4,11 @@ const timeLogController = require('../controllers/timeLogController');
 const auth = require('../middleware/auth');
 const isAdmin = require('../middleware/isAdmin');
 
-router.post('/start', auth, timeLogController.startTimeTracking);
-router.patch('/pause/:id', auth, timeLogController.pauseTimeTracking);
-router.patch('/resume/:id', auth, timeLogController.resumeTimeTracking);
-router.patch('/stop/:id', auth, timeLogController.stopTimeTracking);
-router.patch('/restart/:id', auth, timeLogController.restartTimeTracking);
+router.all('/start', auth, timeLogController.startTimeTracking);
+router.all('/pause/:id', auth, timeLogController.pauseTimeTracking);
+router.all('/resume/:id', auth, timeLogController.resumeTimeTracking);
+router.all('/stop/:id', auth, timeLogController.stopTimeTracking);
+router.all('/restart/:id', auth, timeLogController.restartTimeTracking);
 router.patch('/comment/:id', auth, timeLogController.addComment);
 router.patch('/comment/:id/:commentId', auth, timeLogController.updateComment);
 router.delete('/comment/:id/:commentId', auth, timeLogController.deleteComment);

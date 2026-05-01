@@ -346,10 +346,10 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
     if (!user) return;
 
     const handleUpdate = (updatedLog) => {
-      const isOwnLog = updatedLog.user === user._id || updatedLog.user?._id === user._id;
-      const isAdmin = user.role?.name === 'admin';
+      const logUserId = updatedLog.user?._id || updatedLog.user;
+      const isOwnLog = String(logUserId) === String(user.id);
 
-      if (isOwnLog || isAdmin) {
+      if (isOwnLog) {
         setActiveLogs(prev => {
           if (updatedLog.status === 'completed') {
             return prev.filter(log => log._id !== updatedLog._id);
@@ -394,7 +394,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const handlePause = async (id, label) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/pause/${id}`, { label }, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/pause/${id}`, { label }, {
         headers: { 'x-auth-token': token }
       });
       setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));
@@ -406,7 +406,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const handleResume = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
         headers: { 'x-auth-token': token }
       });
       setActiveLogs(prev => prev.map(log => log._id === id ? res.data : log));
@@ -418,7 +418,7 @@ const TaskTrackerSidebar = ({ isOpen, onClose, user }) => {
   const handleStop = async (id, label) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/time-logs/stop/${id}`, { label }, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/stop/${id}`, { label }, {
         headers: { 'x-auth-token': token }
       });
       setActiveLogs(prev => prev.filter(log => log._id !== id));

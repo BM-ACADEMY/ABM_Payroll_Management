@@ -25,6 +25,7 @@ const KanbanBoards = () => {
   const [boardToDelete, setBoardToDelete] = useState(null);
   const [boardToEdit, setBoardToEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -99,6 +100,7 @@ const KanbanBoards = () => {
 
   const confirmDeleteBoard = async () => {
     if (!boardToDelete) return;
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${boardToDelete._id}`, {
@@ -106,8 +108,10 @@ const KanbanBoards = () => {
       });
       toast({ title: "Deleted", description: "Board removed" });
       setBoardToDelete(null);
-      fetchData();
+      setIsDeleting(false);
+      await fetchData();
     } catch (err) {
+      setIsDeleting(false);
       toast({ variant: "destructive", title: "Error", description: "Failed to delete board" });
     }
   };
@@ -217,7 +221,7 @@ const KanbanBoards = () => {
                 <DialogDescription className="font-normal text-slate-500">Initialize a new dashboard for tasks.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateBoard} className="space-y-6 pt-4">
-                {isAdmin && (
+                {(isAdmin || teams.length > 1) && (
                   <div className="space-y-2">
                     <Label className="text-slate-700 font-normal text-xs uppercase tracking-widest">Select Team</Label>
                     <select 
@@ -494,6 +498,7 @@ const KanbanBoards = () => {
         isOpen={!!boardToDelete}
         onClose={() => setBoardToDelete(null)}
         onConfirm={confirmDeleteBoard}
+        isLoading={isDeleting}
         title="Delete Board"
         description={`Are you sure you want to delete "${boardToDelete?.title}"? All tasks and lists will be permanently removed.`}
       />

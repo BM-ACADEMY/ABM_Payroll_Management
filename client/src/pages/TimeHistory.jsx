@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, Search, Calendar, Timer, History, Filter, ChevronRight, ChevronDown, MessageSquare, Pencil, Trash2, Check, X, Send } from "lucide-react";
+import { Clock, Search, Calendar, Timer, History, Filter, ChevronRight, ChevronDown, MessageSquare, Pencil, Trash2, Check, X, Send, Play, Pause, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import socket from '@/services/socket';
@@ -59,6 +59,64 @@ const TimeHistory = () => {
     } catch (err) {
         console.error(err);
         toast({ variant: "destructive", title: "Action Failed", description: "Could not resume the task." });
+    }
+  };
+
+  const handleResume = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/resume/${id}`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      setLogs(prev => prev.map(l => l._id === id ? res.data : l));
+      toast({ title: "Resumed", description: "Time tracking resumed" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to resume task" });
+    }
+  };
+
+  const handlePause = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/pause/${id}`, {
+        label: 'pending',
+        message: 'Paused from history page'
+      }, {
+        headers: { 'x-auth-token': token }
+      });
+      setLogs(prev => prev.map(l => l._id === id ? res.data : l));
+      toast({ title: "Paused", description: "Time tracking paused" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to pause task" });
+    }
+  };
+
+  const handleStop = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/stop/${id}`, {
+        label: 'done',
+        message: 'Completed from history page'
+      }, {
+        headers: { 'x-auth-token': token }
+      });
+      setLogs(prev => prev.map(l => l._id === id ? res.data : l));
+      toast({ title: "Completed", description: "Task marked as finished" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to finish task" });
+    }
+  };
+
+  const handleRestart = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/time-logs/restart/${id}`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      setLogs(prev => prev.map(l => l._id === id ? res.data : l));
+      toast({ title: "Restarted", description: "Task moved back to active logs" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to restart task" });
     }
   };
 
@@ -480,17 +538,76 @@ const TimeHistory = () => {
                             <TableCell className="p-4 text-right pr-6">
                               <div className="flex justify-end gap-1">
                                 {((log.user?._id || log.user) === userId) && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
-                                      handleEditLog(log);
-                                    }}
-                                    className="h-8 w-8 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 transition-colors"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </Button>
+                                  <>
+                                    {log.status === 'running' && (
+                                      <>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={(e) => { e.stopPropagation(); handlePause(log._id); }}
+                                          className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                                          title="Pause"
+                                        >
+                                          <Pause className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={(e) => { e.stopPropagation(); handleStop(log._id); }}
+                                          className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50"
+                                          title="Finish"
+                                        >
+                                          <Square className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </>
+                                    )}
+                                    {(log.status === 'paused' || log.status === 'pending') && (
+                                      <>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={(e) => { e.stopPropagation(); handleResume(log._id); }}
+                                          className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50"
+                                          title={log.status === 'pending' ? "Start" : "Resume"}
+                                        >
+                                          <Play className="w-3.5 h-3.5" />
+                                        </Button>
+                                        {log.status === 'paused' && (
+                                          <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={(e) => { e.stopPropagation(); handleStop(log._id); }}
+                                            className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50"
+                                            title="Finish"
+                                          >
+                                            <Square className="w-3.5 h-3.5" />
+                                          </Button>
+                                        )}
+                                      </>
+                                    )}
+                                    {log.status === 'completed' && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={(e) => { e.stopPropagation(); handleRestart(log._id); }}
+                                        className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                        title="Restart"
+                                      >
+                                        <Play className="w-3.5 h-3.5" />
+                                      </Button>
+                                    )}
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        handleEditLog(log);
+                                      }}
+                                      className="h-8 w-8 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 transition-colors"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </>
                                 )}
                                 <Button 
                                   variant="ghost" 
