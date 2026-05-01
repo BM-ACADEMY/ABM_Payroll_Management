@@ -36,6 +36,11 @@ exports.getSpecialBoard = async (req, res) => {
       } else {
         teamId = user.teams[0]; // Use first team
       }
+    } else {
+      // Validate that non-admin belongs to the requested team
+      if (!isAdmin && !user.teams.some(t => t.toString() === teamId.toString())) {
+        return res.status(403).json({ msg: 'Not authorized for this team' });
+      }
     }
     
     if (type === 'weekly') {
@@ -191,7 +196,16 @@ exports.createBoard = async (req, res) => {
       if (!user.teams || user.teams.length === 0) {
         return res.status(400).json({ msg: 'You must be assigned to a team to create a board' });
       }
-      targetTeamId = user.teams[0]; // Use employee's primary team
+      // If teamId provided, verify user belongs to it. Otherwise use primary.
+      if (teamId) {
+        const hasTeam = user.teams.some(t => t.toString() === teamId.toString());
+        if (!hasTeam) {
+          return res.status(403).json({ msg: 'You do not belong to this team' });
+        }
+        targetTeamId = teamId;
+      } else {
+        targetTeamId = user.teams[0];
+      }
     }
 
     if (!targetTeamId) {

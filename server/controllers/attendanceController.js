@@ -27,9 +27,9 @@ exports.checkIn = async (req, res) => {
       schedule = new Schedule({
         user: req.user.id,
         date: today,
-        loginTime: user.timingSettings.loginTime || '09:30',
-        logoutTime: user.timingSettings.logoutTime || '18:30',
-        graceTime: user.timingSettings.graceTime || 15,
+        loginTime: user.timingSettings?.loginTime || '09:30',
+        logoutTime: user.timingSettings?.logoutTime || '18:30',
+        graceTime: user.timingSettings?.graceTime ?? 15,
         lunchStart: user.timingSettings.lunchStart || '13:30',
         lunchDuration: user.timingSettings.lunchDuration || 45
       });
@@ -43,7 +43,7 @@ exports.checkIn = async (req, res) => {
     expectedLoginDate.setHours(parseInt(loginTimeParts[0]), parseInt(loginTimeParts[1]), 0);
 
     const currentTime = getISTFullDate();
-    const graceTimeLimit = addMinutes(expectedLoginDate, schedule.graceTime);
+    const graceTimeLimit = addMinutes(expectedLoginDate, user.timingSettings?.graceTime ?? 15);
 
     let permissionMinutes = 0;
     let status = 'on-time';
@@ -226,7 +226,8 @@ exports.getTodayAttendance = async (req, res) => {
     let isHoliday = false;
     let holidayReason = null;
 
-    // 1. Check Personal Approved Leave
+    // 1. Check Personal Approved Leave - REMOVED AS PER USER REQUEST (No automatic marking)
+    /*
     const approvedLeave = await Request.findOne({
       user: req.user.id,
       date: today,
@@ -238,6 +239,7 @@ exports.getTodayAttendance = async (req, res) => {
       leaveStatus = 'leave';
       leaveReason = approvedLeave.reason;
     }
+    */
 
     // 2. Check Company Holiday
     const companyLeave = await CompanyLeave.findOne({ date: today });
@@ -278,7 +280,7 @@ exports.getAllLogs = async (req, res) => {
       const schedule = {
         loginTime: snapshot?.loginTime || user.timingSettings?.loginTime || '09:30',
         logoutTime: snapshot?.logoutTime || user.timingSettings?.logoutTime || '18:30',
-        graceTime: snapshot?.graceTime || user.timingSettings?.graceTime || 15,
+        graceTime: user.timingSettings?.graceTime ?? 15, // Strictly from profile
         lunchDuration: snapshot?.lunchDuration || user.timingSettings?.lunchDuration || 45
       };
 
@@ -325,7 +327,7 @@ exports.emergencyAttendance = async (req, res) => {
         date,
         loginTime: user.timingSettings?.loginTime || '09:30',
         logoutTime: user.timingSettings?.logoutTime || '18:30',
-        graceTime: user.timingSettings?.graceTime || 15,
+        graceTime: user.timingSettings?.graceTime ?? 15,
         lunchDuration: user.timingSettings?.lunchDuration || 45
       });
       await schedule.save();
@@ -341,7 +343,7 @@ exports.emergencyAttendance = async (req, res) => {
       const expectedLoginDate = getISTFullDate(new Date(date)); // Just parse the date part
       expectedLoginDate.setHours(parseInt(loginTimeParts[0]), parseInt(loginTimeParts[1]), 0);
       
-      const graceMinutes = schedule.graceTime || 15;
+      const graceMinutes = user.timingSettings?.graceTime ?? 15; // Strictly from profile
       const actualCheckIn = parse(`${date} ${checkInTime}`, 'yyyy-MM-dd HH:mm', getISTFullDate());
 
       if (actualCheckIn > addMinutes(expectedLoginDate, graceMinutes)) {
@@ -417,11 +419,14 @@ exports.getMonthlyCalendar = async (req, res) => {
       date: { $gte: format(startDate, 'yyyy-MM-dd'), $lte: format(endDate, 'yyyy-MM-dd') }
     });
     
+    /*
     const requests = await Request.find({
       user: req.user.id,
       status: 'approved',
       date: { $gte: format(startDate, 'yyyy-MM-dd'), $lte: format(endDate, 'yyyy-MM-dd') }
     });
+    */
+    const requests = []; // Empty as per user request (No automatic marking)
     
     const companyLeaves = await CompanyLeave.find({
       date: { $gte: format(startDate, 'yyyy-MM-dd'), $lte: format(endDate, 'yyyy-MM-dd') }

@@ -40,13 +40,22 @@ const PermissionReview = () => {
   const [isRejectOpen, setIsRejectOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [rejectedReason, setRejectedReason] = useState('');
+  const [isAddLeaveOpen, setIsAddLeaveOpen] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [leaveData, setLeaveData] = useState({
+    userId: '',
+    date: new Date().toISOString().split('T')[0],
+    duration: 1,
+    reason: ''
+  });
 
   useEffect(() => {
     fetchRequests(1);
 
     socket.on('new_request', (data) => {
-      fetchRequests(true);
+      fetchRequests(pagination.currentPage);
     });
+    fetchEmployees();
 
     socket.on('request_deleted', ({ id }) => {
       setRequests(prev => prev.filter(req => req._id !== id));
@@ -62,6 +71,18 @@ const PermissionReview = () => {
       socket.off('requests_bulk_deleted');
     };
   }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?limit=1000`, {
+        headers: { 'x-auth-token': token }
+      });
+      setEmployees(res.data.users);
+    } catch (err) {
+      console.error("Error fetching employees:", err);
+    }
+  };
 
   const fetchRequests = async (page = 1) => {
     setLoading(true);
@@ -225,6 +246,31 @@ const PermissionReview = () => {
     }
   };
 
+  const handleAddLeave = async () => {
+    if (!leaveData.userId || !leaveData.reason) {
+      toast({ variant: "destructive", title: "Error", description: "Please select an employee and provide a reason." });
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/requests`, {
+        ...leaveData,
+        type: 'leave'
+      }, {
+        headers: { 'x-auth-token': token }
+      });
+      setIsAddLeaveOpen(false);
+      setLeaveData({ userId: '', date: new Date().toISOString().split('T')[0], duration: 1, reason: '' });
+      fetchRequests(1);
+      toast({ title: "Success", description: "Leave added successfully" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: err.response?.data?.msg || "Failed to add leave" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const filteredRequests = requests;
 
   const getStatusBadge = (status) => {
@@ -270,6 +316,13 @@ const PermissionReview = () => {
         </div>
 
         <div className="flex items-center gap-4">
+           <Button
+             onClick={() => setIsAddLeaveOpen(true)}
+             className="h-10 bg-zinc-900 hover:bg-black text-[#fffe01] rounded-xl font-bold uppercase tracking-wider text-[10px] flex items-center gap-2 shadow-sm px-6"
+           >
+             <CalendarIcon className="w-4 h-4" />
+             Add Leave
+           </Button>
            <div className="relative group w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <Input
@@ -474,7 +527,7 @@ const PermissionReview = () => {
                       size="icon"
                       onClick={() => handleDeleteRecord(req._id)}
                       disabled={actionLoading}
-                      className="text-zinc-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-10 w-10 transition-all opacity-0 group-hover:opacity-100 hidden xl:flex items-center justify-center"
+                      className="text-zinc-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-10 w-10 transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -529,6 +582,85 @@ const PermissionReview = () => {
                 className="flex-1 h-12 bg-rose-600 text-white hover:bg-rose-700 rounded-xl font-bold uppercase tracking-wider text-[10px] shadow-lg transition-all"
               >
                 Submit Rejection
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Leave Dialog */}
+      <Dialog open={isAddLeaveOpen} onOpenChange={setIsAddLeaveOpen}>
+        <DialogContent className="rounded-3xl bg-white border-0 shadow-xl p-0 overflow-hidden sm:max-w-md">
+          <div className="bg-zinc-900 p-8 text-white">
+            <DialogTitle className="text-xl font-semibold tracking-tight uppercase">Add Leave Record</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mt-2">
+              Manually register an approved leave for an employee.
+            </DialogDescription>
+          </div>
+          <div className="p-8 space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Select Employee</Label>
+                <select 
+                  value={leaveData.userId}
+                  onChange={(e) => setLeaveData({ ...leaveData, userId: e.target.value })}
+                  className="w-full bg-zinc-50 border border-zinc-100 rounded-xl p-3 text-sm font-medium focus:ring-1 focus:ring-zinc-200"
+                >
+                  <option value="">Select an employee...</option>
+                  {employees.map(emp => (
+                    <option key={emp._id} value={emp._id}>{emp.name} ({emp.employeeId})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Date</Label>
+                  <Input 
+                    type="date"
+                    value={leaveData.date}
+                    onChange={(e) => setLeaveData({ ...leaveData, date: e.target.value })}
+                    className="rounded-xl border-zinc-100 bg-zinc-50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Duration</Label>
+                  <select 
+                    value={leaveData.duration}
+                    onChange={(e) => setLeaveData({ ...leaveData, duration: parseFloat(e.target.value) })}
+                    className="w-full bg-zinc-50 border border-zinc-100 rounded-xl p-3 text-sm font-medium focus:ring-1 focus:ring-zinc-200"
+                  >
+                    <option value="1">Full Day</option>
+                    <option value="0.5">Half Day</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Reason</Label>
+                <textarea
+                  placeholder="Reason for leave..."
+                  value={leaveData.reason}
+                  onChange={(e) => setLeaveData({ ...leaveData, reason: e.target.value })}
+                  className="w-full min-h-[80px] bg-zinc-50 border border-zinc-100 rounded-xl p-3 text-sm font-medium focus:ring-1 focus:ring-zinc-200 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-row gap-4">
+              <Button
+                variant="ghost"
+                onClick={() => setIsAddLeaveOpen(false)}
+                className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-[10px] text-zinc-400 hover:text-black"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={actionLoading}
+                onClick={handleAddLeave}
+                className="flex-1 h-12 bg-zinc-900 text-[#fffe01] hover:bg-black rounded-xl font-bold uppercase tracking-wider text-[10px] shadow-lg"
+              >
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Add'}
               </Button>
             </div>
           </div>

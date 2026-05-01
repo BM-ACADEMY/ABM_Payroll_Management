@@ -30,6 +30,7 @@ const LeaveRequest = () => {
   const [formLoading, setFormLoading] = useState(false);
   const { toast } = useToast();
   const [pagination, setPagination] = useState({ total: 0, pages: 1, currentPage: 1 });
+  const [user, setUser] = useState(null);
 
   const [leaveDate, setLeaveDate] = useState(new Date().toISOString().split('T')[0]);
   const [leaveType, setLeaveType] = useState('full');
@@ -37,6 +38,7 @@ const LeaveRequest = () => {
   const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, id: null });
 
   useEffect(() => {
+    fetchUser();
     fetchMyRequests(1);
 
     // Socket handled via shared service
@@ -52,6 +54,18 @@ const LeaveRequest = () => {
       socket.disconnect();
     };
   }, []);
+
+  const fetchUser = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth`, {
+        headers: { 'x-auth-token': token }
+      });
+      setUser(res.data);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+    }
+  };
 
   const fetchMyRequests = async (page = 1) => {
     setLoading(true);
@@ -162,8 +176,9 @@ const LeaveRequest = () => {
         <p className="text-sm md:text-base text-gray-500 font-normal">Apply for planned leaves and track your formal requests.</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        {/* Leave Form */}
+      <div className={`grid grid-cols-1 ${user?.role?.name === 'admin' || user?.role?.name === 'subadmin' ? 'lg:grid-cols-12' : ''} gap-6 md:gap-8`}>
+        {/* Leave Form - Only for Admin/Subadmin */}
+        {(user?.role?.name === 'admin' || user?.role?.name === 'subadmin') && (
         <Card className="lg:col-span-5 border-0 shadow-lg rounded-2xl bg-black text-[#fffe01] overflow-hidden h-fit">
           <CardHeader className="p-6 md:p-8 pb-4 border-b border-zinc-800">
             <CardTitle className="text-xl font-medium flex items-center gap-2">
@@ -222,8 +237,10 @@ const LeaveRequest = () => {
           </CardContent>
         </Card>
 
+        )}
+
         {/* Request History */}
-        <Card className="lg:col-span-7 border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden">
+        <Card className={`${user?.role?.name === 'admin' || user?.role?.name === 'subadmin' ? 'lg:col-span-7' : 'w-full'} border border-gray-200 shadow-sm rounded-2xl bg-white overflow-hidden`}>
           <CardHeader className="p-6 md:p-8 pb-4 border-b border-gray-100 bg-gray-50/30 flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-lg font-medium flex items-center gap-2 text-gray-900">
@@ -279,7 +296,8 @@ const LeaveRequest = () => {
                         </div>
                       )}
                       
-                      {request.status !== 'approved' && (
+                      {/* Admins can delete any request, employees can only delete pending/rejected */}
+                      {(user?.role?.name === 'admin' || user?.role?.name === 'subadmin' || request.status !== 'approved') && (
                         <div className="flex items-center gap-2">
                            <Button
                              variant="ghost"

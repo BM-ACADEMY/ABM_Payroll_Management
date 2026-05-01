@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import Loader from "@/components/ui/Loader"
 
 const ConfirmDialog = ({ 
   isOpen, 
@@ -18,7 +19,8 @@ const ConfirmDialog = ({
   description = "This action cannot be undone and will permanently delete the data.",
   confirmText = "Delete",
   cancelText = "Cancel",
-  variant = "destructive" 
+  variant = "destructive",
+  isLoading = false
 }) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -31,21 +33,22 @@ const ConfirmDialog = ({
             {description}
           </AlertDialogDescription>
           <AlertDialogFooter className="gap-3 sm:gap-0 sm:flex-row mt-6">
-            <AlertDialogCancel className="rounded-xl h-12 border-zinc-200 font-bold text-zinc-400 hover:text-zinc-900 transition-all">
+            <AlertDialogCancel disabled={isLoading} className="rounded-xl h-12 border-zinc-200 font-bold text-zinc-400 hover:text-zinc-900 transition-all">
               {cancelText}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
                 onConfirm();
-                onClose();
               }}
-              className={`rounded-xl h-12 font-black uppercase tracking-widest text-[10px] transition-all px-8 ${
+              disabled={isLoading}
+              className={`rounded-xl h-12 font-black uppercase tracking-widest text-[10px] transition-all px-8 flex items-center justify-center gap-2 ${
                 variant === 'destructive' 
                   ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-100' 
                   : 'bg-zinc-900 hover:bg-black text-[#fffe01] shadow-lg shadow-zinc-100'
               }`}
             >
-              {confirmText}
+              {isLoading ? <Loader size="xs" color="white" /> : confirmText}
             </AlertDialogAction>
           </AlertDialogFooter>
         </div>
