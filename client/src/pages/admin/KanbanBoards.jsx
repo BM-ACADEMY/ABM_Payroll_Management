@@ -26,6 +26,7 @@ const KanbanBoards = () => {
   const [boardToEdit, setBoardToEdit] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [filterTeamIds, setFilterTeamIds] = useState(new Set());
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -277,6 +278,59 @@ const KanbanBoards = () => {
         </div>
       </header>
 
+      {/* Team Filter Tabs - shown when there are multiple teams */}
+      {teams.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setFilterTeamIds(new Set())}
+            className={`px-4 py-1.5 rounded-full text-[10px] font-normal uppercase tracking-widest border transition-all ${
+              filterTeamIds.size === 0
+                ? 'bg-slate-900 text-[#fffe01] border-slate-900 shadow-md'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-800'
+            }`}
+          >
+            All Teams
+          </button>
+          {teams.map(team => {
+            const isSelected = filterTeamIds.has(team._id);
+            return (
+              <button
+                key={team._id}
+                onClick={() => {
+                  setFilterTeamIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(team._id)) {
+                      next.delete(team._id);
+                    } else {
+                      next.add(team._id);
+                    }
+                    return next;
+                  });
+                }}
+                className={`px-4 py-1.5 rounded-full text-[10px] font-normal uppercase tracking-widest border transition-all flex items-center gap-2 ${
+                  isSelected
+                    ? 'bg-slate-900 text-[#fffe01] border-slate-900 shadow-md'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-800'
+                }`}
+              >
+                <Users className="w-3 h-3" />
+                {team.name}
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                  isSelected ? 'bg-slate-700 text-yellow-300' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {boardsByTeam[team._id]?.length || 0}
+                </span>
+              </button>
+            );
+          })}
+          {filterTeamIds.size > 0 && (
+            <span className="text-[9px] text-slate-400 font-normal uppercase tracking-widest ml-1">
+              {filterTeamIds.size} team{filterTeamIds.size > 1 ? 's' : ''} selected
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="space-y-16 pb-20">
         <DragDropContext onDragEnd={onDragEnd}>
           <section className="space-y-8">
@@ -294,7 +348,7 @@ const KanbanBoards = () => {
                 <p className="text-slate-400 italic text-sm font-normal">Create a team in Management to proceed.</p>
               </div>
             ) : (
-              teams.map(team => (
+              teams.filter(team => filterTeamIds.size === 0 || filterTeamIds.has(team._id)).map(team => (
                 <div key={team._id} className="space-y-6">
                   <div className="flex items-center gap-4 pl-1">
                     <div className="bg-slate-100 p-2.5 rounded-xl">
