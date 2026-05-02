@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 const urlBase64ToUint8Array = (base64String) => {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
+  const str = base64String.trim();
+  const padding = '='.repeat((4 - (str.length % 4)) % 4);
+  const base64 = (str + padding)
     .replace(/\-/g, '+')
     .replace(/_/g, '/');
 
@@ -35,8 +36,16 @@ export const subscribeToPush = async () => {
     console.log('Service Worker Registered');
 
     // 2. Get Public Key from server
-    const response = await axios.get('/api/notifications/vapid-public-key');
-    const publicKey = response.data.publicKey;
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/vapid-public-key`, {
+      headers: { 'x-auth-token': token }
+    });
+    const publicKey = response.data?.publicKey || response.data;
+
+    if (!publicKey || typeof publicKey !== 'string') {
+        console.error('Failed to retrieve VAPID public key from server');
+        return;
+    }
 
     // 3. Request Permission
     const permission = await Notification.requestPermission();
@@ -54,7 +63,9 @@ export const subscribeToPush = async () => {
     console.log('Push Subscribed');
 
     // 5. Send subscription to server
-    await axios.post('/api/notifications/subscribe', subscription);
+    await axios.post(`${import.meta.env.VITE_API_URL}/api/notifications/subscribe`, subscription, {
+      headers: { 'x-auth-token': token }
+    });
     console.log('Subscription sent to server');
 
   } catch (error) {

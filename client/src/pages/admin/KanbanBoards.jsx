@@ -101,18 +101,28 @@ const KanbanBoards = () => {
   const confirmDeleteBoard = async () => {
     if (!boardToDelete) return;
     setIsDeleting(true);
+    const deletingId = boardToDelete._id;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${boardToDelete._id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/boards/${deletingId}`, {
         headers: { 'x-auth-token': token }
       });
       toast({ title: "Deleted", description: "Board removed" });
+      // Close dialog immediately before refetching
       setBoardToDelete(null);
-      setIsDeleting(false);
-      await fetchData();
+      // Optimistically remove from local state so UI updates instantly
+      setBoardsByTeam(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(teamId => {
+          updated[teamId] = updated[teamId].filter(b => b._id !== deletingId);
+        });
+        return updated;
+      });
+      fetchData();
     } catch (err) {
-      setIsDeleting(false);
       toast({ variant: "destructive", title: "Error", description: "Failed to delete board" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 

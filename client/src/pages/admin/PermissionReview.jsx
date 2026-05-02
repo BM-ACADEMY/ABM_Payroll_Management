@@ -78,7 +78,8 @@ const PermissionReview = () => {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/employees?limit=1000`, {
         headers: { 'x-auth-token': token }
       });
-      setEmployees(res.data.users);
+      const users = res.data.users || res.data;
+      setEmployees(Array.isArray(users) ? users : []);
     } catch (err) {
       console.error("Error fetching employees:", err);
     }
@@ -607,8 +608,8 @@ const PermissionReview = () => {
                   className="w-full bg-zinc-50 border border-zinc-100 rounded-xl p-3 text-sm font-medium focus:ring-1 focus:ring-zinc-200"
                 >
                   <option value="">Select an employee...</option>
-                  {employees.map(emp => (
-                    <option key={emp._id} value={emp._id}>{emp.name} ({emp.employeeId})</option>
+                  {Array.isArray(employees) && employees.map(emp => (
+                    <option key={emp?._id} value={emp?._id}>{emp?.name} ({emp?.employeeId})</option>
                   ))}
                 </select>
               </div>
