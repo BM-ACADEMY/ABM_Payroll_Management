@@ -1438,7 +1438,7 @@ const KanbanBoard = () => {
           <Droppable droppableId="board" type="list" direction="horizontal">
             {(provided) => (
               <div {...provided.droppableProps} ref={provided.innerRef} className="flex gap-6 h-full items-start">
-                {Array.isArray(lists) && lists.map((list, index) => (
+                {Array.isArray(lists) && lists.filter(list => boardData?.type !== 'weekly' || (tasksByList[list._id]?.length || 0) > 0).map((list, index) => (
                   <Draggable key={list._id} draggableId={list._id} index={index}>
                     {(provided) => (
                       <div {...provided.draggableProps} ref={provided.innerRef} className="w-[300px] shrink-0 bg-zinc-50/50 backdrop-blur-md rounded-[20px] flex flex-col max-h-full shadow-[0_1px_3px_rgba(0,0,0,0.05)] border border-slate-200/60">
@@ -1463,7 +1463,7 @@ const KanbanBoard = () => {
                           {(provided, snapshot) => (
                             <div {...provided.droppableProps} ref={provided.innerRef} className={`flex-1 overflow-y-auto px-2.5 pb-2.5 pt-4 min-h-[100px] space-y-4 transition-all duration-200 ${snapshot.isDraggingOver ? 'bg-slate-200/30' : ''}`}>
                               {tasksByList[list._id]?.map((task, idx) => (
-                                <KanbanCard key={task._id} task={task} index={idx} onClick={() => fetchTaskDetails(task._id)} handleMoveToBacklog={handleMoveToBacklog} />
+                                <KanbanCard key={task._id} task={task} index={idx} onClick={() => fetchTaskDetails(task._id)} handleMoveToBacklog={handleMoveToBacklog} isWeekly={boardData?.type === 'weekly'} />
                               ))}
                               {provided.placeholder}
                             </div>

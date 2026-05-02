@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import axios from 'axios';
 
-const KanbanCard = ({ task, index, onClick, handleMoveToBacklog }) => {
+const KanbanCard = ({ task, index, onClick, handleMoveToBacklog, isWeekly }) => {
   const getStatusBadge = (label) => {
     if (!label) return null;
     const styles = {
@@ -94,7 +94,7 @@ const KanbanCard = ({ task, index, onClick, handleMoveToBacklog }) => {
               </div>
               
               <div className="flex items-center gap-3">
-                {task.checklists?.some(cl => cl.items?.length > 0) && (
+                {isWeekly && task.checklists?.some(cl => cl.items?.length > 0) && (
                   <div className="flex items-center gap-1 text-[9px] text-slate-400 font-normal">
                     <CheckSquare className="w-3 h-3" />
                     {task.checklists.reduce((acc, cl) => acc + (cl.items?.filter(i => i.isCompleted).length || 0), 0)}/
