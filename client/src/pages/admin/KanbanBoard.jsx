@@ -31,6 +31,8 @@ import SOPTab from './kanban/SOPTab';
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 
@@ -69,6 +71,7 @@ const KanbanBoard = () => {
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: '', data: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [recurringConfig, setRecurringConfig] = useState({ isOpen: false, taskId: null, type: 'custom', selectedDays: [], weeklyDay: 'Monday' });
 
   // Refs for socket listener to avoid closure issues
   const isDetailsOpenRef = useRef(isDetailsOpen);
@@ -191,11 +194,12 @@ const KanbanBoard = () => {
     return { total, completed, blocked, inSprint, listStats, memberStats };
   }, [tasks, lists, boardData, deduplicatedMembers, isAdmin, selectedAnalyticsUser, userRole]);
 
-  const handleMoveToSprint = async (taskId) => {
+  const handleMoveToSprint = async (taskId, recurrence = { type: 'none' }) => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(`${import.meta.env.VITE_API_URL}/api/boards/tasks/${taskId}`, {
-        isInSprint: true
+        isInSprint: true,
+        recurrence
       }, { headers: { 'x-auth-token': token } });
       toast({ title: "Task Deployed", description: "Operation moved to active Sprint node." });
       fetchData();
@@ -1222,6 +1226,73 @@ const KanbanBoard = () => {
         </div>
       </header>
 
+      <Dialog open={recurringConfig.isOpen} onOpenChange={(open) => setRecurringConfig(prev => ({ ...prev, isOpen: open }))}>
+        <DialogContent className="sm:max-w-[425px] rounded-[24px]">
+          <DialogHeader>
+            <DialogTitle>{recurringConfig.type === 'custom' ? 'Custom Days Setup' : 'Weekly Setup'}</DialogTitle>
+            <DialogDescription>
+              Select the days you want this vector to be regenerated in the backlog.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {recurringConfig.type === 'custom' ? (
+              <div className="grid grid-cols-2 gap-3">
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                  <div key={day} className="flex items-center space-x-2 bg-zinc-50 p-3 rounded-xl border border-zinc-100">
+                    <Checkbox 
+                      id={`day-${day}`} 
+                      checked={recurringConfig.selectedDays.includes(day)}
+                      onCheckedChange={(checked) => {
+                        setRecurringConfig(prev => ({
+                          ...prev,
+                          selectedDays: checked 
+                            ? [...prev.selectedDays, day] 
+                            : prev.selectedDays.filter(d => d !== day)
+                        }))
+                      }}
+                    />
+                    <Label htmlFor={`day-${day}`} className="text-sm cursor-pointer">{day}</Label>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Label>Select Day of the Week</Label>
+                <Select 
+                  value={recurringConfig.weeklyDay} 
+                  onValueChange={(val) => setRecurringConfig(prev => ({ ...prev, weeklyDay: val }))}
+                >
+                  <SelectTrigger className="w-full h-12 rounded-xl">
+                    <SelectValue placeholder="Select Day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                      <SelectItem key={day} value={day}>{day}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecurringConfig(prev => ({ ...prev, isOpen: false }))}>Cancel</Button>
+            <Button 
+              className="bg-black text-[#fffe01]"
+              onClick={() => {
+                handleMoveToSprint(recurringConfig.taskId, { 
+                  type: recurringConfig.type, 
+                  customDays: recurringConfig.selectedDays, 
+                  weeklyDay: recurringConfig.weeklyDay 
+                });
+                setRecurringConfig(prev => ({ ...prev, isOpen: false }));
+              }}
+            >
+              Deploy & Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Tabs 
         key={`${id}-${type}-${selectedTeamId}`}
         value={activeTab} 
@@ -1320,12 +1391,38 @@ const KanbanBoard = () => {
                                >
                                   <Edit className="w-5 h-5" />
                                </Button>
-                               <Button 
-                                 onClick={() => handleMoveToSprint(task._id)}
-                                 className="flex-1 sm:flex-none justify-center bg-black text-[#fffe01] hover:bg-[#fffe01] hover:text-black rounded-xl md:rounded-2xl h-10 md:h-12 px-4 md:px-6 font-normal uppercase tracking-widest text-[9px] md:text-[10px] shadow-sm active:scale-95 transition-all flex items-center gap-2"
-                               >
-                                  <Plus className="w-4 h-4" /> Deploy
-                               </Button>
+                               <Popover>
+                                 <PopoverTrigger asChild>
+                                   <Button 
+                                     onClick={(e) => e.stopPropagation()}
+                                     className="flex-1 sm:flex-none justify-center bg-black text-[#fffe01] hover:bg-[#fffe01] hover:text-black rounded-xl md:rounded-2xl h-10 md:h-12 px-4 md:px-6 font-normal uppercase tracking-widest text-[9px] md:text-[10px] shadow-sm active:scale-95 transition-all flex items-center gap-2"
+                                   >
+                                      <Plus className="w-4 h-4" /> Deploy
+                                   </Button>
+                                 </PopoverTrigger>
+                                 <PopoverContent className="w-64 p-4 rounded-2xl bg-white border border-zinc-100 shadow-xl z-50" onClick={(e) => e.stopPropagation()}>
+                                   <div className="space-y-3">
+                                     <h4 className="font-medium text-[10px] text-zinc-400 uppercase tracking-widest mb-2 px-2">Deploy Options</h4>
+                                     
+                                     <Button variant="ghost" className="w-full justify-start text-xs font-normal" onClick={() => handleMoveToSprint(task._id, { type: 'none' })}>
+                                       1. One Time (Completely)
+                                     </Button>
+                                     
+                                     <Button variant="ghost" className="w-full justify-start text-xs font-normal" onClick={() => handleMoveToSprint(task._id, { type: 'daily' })}>
+                                       2. Daily Recurring
+                                     </Button>
+                                     
+                                     <div className="pt-2 border-t border-zinc-100">
+                                       <Button variant="ghost" className="w-full justify-start text-xs font-normal mb-1" onClick={() => setRecurringConfig({ isOpen: true, taskId: task._id, type: 'custom', selectedDays: [], weeklyDay: 'Monday' })}>
+                                         3. Custom Days...
+                                       </Button>
+                                       <Button variant="ghost" className="w-full justify-start text-xs font-normal" onClick={() => setRecurringConfig({ isOpen: true, taskId: task._id, type: 'weekly', selectedDays: [], weeklyDay: 'Monday' })}>
+                                         4. Weekly...
+                                       </Button>
+                                     </div>
+                                   </div>
+                                 </PopoverContent>
+                               </Popover>
                             </div>
                         </div>
                       ))}

@@ -2,7 +2,7 @@ import {
   X, Plus, AlignLeft, Layout, Search, Trash2, 
   ExternalLink, Timer, TrendingUp, MoreHorizontal, 
   CheckSquare, MessageSquare, Bell, Clock, RotateCcw,
-  ChevronDown, ChevronRight, Tag, Paperclip, Check, Edit2, Send, Calendar
+  ChevronDown, ChevronRight, Tag, Paperclip, Check, Edit2, Send, Calendar, Repeat
 } from 'lucide-react';
 import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
 import axios from 'axios';
@@ -206,6 +206,7 @@ const TaskDetailsModal = ({
   const labelPickerRef = useRef(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isChecklistPickerOpen, setIsChecklistPickerOpen] = useState(false);
+  const [isRecurrencePickerOpen, setIsRecurrencePickerOpen] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('Checklist');
   const [showActivityDetails, setShowActivityDetails] = useState(true);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -222,6 +223,7 @@ const TaskDetailsModal = ({
   const memberPickerRef = useRef(null);
   const datePickerRef = useRef(null);
   const checklistPickerRef = useRef(null);
+  const recurrencePickerRef = useRef(null);
 
   useEffect(() => {
     if (isDatePickerOpen) {
@@ -232,6 +234,22 @@ const TaskDetailsModal = ({
       setViewDate(initialDate);
     }
   }, [isDatePickerOpen, task?.deadline]);
+
+  const [recurrenceConfig, setRecurrenceConfig] = useState({ 
+    type: 'none', 
+    customDays: [], 
+    weeklyDay: 'Monday' 
+  });
+
+  useEffect(() => {
+    if (isRecurrencePickerOpen && task?.recurrence) {
+      setRecurrenceConfig({
+        type: task.recurrence.type || 'none',
+        customDays: task.recurrence.customDays || [],
+        weeklyDay: task.recurrence.weeklyDay || 'Monday'
+      });
+    }
+  }, [isRecurrencePickerOpen, task?.recurrence]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -247,13 +265,16 @@ const TaskDetailsModal = ({
       if (isChecklistPickerOpen && checklistPickerRef.current && !checklistPickerRef.current.contains(event.target)) {
         if (!event.target.closest('[data-checklist-toggle]')) setIsChecklistPickerOpen(false);
       }
+      if (isRecurrencePickerOpen && recurrencePickerRef.current && !recurrencePickerRef.current.contains(event.target)) {
+        if (!event.target.closest('[data-recurrence-toggle]')) setIsRecurrencePickerOpen(false);
+      }
       if (isMoreMenuOpen && moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
         if (!event.target.closest('[data-more-toggle]')) setIsMoreMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMemberPickerOpen, isLabelPickerOpen, isDatePickerOpen, isChecklistPickerOpen, isMoreMenuOpen]);
+  }, [isMemberPickerOpen, isLabelPickerOpen, isDatePickerOpen, isChecklistPickerOpen, isRecurrencePickerOpen, isMoreMenuOpen]);
 
   useEffect(() => {
     const autoResize = (ref) => {
@@ -646,6 +667,80 @@ const TaskDetailsModal = ({
                                 <Button className="flex-1 h-10 bg-black text-[#fffe01] font-bold text-[11px] rounded-xl" onClick={() => { if(stagingDeadline) handleUpdateTask(task._id, { deadline: stagingDeadline }); setIsDatePickerOpen(false); }}>Save Date</Button>
                                 <Button variant="ghost" className="h-10 px-4 text-[10px] text-red-500 font-bold" onClick={() => { handleUpdateTask(task._id, { deadline: null }); setIsDatePickerOpen(false); }}>Clear</Button>
                              </div>
+                         </div>
+                      </div>
+                   )}
+                 </div>
+                 <div className="relative">
+                   <Button variant="outline" data-recurrence-toggle onClick={() => setIsRecurrencePickerOpen(!isRecurrencePickerOpen)} className="h-8 px-3 border-zinc-200 rounded text-[13px] font-medium text-zinc-700 hover:bg-zinc-50 gap-2">
+                      <Repeat className="w-4 h-4 text-zinc-500" /> Recurrence
+                   </Button>
+                   {isRecurrencePickerOpen && (
+                      <div ref={recurrencePickerRef} className="absolute top-10 left-0 w-[280px] bg-white border border-zinc-200 rounded-2xl shadow-2xl z-[70] p-4 text-left">
+                         <div className="space-y-4">
+                            <div>
+                               <Label className="text-xs text-zinc-500">Type</Label>
+                               <select 
+                                 value={recurrenceConfig.type}
+                                 onChange={e => setRecurrenceConfig(prev => ({ ...prev, type: e.target.value }))}
+                                 className="w-full mt-1 h-9 rounded-lg border border-zinc-200 text-[13px] px-2 bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                               >
+                                  <option value="none">One Time (None)</option>
+                                  <option value="daily">Daily</option>
+                                  <option value="custom">Custom Days</option>
+                                  <option value="weekly">Weekly</option>
+                               </select>
+                            </div>
+                            
+                            {recurrenceConfig.type === 'custom' && (
+                               <div>
+                                  <Label className="text-xs text-zinc-500 mb-2 block">Select Days</Label>
+                                  <div className="grid grid-cols-2 gap-2">
+                                     {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                                        <label key={day} className="flex items-center gap-2 text-[12px] cursor-pointer">
+                                           <input 
+                                             type="checkbox" 
+                                             className="rounded border-zinc-300 text-black focus:ring-black"
+                                             checked={recurrenceConfig.customDays.includes(day)}
+                                             onChange={(e) => {
+                                                if (e.target.checked) {
+                                                   setRecurrenceConfig(prev => ({ ...prev, customDays: [...prev.customDays, day] }));
+                                                } else {
+                                                   setRecurrenceConfig(prev => ({ ...prev, customDays: prev.customDays.filter(d => d !== day) }));
+                                                }
+                                             }}
+                                           />
+                                           {day}
+                                        </label>
+                                     ))}
+                                  </div>
+                               </div>
+                            )}
+
+                            {recurrenceConfig.type === 'weekly' && (
+                               <div>
+                                  <Label className="text-xs text-zinc-500">Day of Week</Label>
+                                  <select 
+                                     value={recurrenceConfig.weeklyDay}
+                                     onChange={e => setRecurrenceConfig(prev => ({ ...prev, weeklyDay: e.target.value }))}
+                                     className="w-full mt-1 h-9 rounded-lg border border-zinc-200 text-[13px] px-2 bg-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                                  >
+                                     {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                                        <option key={day} value={day}>{day}</option>
+                                     ))}
+                                  </select>
+                               </div>
+                            )}
+
+                            <Button 
+                              onClick={() => { 
+                                handleUpdateTask(task._id, { recurrence: recurrenceConfig }); 
+                                setIsRecurrencePickerOpen(false); 
+                              }} 
+                              className="w-full bg-black text-[#fffe01] h-9 mt-2 text-[11px] font-bold"
+                            >
+                               Save Recurrence
+                            </Button>
                          </div>
                       </div>
                    )}

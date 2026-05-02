@@ -1,11 +1,11 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-const Select = ({ children, value, onValueChange, ...props }) => {
+const Select = ({ children, value, onValueChange, className, ...props }) => {
   const [open, setOpen] = React.useState(false)
   return (
     <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
-      <div className="relative" {...props}>{children}</div>
+      <div className={cn("relative", open ? "z-[9999]" : "", className)} {...props}>{children}</div>
     </SelectContext.Provider>
   )
 }
