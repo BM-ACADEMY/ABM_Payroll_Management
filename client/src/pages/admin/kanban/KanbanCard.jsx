@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { CheckCircle2, Calendar, MessageSquare, Bell, CheckSquare, Clock, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Calendar, MessageSquare, Bell, CheckSquare, Clock, RotateCcw, Repeat } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import axios from 'axios';
@@ -41,6 +41,17 @@ const KanbanCard = ({ task, index, onClick, handleMoveToBacklog }) => {
                 <div className="flex items-center gap-2 flex-wrap">
                   {task.originTaskId && <Badge variant="outline" className="text-[7px] font-normal bg-slate-50 text-slate-400 px-1 py-0 h-3.5 uppercase border-slate-100">Copied</Badge>}
                   {getStatusBadge(task.timeLogLabel)}
+                  {task.recurrence && task.recurrence.type !== 'none' && (
+                    <Badge variant="outline" className="flex items-center gap-1 text-[7px] font-normal bg-indigo-50 text-indigo-600 px-1.5 py-0 h-3.5 uppercase border-indigo-100">
+                      <Repeat className="w-2 h-2" />
+                      {task.recurrence.type === 'custom' 
+                        ? task.recurrence.customDays?.map(d => d.slice(0,3)).join(', ') 
+                        : task.recurrence.type === 'weekly' 
+                          ? `Every ${task.recurrence.weeklyDay}` 
+                          : 'Daily'
+                      }
+                    </Badge>
+                  )}
                 </div>
                 <h4 className={`text-[13px] md:text-sm font-normal text-slate-700 leading-snug break-words ${task.isCompleted ? 'text-slate-300 line-through' : ''}`}>
                   {task.title}

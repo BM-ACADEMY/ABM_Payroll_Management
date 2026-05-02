@@ -41,6 +41,12 @@ const TaskSchema = new mongoose.Schema({
   progress: { type: Number, default: 0, min: 0, max: 100 },
   blocker: { type: String },
   isInSprint: { type: Boolean, default: false },
+  recurrence: {
+    type: { type: String, enum: ['none', 'daily', 'custom', 'weekly'], default: 'none' },
+    customDays: [{ type: String }],
+    weeklyDay: { type: String },
+    lastGeneratedDate: { type: Date }
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
