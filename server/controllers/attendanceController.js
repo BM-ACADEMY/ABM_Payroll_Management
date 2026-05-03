@@ -364,12 +364,14 @@ exports.emergencyAttendance = async (req, res) => {
           time: checkInTime || '',
           mode: mode || 'WFO',
           status: calculatedStatus,
-          permissionMinutes: permissionMinutes || 0
+          permissionMinutes: permissionMinutes || 0,
+          location: req.body.location || null
         }
       });
     } else {
       if (checkInTime) attendance.checkIn.time = checkInTime;
       if (mode) attendance.checkIn.mode = mode;
+      if (req.body.location) attendance.checkIn.location = req.body.location;
       attendance.checkIn.status = calculatedStatus;
       attendance.checkIn.permissionMinutes = permissionMinutes;
     }
