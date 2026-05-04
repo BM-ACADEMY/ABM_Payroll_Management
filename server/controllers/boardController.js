@@ -19,32 +19,25 @@ exports.getSpecialBoard = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate('role', 'name');
     const isAdmin = user.role?.name === 'admin';
-    let teamId = req.query.teamId;
-    
-    // If no teamId provided, use user's assigned team or fallback
-    if (!teamId) {
-      if (!user.teams || user.teams.length === 0) {
-        if (isAdmin) {
-          const defaultTeam = await Team.findOne();
-          if (!defaultTeam) {
-              return res.status(400).json({ msg: 'No teams created yet' });
-          }
-          teamId = defaultTeam._id;
-        } else {
-          return res.status(400).json({ msg: 'User is not assigned to any team' });
-        }
-      } else {
-        teamId = user.teams[0]; // Use first team
-      }
+    const teamId = req.query.teamId;
+    let teamIds = [];
+    if (teamId && teamId !== 'all') {
+      teamIds = [teamId];
     } else {
-      // Validate that non-admin belongs to the requested team
-      if (!isAdmin && !user.teams.some(t => t.toString() === teamId.toString())) {
-        return res.status(403).json({ msg: 'Not authorized for this team' });
+      if (isAdmin) {
+        const allTeams = await Team.find().select('_id');
+        teamIds = allTeams.map(t => t._id);
+      } else {
+        teamIds = user.teams || [];
       }
+    }
+
+    if (teamIds.length === 0) {
+      return res.status(400).json({ msg: 'No teams found for the user' });
     }
     
     if (type === 'weekly') {
-      const boards = await Board.find({ team: teamId, type: 'regular' })
+      const boards = await Board.find({ team: { $in: teamIds }, type: 'regular' })
         .populate('team', 'name')
         .sort('position')
         .lean();
@@ -84,14 +77,14 @@ exports.getSpecialBoard = async (req, res) => {
       }));
 
       // Fetch all team members for assignment
-      const teamMembers = await User.find({ teams: teamId }).select('name email employeeId').lean();
+      const teamMembers = await User.find({ teams: { $in: teamIds } }).select('name email employeeId').lean();
 
       // Mock populated board for frontend consistency
       const mockPopulatedBoard = {
         _id: 'weekly-aggregated',
         title: 'Weekly Board',
         description: 'Aggregated view of all board sprints',
-        team: await Team.findById(teamId).select('name'),
+        team: teamId === 'all' || (!teamId && teamIds.length > 1) ? { name: 'ALL TEAMS' } : await Team.findById(teamIds[0]).select('name'),
         members: teamMembers,
         admins: [], // Not strictly needed for UI display here
         type: 'weekly'
@@ -104,7 +97,9 @@ exports.getSpecialBoard = async (req, res) => {
       });
     }
 
-    let board = await Board.findOne({ team: teamId, type });
+    // For other types (e.g., 'daily'), we still use a single teamId
+    const targetTeamId = teamIds[0];
+    let board = await Board.findOne({ team: targetTeamId, type });
     
     if (!board) {
       // Find system admins to set as board admins
@@ -116,7 +111,7 @@ exports.getSpecialBoard = async (req, res) => {
       board = new Board({
         title: type === 'daily' ? 'Daily Board' : 'Weekly Board',
         description: type === 'daily' ? 'Daily tasks and progress' : 'Weekly focus and goals',
-        team: teamId,
+        team: targetTeamId,
         type,
         admins: adminIds.length > 0 ? adminIds : [req.user.id], // Fallback to creator if no admin role found
         members: Array.from(new Set([...adminIds, req.user.id])) // Creator must be a member

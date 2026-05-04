@@ -291,13 +291,18 @@ const KanbanBoard = () => {
           _id: String(t._id).toLowerCase()
         }));
         setAvailableTeams(teamsArray);
+
+        // If in weekly board and multiple teams available, default to 'all'
+        if (type === 'weekly' && (teamsArray.length > 1 || isAdmin) && !selectedTeamId) {
+          setSelectedTeamId('all');
+        }
       } catch (err) {
         console.error('Error fetching teams:', err);
       }
     };
     
     fetchTeams();
-  }, [fetchData]);
+  }, [fetchData, type, isAdmin]); // Added dependencies
 
   // Update selectedTeamId when boardData changes to ensure sync
   useEffect(() => {
@@ -591,7 +596,7 @@ const KanbanBoard = () => {
   const handleCreateTask = async (e) => {
     e.preventDefault();
     try {
-      const activeBoardId = boardData?._id || id;
+      let activeBoardId = boardData?._id || id;
       let activeListId = newTaskData.listId || (lists.length > 0 ? lists[0]?._id : null);
       
       // If no lists exist on the board, automatically create a "Backlog" list first
@@ -611,6 +616,9 @@ const KanbanBoard = () => {
         }
       }
 
+      const isWeekly = boardData?.type === 'weekly';
+      activeBoardId = isWeekly ? activeListId : (boardData?._id || id);
+      
       if (!activeListId || !activeBoardId) {
         toast({ variant: "destructive", title: "Error", description: "Target list or board not found" });
         return;
@@ -619,8 +627,8 @@ const KanbanBoard = () => {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/boards/tasks`, { 
         ...newTaskData, 
         boardId: activeBoardId, 
-        listId: activeListId,
-        position: tasks.filter(t => t.list === activeListId).length 
+        listId: isWeekly ? undefined : activeListId, // Backend handles listId for weekly/regular
+        position: tasks.filter(t => (isWeekly ? t.board : t.list) === (isWeekly ? activeBoardId : activeListId)).length 
       }, {
         headers: { 'x-auth-token': localStorage.getItem('token') }
       });
@@ -1022,32 +1030,34 @@ const KanbanBoard = () => {
 
   return (
     <div className="h-[calc(100vh-80px)] overflow-hidden flex flex-col bg-zinc-50/50">
-      <header className="px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between border-b bg-white shadow-sm z-10 gap-4 md:gap-0">
+      <header className="px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between border-b bg-white shadow-sm z-50 gap-4 md:gap-0">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <Button variant="ghost" onClick={() => navigate(`${isAdmin ? '/admin' : '/dashboard'}/kanban`)} className="p-2 h-auto text-zinc-400 hover:text-black hover:bg-zinc-100 rounded-xl shrink-0">
             <X className="w-5 h-5" />
           </Button>
           <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-3 mb-0.5 md:mb-1 overflow-hidden">
+            <div className="flex items-center gap-3 mb-0.5 md:mb-1">
               <h1 className="text-lg md:text-xl font-normal text-zinc-900 tracking-tight truncate">{boardData?.title}</h1>
-              {type && availableTeams.length > 1 ? (
-                <Select value={String(selectedTeamId || '').toLowerCase()} onValueChange={(val) => { setSelectedTeamId(String(val).toLowerCase()); setLoading(true); }}>
-                  <SelectTrigger className="h-8 min-w-[180px] bg-zinc-50 border-zinc-200 text-[11px] font-normal tracking-widest rounded-xl hover:bg-zinc-100 transition-all shadow-sm px-4">
+              {type && (availableTeams.length > 1 || isAdmin) &&
+                <Select value={String(selectedTeamId || 'all').toLowerCase()} onValueChange={(val) => { setSelectedTeamId(String(val).toLowerCase()); setLoading(true); }}>
+                  <SelectTrigger className="h-8 min-w-[180px] bg-zinc-50 border border-zinc-200 text-[11px] font-normal tracking-widest rounded-xl hover:bg-zinc-100 transition-all shadow-sm px-4">
                     <SelectValue>
-                      {availableTeams.find(t => String(t._id).toLowerCase() === String(selectedTeamId).toLowerCase())?.name || boardData?.team?.name || 'Select Team'}
+                      {(selectedTeamId === 'all' || !selectedTeamId) ? 'ALL TEAMS' : (availableTeams.find(t => String(t._id).toLowerCase() === String(selectedTeamId).toLowerCase())?.name || boardData?.team?.name || 'Select Team')}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-100 shadow-2xl">
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-2xl bg-white">
+                    <SelectItem value="all" className="text-[10px] font-normal uppercase tracking-widest">ALL TEAMS</SelectItem>
                     {availableTeams.map(team => (
                       <SelectItem key={team._id} value={String(team._id).toLowerCase()} className="text-[10px] font-normal uppercase tracking-widest">{team.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              ) : (
+              }
+              {(!type || (availableTeams.length <= 1 && !isAdmin)) &&
                 <Badge variant="outline" className="bg-white text-zinc-400 border-zinc-200 font-normal text-[9px] tracking-[0.2em] px-2 py-1 rounded-lg border-2">
                   {boardData?.team?.name || 'STABLE NODE'}
                 </Badge>
-              )}
+              }
             </div>
             {boardData?.description && (
               <div className="text-zinc-400 text-[11px] font-normal uppercase tracking-wider flex items-center gap-2 opacity-80">
